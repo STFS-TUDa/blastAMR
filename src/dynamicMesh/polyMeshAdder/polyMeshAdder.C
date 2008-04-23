@@ -1699,6 +1699,7 @@ Foam::autoPtr<Foam::mapAddedPolyMesh> Foam::polyMeshAdder::add
     labelList patchSizes(getPatchSizes(allPatches));
     labelList patchStarts(getPatchStarts(allPatches));
 
+    mesh0.resetMotion();    // delete any oldPoints.
     mesh0.resetPrimitives
     (
         allFaces.size(),

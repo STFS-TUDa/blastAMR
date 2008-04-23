@@ -99,10 +99,14 @@ Foam::autoPtr<Foam::mapAddedPolyMesh> Foam::fvMeshAdder::add
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     fvMeshAdder::MapVolFields<scalar>(mapPtr, mesh0, mesh1);
     fvMeshAdder::MapVolFields<vector>(mapPtr, mesh0, mesh1);
+    fvMeshAdder::MapVolFields<sphericalTensor>(mapPtr, mesh0, mesh1);
+    fvMeshAdder::MapVolFields<symmTensor>(mapPtr, mesh0, mesh1);
     fvMeshAdder::MapVolFields<tensor>(mapPtr, mesh0, mesh1);
 
     fvMeshAdder::MapSurfaceFields<scalar>(mapPtr, mesh0, mesh1);
     fvMeshAdder::MapSurfaceFields<vector>(mapPtr, mesh0, mesh1);
+    fvMeshAdder::MapSurfaceFields<sphericalTensor>(mapPtr, mesh0, mesh1);
+    fvMeshAdder::MapSurfaceFields<symmTensor>(mapPtr, mesh0, mesh1);
     fvMeshAdder::MapSurfaceFields<tensor>(mapPtr, mesh0, mesh1);
 
     return mapPtr;
