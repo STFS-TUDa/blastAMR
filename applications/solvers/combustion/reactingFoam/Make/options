@@ -1,7 +1,7 @@
 EXE_INC = \
     -I../XiFoam \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
-    -I$(LIB_SRC)/turbulenceModels \
+    -I$(LIB_SRC)/turbulenceModels/RAS \
     -I$(LIB_SRC)/thermophysicalModels/specie/lnInclude \
     -I$(LIB_SRC)/thermophysicalModels/combustion/lnInclude \
     -I$(LIB_SRC)/thermophysicalModels/basic/lnInclude \
