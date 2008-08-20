@@ -32,7 +32,6 @@ License
 #include "octreeDataFace.H"
 #include "octree.H"
 #include "OFstream.H"
-#include "SortableList.H"
 #include "IndirectList.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
