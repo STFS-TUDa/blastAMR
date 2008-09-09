@@ -29,8 +29,8 @@ License
 #include "matchPoints.H"
 #include "indirectPrimitivePatch.H"
 #include "meshTools.H"
-#include "octreeDataFace.H"
-#include "octree.H"
+#include "treeDataFace.H"
+#include "indexedOctree.H"
 #include "OFstream.H"
 #include "IndirectList.H"
 
@@ -1011,19 +1011,29 @@ void Foam::faceCoupleInfo::findSlavesCoveringMaster
 )
 {
     // Construct octree from all mesh0 boundary faces
-    octreeDataFace shapes(mesh0);
+    labelList bndFaces(mesh0.nFaces()-mesh0.nInternalFaces());
+    forAll(bndFaces, i)
+    {
+        bndFaces[i] = mesh0.nInternalFaces() + i;
+    }
 
     treeBoundBox overallBb(mesh0.points());
 
-    octree<octreeDataFace> tree
-    (
-        overallBb,  // overall search domain
-        shapes,     // all information needed to do checks on cells
-        1,          // min levels
-        20.0,       // maximum ratio of cubes v.s. cells
-        10.0
-    );
+    Random rndGen(123456);
 
+    indexedOctree<treeDataFace> tree
+    (
+        treeDataFace    // all information needed to search faces
+        (
+            false,                      // do not cache bb
+            mesh0,
+            bndFaces                    // boundary faces only
+        ),
+        overallBb.extend(rndGen, 1E-4), // overall search domain
+        8,                              // maxLevel
+        10,                             // leafsize
+        3.0                             // duplicity
+    );
 
     if (debug)
     {
@@ -1048,17 +1058,11 @@ void Foam::faceCoupleInfo::findSlavesCoveringMaster
         // Generate face centre (prevent cellCentres() reconstruction)
         point fc(f1.centre(mesh1.points()));
 
-        // Search in bounding box of face only.
-        treeBoundBox tightest(static_cast<const pointField&>(f1.points(mesh1.points())));
+        pointIndexHit nearInfo = tree.findNearest(fc, Foam::sqr(absTol));
 
-        scalar tightestDist = GREAT;
-
-        label index = tree.findNearest(fc, tightest, tightestDist);
-
-
-        if (index != -1)
+        if (nearInfo.hit())
         {
-            label mesh0FaceI = shapes.meshFaces()[index];
+            label mesh0FaceI = tree.shapes().faceLabels()[nearInfo.index()];
 
             // Check if points of f1 actually lie on top of mesh0 face
             // This is the bit that might fail since if f0 is severely warped
