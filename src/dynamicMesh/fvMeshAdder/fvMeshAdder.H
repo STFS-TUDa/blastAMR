@@ -40,6 +40,7 @@ SourceFiles
 
 #include "polyMeshAdder.H"
 #include "fvPatchFieldsFwd.H"
+#include "fvsPatchFieldsFwd.H"
 #include "fvPatchFieldMapper.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
