@@ -46,6 +46,8 @@ Description
 #include "mapAddedPolyMesh.H"
 #include "polyMeshAdder.H"
 #include "faceCoupleInfo.H"
+#include "fvMeshAdder.H"
+#include "polyTopoChange.H"
 
 using namespace Foam;
 
@@ -203,6 +205,78 @@ autoPtr<faceCoupleInfo> determineCoupledFaces
 }
 
 
+autoPtr<mapPolyMesh> mergeSharedPoints
+(
+    const scalar mergeDist,
+    polyMesh& mesh,
+    labelListList& pointProcAddressing
+)
+{
+    // Find out which sets of points get merged and create a map from
+    // mesh point to unique point.
+    Map<label> pointToMaster
+    (
+        fvMeshAdder::findSharedPoints
+        (
+            mesh,
+            mergeDist
+        )
+    );
+
+    Info<< "mergeSharedPoints : detected " << pointToMaster.size()
+        << " points that are to be merged." << endl;
+
+    if (returnReduce(pointToMaster.size(), sumOp<label>()) == 0)
+    {
+        return autoPtr<mapPolyMesh>(NULL);
+    }
+
+    polyTopoChange meshMod(mesh);
+
+    fvMeshAdder::mergePoints(mesh, pointToMaster, meshMod);
+
+    // Change the mesh (no inflation). Note: parallel comms allowed.
+    autoPtr<mapPolyMesh> map = meshMod.changeMesh(mesh, false, true);
+
+    // Update fields. No inflation, parallel sync.
+    mesh.updateMesh(map);
+
+    // pointProcAddressing give indices into the master mesh so adapt them
+    // for changed point numbering.
+
+    // Adapt constructMaps for merged points.
+    forAll(pointProcAddressing, procI)
+    {
+        labelList& constructMap = pointProcAddressing[procI];
+
+        forAll(constructMap, i)
+        {
+            label oldPointI = constructMap[i];
+
+            // New label of point after changeMesh.
+            label newPointI = map().reversePointMap()[oldPointI];
+
+            if (newPointI < -1)
+            {
+                constructMap[i] = -newPointI-2;
+            }
+            else if (newPointI >= 0)
+            {
+                constructMap[i] = newPointI;
+            }
+            else
+            {
+                FatalErrorIn("fvMeshDistribute::mergeSharedPoints()")
+                    << "Problem. oldPointI:" << oldPointI
+                    << " newPointI:" << newPointI << abort(FatalError);
+            }
+        }
+    }
+
+    return map;    
+}
+
+
 int main(int argc, char *argv[])
 {
     argList::noParallel();
@@ -214,7 +288,7 @@ int main(int argc, char *argv[])
 #   include "setRootCase.H"
 #   include "createTime.H"
 
-    Pout<< "This is an experimental tool which tries to merge"
+    Info<< "This is an experimental tool which tries to merge"
         << " individual processor" << nl
         << "meshes back into one master mesh. Use it if the original"
         << " master mesh has" << nl
@@ -246,7 +320,7 @@ int main(int argc, char *argv[])
     }
     scalar writeTol = Foam::pow(10.0, -scalar(IOstream::defaultPrecision()));
 
-    Pout<< "Merge tolerance : " << mergeTol << nl
+    Info<< "Merge tolerance : " << mergeTol << nl
         << "Write tolerance : " << writeTol << endl;
 
     if (runTime.writeFormat() == IOstream::ASCII && mergeTol < writeTol)
@@ -267,11 +341,11 @@ int main(int argc, char *argv[])
 
     if (fullMatch)
     {
-        Pout<< "Doing geometric matching on all boundary faces." << nl << endl;
+        Info<< "Doing geometric matching on all boundary faces." << nl << endl;
     }
     else
     {
-        Pout<< "Doing geometric matching on correct procBoundaries only."
+        Info<< "Doing geometric matching on correct procBoundaries only."
             << nl << "This assumes a correct decomposition." << endl;
     }
 
@@ -292,7 +366,7 @@ int main(int argc, char *argv[])
         nProcs++;
     }
 
-    Pout<< "Found " << nProcs << " processor directories" << nl << endl;
+    Info<< "Found " << nProcs << " processor directories" << nl << endl;
 
 
     // Read all databases.
@@ -300,7 +374,7 @@ int main(int argc, char *argv[])
 
     forAll (databases, procI)
     {
-        Pout<< "Reading database "
+        Info<< "Reading database "
             << args.caseName()/fileName(word("processor") + name(procI))
             << endl;
 
@@ -337,7 +411,7 @@ int main(int argc, char *argv[])
     }
 
     // Set master time
-    Pout<< "Setting master time to " << databases[0].timeName() << nl << endl;
+    Info<< "Setting master time to " << databases[0].timeName() << nl << endl;
     runTime.setTime(databases[0]);
 
 
@@ -373,7 +447,7 @@ int main(int argc, char *argv[])
                 << endl << exit(FatalError);
         }
 
-        Pout<< "Reading points from "
+        Info<< "Reading points from "
             << databases[procI].caseName()
             << " for time = " << databases[procI].timeName()
             << nl << endl;
@@ -403,7 +477,7 @@ int main(int argc, char *argv[])
     }
     const scalar mergeDist = mergeTol*mag(bb.max() - bb.min());
 
-    Pout<< "Overall mesh bounding box  : " << bb << nl
+    Info<< "Overall mesh bounding box  : " << bb << nl
         << "Relative tolerance         : " << mergeTol << nl
         << "Absolute matching distance : " << mergeDist << nl
         << endl;
@@ -422,7 +496,7 @@ int main(int argc, char *argv[])
 
     {
         // Construct empty mesh.
-        Pout<< "Constructing empty mesh to add to." << nl << endl;
+        Info<< "Constructing empty mesh to add to." << nl << endl;
         polyMesh masterMesh
         (
             IOobject
@@ -439,7 +513,7 @@ int main(int argc, char *argv[])
 
         for (label procI = 0; procI < nProcs; procI++)
         {
-            Pout<< "Reading mesh to add from "
+            Info<< "Reading mesh to add from "
                 << databases[procI].caseName()
                 << " for time = " << databases[procI].timeName()
                 << nl << endl;
@@ -475,7 +549,7 @@ int main(int argc, char *argv[])
 
 
             // Add elements to mesh
-            Pout<< "Adding to master mesh" << nl << endl;
+            Info<< "Adding to master mesh" << nl << endl;
 
             autoPtr<mapAddedPolyMesh> map = polyMeshAdder::add
             (
@@ -503,16 +577,19 @@ int main(int argc, char *argv[])
             renumber(map().addedPointMap(), pointProcAddressing[procI]);
             renumber(map().addedPatchMap(), boundaryProcAddressing[procI]);
 
-            Pout<< endl;
+            Info<< endl;
         }
 
+        // See if any points on the mastermesh have become connected
+        // because of connections through processor meshes.
+        mergeSharedPoints(mergeDist, masterMesh, pointProcAddressing);
 
         // Save some properties on the reconstructed mesh
         masterInternalFaces = masterMesh.nInternalFaces();
         masterOwner = masterMesh.faceOwner();
 
 
-        Pout<< "\nWriting merged mesh to "
+        Info<< "\nWriting merged mesh to "
             << runTime.path()/runTime.timeName()
             << nl << endl;
 
@@ -527,12 +604,12 @@ int main(int argc, char *argv[])
 
     // Write the addressing
 
-    Pout<< "Reconstructing the addressing from the processor meshes"
+    Info<< "Reconstructing the addressing from the processor meshes"
         << " to the newly reconstructed mesh" << nl << endl;
 
     forAll(databases, procI)
     {
-        Pout<< "Reading processor " << procI << " mesh from "
+        Info<< "Reading processor " << procI << " mesh from "
             << databases[procI].caseName() << endl;
 
         polyMesh procMesh
@@ -548,7 +625,7 @@ int main(int argc, char *argv[])
 
         // From processor point to reconstructed mesh point
 
-        Pout<< "Writing pointProcAddressing to "
+        Info<< "Writing pointProcAddressing to "
             << databases[procI].caseName()
               /procMesh.facesInstance()
               /polyMesh::meshSubDir
@@ -572,7 +649,7 @@ int main(int argc, char *argv[])
 
         // From processor face to reconstructed mesh face
 
-        Pout<< "Writing faceProcAddressing to "
+        Info<< "Writing faceProcAddressing to "
             << databases[procI].caseName()
               /procMesh.facesInstance()
               /polyMesh::meshSubDir
@@ -635,7 +712,7 @@ int main(int argc, char *argv[])
 
         // From processor cell to reconstructed mesh cell
 
-        Pout<< "Writing cellProcAddressing to "
+        Info<< "Writing cellProcAddressing to "
             << databases[procI].caseName()
               /procMesh.facesInstance()
               /polyMesh::meshSubDir
@@ -660,7 +737,7 @@ int main(int argc, char *argv[])
 
         // From processor patch to reconstructed mesh patch
 
-        Pout<< "Writing boundaryProcAddressing to "
+        Info<< "Writing boundaryProcAddressing to "
             << databases[procI].caseName()
               /procMesh.facesInstance()
               /polyMesh::meshSubDir
@@ -681,10 +758,10 @@ int main(int argc, char *argv[])
             boundaryProcAddressing[procI]
         ).write();
 
-        Pout<< endl;
+        Info<< endl;
     }
 
-    Pout<< "End.\n" << endl;
+    Info<< "End.\n" << endl;
 
     return 0;
 }
