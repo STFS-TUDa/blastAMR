@@ -1737,84 +1737,217 @@ Foam::autoPtr<Foam::mapAddedPolyMesh> Foam::polyMeshAdder::add
 Foam::Map<Foam::label> Foam::polyMeshAdder::findSharedPoints
 (
     const polyMesh& mesh,
-    const scalar mergeTol
+    const scalar mergeDist
 )
 {
     const labelList& sharedPointLabels = mesh.globalData().sharedPointLabels();
+    const labelList& sharedPointAddr = mesh.globalData().sharedPointAddr();
 
-    labelList sharedToMerged;
-    pointField mergedPoints;
-    bool hasMerged = Foam::mergePoints
-    (
-        pointField
-        (
-            IndirectList<point>
+    // Because of adding the missing pieces e.g. when redistributing a mesh
+    // it can be that there are multiple points on the same processor that
+    // refer to the same shared point.
+
+    // Invert point-to-shared addressing
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    Map<labelList> sharedToMesh(sharedPointLabels.size());
+
+    label nMultiple = 0;
+
+    forAll(sharedPointLabels, i)
+    {
+        label pointI = sharedPointLabels[i];
+
+        label sharedI = sharedPointAddr[i];
+
+        Map<labelList>::iterator iter = sharedToMesh.find(sharedI);
+
+        if (iter != sharedToMesh.end())
+        {
+            // sharedI already used by other point. Add this one.
+
+            nMultiple++;
+
+            labelList& connectedPointLabels = iter();
+
+            label sz = connectedPointLabels.size();
+
+            // Check just to make sure.
+            if (findIndex(connectedPointLabels, pointI) != -1)
+            {
+                FatalErrorIn("polyMeshAdder::findSharedPoints(..)")
+                    << "Duplicate point in sharedPoint addressing." << endl
+                    << "When trying to add point " << pointI << " on shared "
+                    << sharedI  << " with connected points "
+                    << connectedPointLabels
+                    << abort(FatalError);
+            }
+
+            connectedPointLabels.setSize(sz+1);
+            connectedPointLabels[sz] = pointI;
+        }
+        else
+        {
+            sharedToMesh.insert(sharedI, labelList(1, pointI));
+        }
+    }
+
+    
+    // Assign single master for every shared with multiple geometric points
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    Map<label> pointToMaster(nMultiple);
+
+    forAllConstIter(Map<labelList>, sharedToMesh, iter)
+    {
+        const labelList& connectedPointLabels = iter();
+
+        //Pout<< "For shared:" << iter.key()
+        //    << " found points:" << connectedPointLabels
+        //    << " at coords:"
+        //    <<  pointField(mesh.points(), connectedPointLabels) << endl;
+
+        if (connectedPointLabels.size() > 1)
+        {
+            const pointField connectedPoints
             (
                 mesh.points(),
-                sharedPointLabels
-            )()
-        ),
-        mergeTol,
-        false,
-        sharedToMerged,
-        mergedPoints
-    );
+                connectedPointLabels
+            );
 
-    // Find out which sets of points get merged and create a map from
-    // mesh point to unique point.
-
-    Map<label> pointToMaster(10*sharedToMerged.size());
-
-    if (hasMerged)
-    {
-        labelListList mergeSets
-        (
-            invertOneToMany
+            labelList toMergedPoints;
+            pointField mergedPoints;
+            bool hasMerged = Foam::mergePoints
             (
-                sharedToMerged.size(),
-                sharedToMerged
-            )
-        );
+                connectedPoints,
+                mergeDist,
+                false,
+                toMergedPoints,
+                mergedPoints
+            );
 
-        label nMergeSets = 0;
-
-        forAll(mergeSets, setI)
-        {
-            const labelList& mergeSet = mergeSets[setI];
-
-            if (mergeSet.size() > 1)
+            if (hasMerged)
             {
-                // Take as master the shared point with the lowest mesh
-                // point label. (rather arbitrarily - could use max or any other
-                // one of the points)
+                // Invert toMergedPoints
+                const labelListList mergeSets
+                (
+                    invertOneToMany
+                    (
+                        mergedPoints.size(),
+                        toMergedPoints
+                    )
+                );
 
-                nMergeSets++;
-
-                label masterI = labelMax;
-
-                forAll(mergeSet, i)
+                // Find master for valid merges
+                forAll(mergeSets, setI)
                 {
-                    label sharedI = mergeSet[i];
+                    const labelList& mergeSet = mergeSets[setI];
 
-                    masterI = min(masterI, sharedPointLabels[sharedI]);
-                }
+                    if (mergeSet.size() > 1)
+                    {
+                        // Pick lowest numbered point
+                        label masterPointI = labelMax;
 
-                forAll(mergeSet, i)
-                {
-                    label sharedI = mergeSet[i];
+                        forAll(mergeSet, i)
+                        {
+                            label pointI = connectedPointLabels[mergeSet[i]];
 
-                    pointToMaster.insert(sharedPointLabels[sharedI], masterI);
+                            masterPointI = min(masterPointI, pointI);
+                        }
+
+                        forAll(mergeSet, i)
+                        {
+                            label pointI = connectedPointLabels[mergeSet[i]];
+
+                            //Pout<< "Merging point " << pointI
+                            //    << " at " << mesh.points()[pointI]
+                            //    << " into master point "
+                            //    << masterPointI
+                            //    << " at " << mesh.points()[masterPointI]
+                            //    << endl;
+
+                            pointToMaster.insert(pointI, masterPointI);
+                        }
+                    }
                 }
             }
         }
-
-        //if (debug)
-        //{
-        //    Pout<< "polyMeshAdder : merging:"
-        //        << pointToMaster.size() << " into " << nMergeSets << " sets."
-        //        << endl;
-        //}
     }
+
+    //- Old: geometric merging. Causes problems for two close shared points.
+    //labelList sharedToMerged;
+    //pointField mergedPoints;
+    //bool hasMerged = Foam::mergePoints
+    //(
+    //    pointField
+    //    (
+    //        IndirectList<point>
+    //        (
+    //            mesh.points(),
+    //            sharedPointLabels
+    //        )()
+    //    ),
+    //    mergeDist,
+    //    false,
+    //    sharedToMerged,
+    //    mergedPoints
+    //);
+    //
+    //// Find out which sets of points get merged and create a map from
+    //// mesh point to unique point.
+    //
+    //Map<label> pointToMaster(10*sharedToMerged.size());
+    //
+    //if (hasMerged)
+    //{
+    //    labelListList mergeSets
+    //    (
+    //        invertOneToMany
+    //        (
+    //            sharedToMerged.size(),
+    //            sharedToMerged
+    //        )
+    //    );
+    //
+    //    label nMergeSets = 0;
+    //
+    //    forAll(mergeSets, setI)
+    //    {
+    //        const labelList& mergeSet = mergeSets[setI];
+    //
+    //        if (mergeSet.size() > 1)
+    //        {
+    //            // Take as master the shared point with the lowest mesh
+    //            // point label. (rather arbitrarily - could use max or
+    //            // any other one of the points)
+    //
+    //            nMergeSets++;
+    //
+    //            label masterI = labelMax;
+    //
+    //            forAll(mergeSet, i)
+    //            {
+    //                label sharedI = mergeSet[i];
+    //
+    //                masterI = min(masterI, sharedPointLabels[sharedI]);
+    //            }
+    //
+    //            forAll(mergeSet, i)
+    //            {
+    //                label sharedI = mergeSet[i];
+    //
+    //                pointToMaster.insert(sharedPointLabels[sharedI], masterI);
+    //            }
+    //        }
+    //    }
+    //
+    //    //if (debug)
+    //    //{
+    //    //    Pout<< "polyMeshAdder : merging:"
+    //    //        << pointToMaster.size() << " into " << nMergeSets
+    //    //        << " sets." << endl;
+    //    //}
+    //}
 
     return pointToMaster;
 }
@@ -1836,8 +1969,7 @@ void Foam::polyMeshAdder::mergePoints
         {
             if (iter() != pointI)
             {
-                //1.4.1: meshMod.removePoint(pointI, iter());
-                meshMod.setAction(polyRemovePoint(pointI));
+                meshMod.removePoint(pointI, iter());
             }
         }
     }
