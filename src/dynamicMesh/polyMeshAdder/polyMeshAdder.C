@@ -959,7 +959,7 @@ void Foam::polyMeshAdder::mergeFaceZones
 )
 {
     zoneNames.setSize(fz0.size() + fz1.size());
-    
+
     append(fz0.names(), zoneNames);
 
     from1ToAll.setSize(fz1.size());
@@ -1041,7 +1041,7 @@ void Foam::polyMeshAdder::mergeCellZones
 )
 {
     zoneNames.setSize(cz0.size() + cz1.size());
-    
+
     append(cz0.names(), zoneNames);
 
     from1ToAll.setSize(cz1.size());
@@ -1168,7 +1168,7 @@ void Foam::polyMeshAdder::addZones
             mesh.pointZones()
         );
     }
-    
+
     List<faceZone*> fZones(fzFaces.size());
     forAll(fZones, i)
     {
@@ -1557,7 +1557,7 @@ Foam::autoPtr<Foam::mapAddedPolyMesh> Foam::polyMeshAdder::add
 
     // Inplace extend mesh0 patches (note that patches0.size() now also
     // has changed)
-    polyBoundaryMesh& allPatches = 
+    polyBoundaryMesh& allPatches =
         const_cast<polyBoundaryMesh&>(mesh0.boundaryMesh());
     allPatches.setSize(allPatchNames.size());
 
@@ -1702,11 +1702,10 @@ Foam::autoPtr<Foam::mapAddedPolyMesh> Foam::polyMeshAdder::add
     mesh0.resetMotion();    // delete any oldPoints.
     mesh0.resetPrimitives
     (
-        allFaces.size(),
-        allPoints,
-        allFaces,
-        allOwner,
-        allNeighbour,
+        xferMove(allPoints),
+        xferMove(allFaces),
+        xferMove(allOwner),
+        xferMove(allNeighbour),
         patchSizes,     // size
         patchStarts,    // patchstarts
         validBoundary   // boundary valid?
@@ -1792,7 +1791,7 @@ Foam::Map<Foam::label> Foam::polyMeshAdder::findSharedPoints
         }
     }
 
-    
+
     // Assign single master for every shared with multiple geometric points
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
