@@ -1398,10 +1398,10 @@ Foam::autoPtr<Foam::polyMesh> Foam::polyMeshAdder::add
         new polyMesh
         (
             io,
-            allPoints,
-            allFaces,
-            allOwner,
-            allNeighbour
+            xferMove(allPoints),
+            xferMove(allFaces),
+            xferMove(allOwner),
+            xferMove(allNeighbour)
         )
     );
     polyMesh& mesh = tmesh();
