@@ -506,9 +506,9 @@ int main(int argc, char *argv[])
                 runTime,
                 IOobject::NO_READ
             ),
-            pointField(0),
-            faceList(0),
-            cellList(0)
+            xferCopy(pointField()),
+            xferCopy(faceList()),
+            xferCopy(cellList())
         );
 
         for (label procI = 0; procI < nProcs; procI++)
