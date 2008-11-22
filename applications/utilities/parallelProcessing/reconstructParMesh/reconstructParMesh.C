@@ -273,7 +273,7 @@ autoPtr<mapPolyMesh> mergeSharedPoints
         }
     }
 
-    return map;    
+    return map;
 }
 
 
@@ -418,11 +418,7 @@ int main(int argc, char *argv[])
     // Read point on individual processors to determine merge tolerance
     // (otherwise single cell domains might give problems)
 
-    boundBox bb
-    (
-        point(GREAT, GREAT, GREAT),
-        point(-GREAT, -GREAT, -GREAT)
-    );
+    boundBox bb = boundBox::invertedBox;
 
     for (label procI = 0; procI < nProcs; procI++)
     {
