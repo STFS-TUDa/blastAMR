@@ -31,7 +31,7 @@ License
 template<class T>
 void Foam::polyMeshAdder::append(const List<T>& lst, DynamicList<T>& dynLst)
 {
-    dynLst.setSize(dynLst.size() + lst.size());
+    dynLst.setCapacity(dynLst.size() + lst.size());
 
     forAll(lst, i)
     {
