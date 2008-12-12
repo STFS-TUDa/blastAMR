@@ -489,7 +489,6 @@ void Foam::polyMeshAdder::insertVertices
 
     if (workFace.size() != allF.size())
     {
-        workFace.shrink();
         allF.transfer(workFace);
     }
 }
