@@ -471,7 +471,7 @@ int main(int argc, char *argv[])
         bb.min() = min(bb.min(), domainBb.min());
         bb.max() = max(bb.max(), domainBb.max());
     }
-    const scalar mergeDist = mergeTol*mag(bb.max() - bb.min());
+    const scalar mergeDist = mergeTol * bb.mag();
 
     Info<< "Overall mesh bounding box  : " << bb << nl
         << "Relative tolerance         : " << mergeTol << nl
@@ -533,15 +533,14 @@ int main(int argc, char *argv[])
 
 
             // Find geometrically shared points/faces.
-            autoPtr<faceCoupleInfo> couples =
-                determineCoupledFaces
-                (
-                    fullMatch,
-                    procI,
-                    masterMesh,
-                    meshToAdd,
-                    mergeDist
-                );
+            autoPtr<faceCoupleInfo> couples = determineCoupledFaces
+            (
+                fullMatch,
+                procI,
+                masterMesh,
+                meshToAdd,
+                mergeDist
+            );
 
 
             // Add elements to mesh
