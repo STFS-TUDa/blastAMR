@@ -29,7 +29,7 @@ Description
     Adds two meshes without using any polyMesh morphing.
 
     Gets faces to couple as faceCoupleInfo which is list of faces on both
-    meshes. Holds map from last mesh addition.
+    meshes. Returns map from last mesh addition.
 
 SourceFiles
     polyMeshAdder.C
@@ -43,6 +43,7 @@ SourceFiles
 #include "polyMesh.H"
 #include "mapAddedPolyMesh.H"
 #include "faceCoupleInfo.H"
+#include "SortableList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -75,6 +76,16 @@ private:
         (
             const labelList& map,
             const labelList& lst,
+            DynamicList<label>&
+        );
+
+        //- Append all mapped elements of a list to a DynamicList that are
+        //  not already present in the sorted list.
+        static void append
+        (
+            const labelList& map,
+            const labelList& lst,
+            const SortableList<label>& sortedLst,
             DynamicList<label>&
         );
 

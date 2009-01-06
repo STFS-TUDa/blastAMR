@@ -61,6 +61,29 @@ void Foam::polyMeshAdder::append
 }
 
 
+//- Append all mapped elements of a list to a DynamicList
+void Foam::polyMeshAdder::append
+(
+    const labelList& map,
+    const labelList& lst,
+    const SortableList<label>& sortedLst,
+    DynamicList<label>& dynLst
+)
+{
+    dynLst.setSize(dynLst.size() + lst.size());
+
+    forAll(lst, i)
+    {
+        label newElem = map[lst[i]];
+
+        if (newElem != -1 && findSortedIndex(sortedLst, newElem) == -1)
+        {
+            dynLst.append(newElem);
+        }
+    }
+}
+
+
 // Get index of patch in new set of patchnames/types
 Foam::label Foam::polyMeshAdder::patchIndex
 (
@@ -919,22 +942,33 @@ void Foam::polyMeshAdder::mergePointZones
 
     forAll(pz0, zoneI)
     {
-        DynamicList<label>& newZone = pzPoints[zoneI];
+        append(from0ToAllPoints, pz0[zoneI], pzPoints[zoneI]);
+    }
 
-        newZone.setCapacity(pz0[zoneI].size());
-
-        append(from0ToAllPoints, pz0[zoneI], newZone);
+    // Get sorted zone contents for duplicate element recognition
+    PtrList<SortableList<label> > pzPointsSorted(pzPoints.size());
+    forAll(pzPoints, zoneI)
+    {
+        pzPointsSorted.set
+        (
+            zoneI,
+            new SortableList<label>(pzPoints[zoneI])
+        );
     }
 
     // Now we have full addressing for points so do the pointZones of mesh1.
     forAll(pz1, zoneI)
     {
         // Relabel all points of zone and add to correct pzPoints.
-        DynamicList<label>& newZone = pzPoints[from1ToAll[zoneI]];
+        label allZoneI = from1ToAll[zoneI];
 
-        newZone.setCapacity(newZone.size() + pz1[zoneI].size());
-
-        append(from1ToAllPoints, pz1[zoneI], newZone);
+        append
+        (
+            from1ToAllPoints,
+            pz1[zoneI],
+            pzPointsSorted[allZoneI],
+            pzPoints[allZoneI]
+        );
     }
 
     forAll(pzPoints, i)
@@ -996,11 +1030,25 @@ void Foam::polyMeshAdder::mergeFaceZones
         }
     }
 
+    // Get sorted zone contents for duplicate element recognition
+    PtrList<SortableList<label> > fzFacesSorted(fzFaces.size());
+    forAll(fzFaces, zoneI)
+    {
+        fzFacesSorted.set
+        (
+            zoneI,
+            new SortableList<label>(fzFaces[zoneI])
+        );
+    }
+
     // Now we have full addressing for faces so do the faceZones of mesh1.
     forAll(fz1, zoneI)
     {
-        DynamicList<label>& newZone = fzFaces[from1ToAll[zoneI]];
-        DynamicList<bool>& newFlip = fzFlips[from1ToAll[zoneI]];
+        label allZoneI = from1ToAll[zoneI];
+
+        DynamicList<label>& newZone = fzFaces[allZoneI];
+        const SortableList<label>& newZoneSorted = fzFacesSorted[allZoneI];
+        DynamicList<bool>& newFlip = fzFlips[allZoneI];
 
         newZone.setCapacity(newZone.size() + fz1[zoneI].size());
         newFlip.setCapacity(newZone.size());
@@ -1011,10 +1059,15 @@ void Foam::polyMeshAdder::mergeFaceZones
         forAll(addressing, i)
         {
             label faceI = addressing[i];
+            label allFaceI = from1ToAllFaces[faceI];
 
-            if (from1ToAllFaces[faceI] != -1)
+            if
+            (
+                allFaceI != -1
+             && findSortedIndex(newZoneSorted, allFaceI) == -1
+            )
             {
-                newZone.append(from1ToAllFaces[faceI]);
+                newZone.append(allFaceI);
                 newFlip.append(flipMap[i]);
             }
         }
@@ -1055,7 +1108,6 @@ void Foam::polyMeshAdder::mergeCellZones
     czCells.setSize(zoneNames.size());
     forAll(cz0, zoneI)
     {
-        czCells[zoneI].setCapacity(cz0[zoneI].size());
         // Insert mesh0 cells
         append(cz0[zoneI], czCells[zoneI]);
     }
@@ -1064,11 +1116,9 @@ void Foam::polyMeshAdder::mergeCellZones
     // Cell mapping is trivial.
     forAll(cz1, zoneI)
     {
-        DynamicList<label>& newZone = czCells[from1ToAll[zoneI]];
+        label allZoneI = from1ToAll[zoneI];
 
-        newZone.setCapacity(newZone.size() + cz1[zoneI].size());
-
-        append(from1ToAllCells, cz1[zoneI], newZone);
+        append(from1ToAllCells, cz1[zoneI], czCells[allZoneI]);
     }
 
     forAll(czCells, i)
