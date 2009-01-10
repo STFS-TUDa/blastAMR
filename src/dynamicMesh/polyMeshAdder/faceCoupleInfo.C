@@ -36,12 +36,7 @@ License
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-namespace Foam
-{
-
-defineTypeNameAndDebug(faceCoupleInfo, 0);
-
-}
+defineTypeNameAndDebug(Foam::faceCoupleInfo, 0);
 
 const Foam::scalar Foam::faceCoupleInfo::angleTol_ = 1E-3;
 
@@ -541,7 +536,7 @@ void Foam::faceCoupleInfo::setCutEdgeToPoints(const labelList& cutToMasterEdges)
 
         const labelList& stringedEdges = masterToCutEdges[masterEdgeI];
 
-        if (stringedEdges.size() == 0)
+        if (stringedEdges.empty())
         {
             FatalErrorIn
             (
@@ -1421,16 +1416,15 @@ Foam::label Foam::faceCoupleInfo::geometricMatchEdgeFaces
             {
                 label masterFaceI = masterFaces[i];
 
-                if (masterToCutFaces[masterFaces[i]].size() == 0)
+                if (masterToCutFaces[masterFaces[i]].empty())
                 {
-                    scalar dist =
-                        maxDistance
-                        (
-                            cutF,
-                            cutPoints,
-                            masterPatch()[masterFaceI],
-                            masterPatch().points()
-                        );
+                    scalar dist = maxDistance
+                    (
+                        cutF,
+                        cutPoints,
+                        masterPatch()[masterFaceI],
+                        masterPatch().points()
+                    );
 
                     if (dist < minDist)
                     {
@@ -2065,7 +2059,7 @@ Foam::faceCoupleInfo::faceCoupleInfo
 
     if
     (
-        masterAddressing.size() > 0
+        masterAddressing.size()
      && min(masterAddressing) < masterMesh.nInternalFaces()
     )
     {
@@ -2079,7 +2073,7 @@ Foam::faceCoupleInfo::faceCoupleInfo
     }
     if
     (
-        slaveAddressing.size() > 0
+        slaveAddressing.size()
      && min(slaveAddressing) < slaveMesh.nInternalFaces()
     )
     {
@@ -2156,7 +2150,7 @@ Foam::Map<Foam::labelList> Foam::faceCoupleInfo::makeMap
 
     forAll(lst, i)
     {
-        if (lst[i].size() > 0)
+        if (lst[i].size())
         {
             map.insert(i, lst[i]);
         }
