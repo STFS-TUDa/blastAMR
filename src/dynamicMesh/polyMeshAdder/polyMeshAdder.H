@@ -55,7 +55,7 @@ class IOobject;
 class polyTopoChange;
 
 /*---------------------------------------------------------------------------*\
-                           Class polyMeshAdder Declaration
+                        Class polyMeshAdder Declaration
 \*---------------------------------------------------------------------------*/
 
 class polyMeshAdder
