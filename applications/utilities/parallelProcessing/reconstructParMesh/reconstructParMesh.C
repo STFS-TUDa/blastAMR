@@ -355,7 +355,7 @@ int main(int argc, char *argv[])
 
     while
     (
-        exists
+        isDir
         (
             args.rootPath()
           / args.caseName()
