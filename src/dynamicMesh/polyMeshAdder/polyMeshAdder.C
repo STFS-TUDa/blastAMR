@@ -1929,11 +1929,8 @@ Foam::Map<Foam::label> Foam::polyMeshAdder::findSharedPoints
     //(
     //    pointField
     //    (
-    //        IndirectList<point>
-    //        (
-    //            mesh.points(),
-    //            sharedPointLabels
-    //        )()
+    //        mesh.points(),
+    //        sharedPointLabels
     //    ),
     //    mergeDist,
     //    false,
