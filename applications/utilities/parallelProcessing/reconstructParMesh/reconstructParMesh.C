@@ -306,18 +306,16 @@ int main(int argc, char *argv[])
 
     word regionName = polyMesh::defaultRegion;
     fileName regionPrefix = "";
-    if (args.options().found("region"))
+    if (args.optionFound("region"))
     {
-        regionName = args.options()["region"];
+        regionName = args.option("region");
         regionPrefix = regionName;
         Info<< "Operating on region " << regionName << nl << endl;
     }
 
     scalar mergeTol = defaultMergeTol;
-    if (args.options().found("mergeTol"))
-    {
-        mergeTol = readScalar(IStringStream(args.options()["mergeTol"])());
-    }
+    args.optionReadIfPresent("mergeTol", mergeTol);
+
     scalar writeTol = Foam::pow(10.0, -scalar(IOstream::defaultPrecision()));
 
     Info<< "Merge tolerance : " << mergeTol << nl
@@ -337,7 +335,7 @@ int main(int argc, char *argv[])
     }
 
 
-    const bool fullMatch = args.options().found("fullMatch");
+    const bool fullMatch = args.optionFound("fullMatch");
 
     if (fullMatch)
     {
