@@ -37,7 +37,6 @@ volVectorField U
 
 volScalarField& p = thermo->p();
 const volScalarField& psi = thermo->psi();
-const volScalarField& T = thermo->T();
 volScalarField& h = thermo->h();
 
 
@@ -99,5 +98,5 @@ volScalarField dQ
         IOobject::AUTO_WRITE
     ),
     mesh,
-    dimensionedScalar("zero", dimensionSet(1,-3,-1,0,0,0,0), 0.0)
+    dimensionedScalar("zero", dimensionSet(1, -3, -1, 0, 0, 0, 0), 0.0)
 );
