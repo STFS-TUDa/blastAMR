@@ -2,7 +2,7 @@ EXE_INC = \
     -I../XiFoam \
     -I$(LIB_SRC)/turbulenceModels/compressible/turbulenceModel \
     -I$(LIB_SRC)/thermophysicalModels/specie/lnInclude \
-    -I$(LIB_SRC)/thermophysicalModels/combustion/lnInclude \
+    -I$(LIB_SRC)/thermophysicalModels/reactionThermo/lnInclude \
     -I$(LIB_SRC)/thermophysicalModels/basic/lnInclude \
     -I$(LIB_SRC)/thermophysicalModels/chemistryModel/lnInclude \
     -I$(LIB_SRC)/ODE/lnInclude \
@@ -11,7 +11,7 @@ EXE_INC = \
 EXE_LIBS = \
     -lcompressibleRASModels \
     -lcompressibleLESModels \
-    -lcombustionThermophysicalModels \
+    -lreactionThermophysicalModels \
     -lspecie \
     -lbasicThermophysicalModels \
     -lchemistryModel \
