@@ -86,7 +86,10 @@ int main(int argc, char *argv[])
 
         turbulence->correct();
 
-        rho = thermo.rho();
+        if (runTime.write())
+        {
+            chemistry.dQ()().write();
+        }
 
         runTime.write();
 
