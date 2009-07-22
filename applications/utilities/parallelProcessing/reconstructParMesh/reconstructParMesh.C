@@ -26,9 +26,10 @@ Application
     reconstructParMesh
 
 Description
-    Reconstructs a mesh using geometric information only. Writes
-    point/face/cell procAddressing so afterwards reconstructPar can be used to
-    reconstruct fields.
+    Reconstructs a mesh using geometric information only.
+
+    Writes point/face/cell procAddressing so afterwards reconstructPar can be
+    used to reconstruct fields.
 
     Note:
     - uses geometric matching tolerance (set with -mergeTol option)
