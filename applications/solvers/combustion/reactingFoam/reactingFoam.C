@@ -26,7 +26,7 @@ Application
     reactingFoam
 
 Description
-    Chemical reaction code.
+    Solver for combustion with chemical reactions.
 
 \*---------------------------------------------------------------------------*/
 
