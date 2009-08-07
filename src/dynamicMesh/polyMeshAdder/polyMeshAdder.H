@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 1991-2008 OpenCFD Ltd.
+    \\  /    A nd           | Copyright (C) 1991-2009 OpenCFD Ltd.
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -29,7 +29,7 @@ Description
     Adds two meshes without using any polyMesh morphing.
 
     Gets faces to couple as faceCoupleInfo which is list of faces on both
-    meshes. Holds map from last mesh addition.
+    meshes. Returns map from last mesh addition.
 
 SourceFiles
     polyMeshAdder.C
@@ -43,6 +43,7 @@ SourceFiles
 #include "polyMesh.H"
 #include "mapAddedPolyMesh.H"
 #include "faceCoupleInfo.H"
+#include "SortableList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -54,7 +55,7 @@ class IOobject;
 class polyTopoChange;
 
 /*---------------------------------------------------------------------------*\
-                           Class polyMeshAdder Declaration
+                        Class polyMeshAdder Declaration
 \*---------------------------------------------------------------------------*/
 
 class polyMeshAdder
@@ -75,6 +76,16 @@ private:
         (
             const labelList& map,
             const labelList& lst,
+            DynamicList<label>&
+        );
+
+        //- Append all mapped elements of a list to a DynamicList that are
+        //  not already present in the sorted list.
+        static void append
+        (
+            const labelList& map,
+            const labelList& lst,
+            const SortableList<label>& sortedLst,
             DynamicList<label>&
         );
 
@@ -101,10 +112,15 @@ private:
             labelList& fromAllTo1Patches
         );
 
-        //- Get starts of patches
-        static labelList getPatchStarts(const polyBoundaryMesh&);
-        //- Get sizes of patches
-        static labelList getPatchSizes(const polyBoundaryMesh&);
+        //- Extract patch info
+        static void getPatchInfo
+        (
+            const polyBoundaryMesh& patches,
+            labelList& patchSizes,
+            labelList& patchStarts,
+            labelListList& subPatches,
+            labelListList& subPatchStarts
+        );
 
         static List<polyPatch*> combinePatches
         (
@@ -116,6 +132,8 @@ private:
 
             const label nInternalFaces,
             const labelList& nFaces,
+            const labelListList& subPatchIDs,
+            const labelListList& subPatchStarts,
 
             labelList& from0ToAllPatches,
             labelList& from1ToAllPatches
@@ -144,6 +162,30 @@ private:
             face& f
         );
 
+        //- Add a set of mesh faces
+        static void addBoundaryFaces
+        (
+            const polyMesh& mesh,
+            const labelList& toAllPoints,
+            const label cellOffset,
+            const label startFaceI,
+            const label nFaces,
+
+            label& allFaceI,
+            faceList& allFaces,
+            labelList& allOwner,
+            labelList& allNeighbour,
+            labelList& toAllFaces
+        );
+
+        //- Is patch1 merged onto patch0
+        static bool samePatch
+        (
+            const labelList& from1ToAllPatches,
+            const label patch0,
+            const label patch1
+        );
+
         //- Merges primitives of two meshes.
         static void mergePrimitives
         (
@@ -164,6 +206,8 @@ private:
             labelList& allNeighbour,
             label& nInternalFaces,
             labelList& nFacesPerPatch,
+            labelListList& subPatchSizes,
+            labelListList& subPatchStarts,
             label& nCells,
 
             labelList& from0ToAllFaces,
