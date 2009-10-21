@@ -3,8 +3,8 @@
 
     chemistry.solve
     (
-        runTime.value() - runTime.deltaT().value(),
-        runTime.deltaT().value()
+        runTime.value() - runTime.deltaTValue(),
+        runTime.deltaTValue()
     );
 
     // turbulent time scale
