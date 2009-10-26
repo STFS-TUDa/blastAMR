@@ -1536,7 +1536,7 @@ void Foam::faceCoupleInfo::perfectPointMatch
         FatalErrorIn
         (
             "faceCoupleInfo::perfectPointMatch"
-            "(const scalar&, const bool)"
+            "(const scalar, const bool)"
         )   << "Did not match all of the master faces to the slave faces"
             << endl
             << "This usually means that the slave patch and master patch"
