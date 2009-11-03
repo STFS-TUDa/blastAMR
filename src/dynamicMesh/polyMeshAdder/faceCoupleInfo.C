@@ -1761,10 +1761,13 @@ void Foam::faceCoupleInfo::subDivisionMatch
                 writeOBJ
                 (
                     "errorEdges.obj",
-                    UIndirectList<edge>
+                    edgeList
                     (
-                        cutFaces().edges(),
-                        cutFaces().pointEdges()[cutPointI]
+                        UIndirectList<edge>
+                        (
+                            cutFaces().edges(),
+                            cutFaces().pointEdges()[cutPointI]
+                        )
                     ),
                     cutFaces().localPoints(),
                     false
