@@ -330,8 +330,6 @@ void Foam::fvMeshAdder::MapVolFields
 
         if (fieldsToAdd.found(fld.name()))
         {
-            Pout<< "Mapping field " << fld.name() << endl;
-
             const GeometricField<Type, fvPatchField, volMesh>& fldToAdd =
                 *fieldsToAdd[fld.name()];
 
@@ -339,7 +337,7 @@ void Foam::fvMeshAdder::MapVolFields
         }
         else
         {
-            WarningIn("fvMeshAdder::MapVolFields")
+            WarningIn("fvMeshAdder::MapVolFields(..)")
                 << "Not mapping field " << fld.name()
                 << " since not present on mesh to add"
                 << endl;
@@ -642,15 +640,13 @@ void Foam::fvMeshAdder::MapSurfaceFields
 
         if (fieldsToAdd.found(fld.name()))
         {
-            Pout<< "Mapping field " << fld.name() << endl;
-
             const fldType& fldToAdd = *fieldsToAdd[fld.name()];
 
             MapSurfaceField<Type>(meshMap, fld, fldToAdd);
         }
         else
         {
-            WarningIn("fvMeshAdder::MapSurfaceFields")
+            WarningIn("fvMeshAdder::MapSurfaceFields(..)")
                 << "Not mapping field " << fld.name()
                 << " since not present on mesh to add"
                 << endl;
