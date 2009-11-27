@@ -1,5 +1,5 @@
 {
-    Info << "Solving chemistry" << endl;
+    Info<< "Solving chemistry" << endl;
 
     chemistry.solve
     (
