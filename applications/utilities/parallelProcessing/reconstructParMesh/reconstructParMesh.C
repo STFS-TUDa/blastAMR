@@ -281,8 +281,8 @@ autoPtr<mapPolyMesh> mergeSharedPoints
 int main(int argc, char *argv[])
 {
     argList::noParallel();
-    argList::validOptions.insert("mergeTol", "relative merge distance");
-    argList::validOptions.insert("fullMatch", "");
+    argList::addOption("mergeTol", "relative merge distance");
+    argList::addBoolOption("fullMatch");
 
 #   include "addTimeOptions.H"
 #   include "addRegionOption.H"
