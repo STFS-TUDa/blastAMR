@@ -371,7 +371,7 @@ int main(int argc, char *argv[])
     // Read all databases.
     PtrList<Time> databases(nProcs);
 
-    forAll (databases, procI)
+    forAll(databases, procI)
     {
         Info<< "Reading database "
             << args.caseName()/fileName(word("processor") + name(procI))
