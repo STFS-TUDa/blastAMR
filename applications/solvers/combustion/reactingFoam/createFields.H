@@ -77,7 +77,7 @@ volScalarField DpDt =
 
 multivariateSurfaceInterpolationScheme<scalar>::fieldTable fields;
 
-forAll (Y, i)
+forAll(Y, i)
 {
     fields.add(Y[i]);
 }
