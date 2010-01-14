@@ -46,7 +46,7 @@ Description
 
     @verbatim
     e.g. master:
-    
+
         +--+
         |  |
         |  |
@@ -398,7 +398,7 @@ public:
 
         //- Construct from meshes and subset of mesh faces
         //  (i.e. indirectPrimitivePatch addressing)
-        //  All faces in patch are considered matched (but don't have to be 
+        //  All faces in patch are considered matched (but don't have to be
         //  ordered)
         //  perfectMatch : each point/edge/face has corresponding point on other
         //                 side

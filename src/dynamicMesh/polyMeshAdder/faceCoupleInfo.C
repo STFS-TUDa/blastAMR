@@ -1,4 +1,4 @@
-/*---------------------------------------------------------------------------*	\
+/*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
@@ -1790,7 +1790,7 @@ void Foam::faceCoupleInfo::subDivisionMatch
 
             cutPointI = cutEdges[cutEdgeI].otherVertex(cutPointI);
 
-        } while(cutPointI != cutPoint1);
+        } while (cutPointI != cutPoint1);
     }
 
     if (debug)
