@@ -112,15 +112,10 @@ private:
             labelList& fromAllTo1Patches
         );
 
-        //- Extract patch info
-        static void getPatchInfo
-        (
-            const polyBoundaryMesh& patches,
-            labelList& patchSizes,
-            labelList& patchStarts,
-            labelListList& subPatches,
-            labelListList& subPatchStarts
-        );
+        //- Get starts of patches
+        static labelList getPatchStarts(const polyBoundaryMesh&);
+        //- Get sizes of patches
+        static labelList getPatchSizes(const polyBoundaryMesh&);
 
         static List<polyPatch*> combinePatches
         (
@@ -132,8 +127,6 @@ private:
 
             const label nInternalFaces,
             const labelList& nFaces,
-            const labelListList& subPatchIDs,
-            const labelListList& subPatchStarts,
 
             labelList& from0ToAllPatches,
             labelList& from1ToAllPatches
@@ -162,30 +155,6 @@ private:
             face& f
         );
 
-        //- Add a set of mesh faces
-        static void addBoundaryFaces
-        (
-            const polyMesh& mesh,
-            const labelList& toAllPoints,
-            const label cellOffset,
-            const label startFaceI,
-            const label nFaces,
-
-            label& allFaceI,
-            faceList& allFaces,
-            labelList& allOwner,
-            labelList& allNeighbour,
-            labelList& toAllFaces
-        );
-
-        //- Is patch1 merged onto patch0
-        static bool samePatch
-        (
-            const labelList& from1ToAllPatches,
-            const label patch0,
-            const label patch1
-        );
-
         //- Merges primitives of two meshes.
         static void mergePrimitives
         (
@@ -206,8 +175,6 @@ private:
             labelList& allNeighbour,
             label& nInternalFaces,
             labelList& nFacesPerPatch,
-            labelListList& subPatchSizes,
-            labelListList& subPatchStarts,
             label& nCells,
 
             labelList& from0ToAllFaces,

@@ -281,8 +281,8 @@ autoPtr<mapPolyMesh> mergeSharedPoints
 int main(int argc, char *argv[])
 {
     argList::noParallel();
-    argList::validOptions.insert("mergeTol", "relative merge distance");
-    argList::validOptions.insert("fullMatch", "");
+    argList::addOption("mergeTol", "relative merge distance");
+    argList::addBoolOption("fullMatch");
 
 #   include "addTimeOptions.H"
 #   include "addRegionOption.H"
@@ -371,7 +371,7 @@ int main(int argc, char *argv[])
     // Read all databases.
     PtrList<Time> databases(nProcs);
 
-    forAll (databases, procI)
+    forAll(databases, procI)
     {
         Info<< "Reading database "
             << args.caseName()/fileName(word("processor") + name(procI))
