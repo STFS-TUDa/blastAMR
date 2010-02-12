@@ -22,8 +22,6 @@ if (transonic)
             fvm::ddt(psi, p)
           + fvm::div(phid, p)
           - fvm::laplacian(rho*rUA, p)
-//          ==
-//            RRTot
         );
 
         pEqn.solve();
@@ -50,8 +48,6 @@ else
             fvm::ddt(psi, p)
           + fvc::div(phi)
           - fvm::laplacian(rho*rUA, p)
-//          ==
-//            RRTot
         );
 
         pEqn.solve();
