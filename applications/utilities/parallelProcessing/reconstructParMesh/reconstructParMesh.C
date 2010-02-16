@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 1991-2009 OpenCFD Ltd.
+    \\  /    A nd           | Copyright (C) 1991-2010 OpenCFD Ltd.
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -281,8 +281,23 @@ autoPtr<mapPolyMesh> mergeSharedPoints
 int main(int argc, char *argv[])
 {
     argList::noParallel();
-    argList::addOption("mergeTol", "relative merge distance");
-    argList::addBoolOption("fullMatch");
+    argList::addOption
+    (
+        "mergeTol",
+        "scalar",
+        "specify the merge distance relative to the bounding box size "
+        "(default 1E-7)"
+    );
+    argList::addBoolOption
+    (
+        "fullMatch",
+        "do (slower) geometric matching on all boundary faces"
+    );
+
+    argList::addNote
+    (
+        "reconstruct a mesh using geometric information only"
+    );
 
 #   include "addTimeOptions.H"
 #   include "addRegionOption.H"
@@ -306,11 +321,11 @@ int main(int argc, char *argv[])
 
 
     word regionName = polyMesh::defaultRegion;
-    fileName regionPrefix = "";
-    if (args.optionFound("region"))
+    word regionDir = word::null;
+
+    if (args.optionReadIfPresent("region", regionName))
     {
-        regionName = args.option("region");
-        regionPrefix = regionName;
+        regionDir = regionName;
         Info<< "Operating on region " << regionName << nl << endl;
     }
 
@@ -425,7 +440,7 @@ int main(int argc, char *argv[])
         (
             databases[procI].findInstance
             (
-                regionPrefix/polyMesh::meshSubDir,
+                regionDir / polyMesh::meshSubDir,
                 "points"
             )
         );
@@ -454,10 +469,10 @@ int main(int argc, char *argv[])
                 "points",
                 databases[procI].findInstance
                 (
-                    regionPrefix/polyMesh::meshSubDir,
+                    regionDir / polyMesh::meshSubDir,
                     "points"
                 ),
-                regionPrefix/polyMesh::meshSubDir,
+                regionDir / polyMesh::meshSubDir,
                 databases[procI],
                 IOobject::MUST_READ,
                 IOobject::NO_WRITE,
