@@ -440,7 +440,7 @@ int main(int argc, char *argv[])
         (
             databases[procI].findInstance
             (
-                regionDir / polyMesh::meshSubDir,
+                regionDir/polyMesh::meshSubDir,
                 "points"
             )
         );
@@ -469,10 +469,10 @@ int main(int argc, char *argv[])
                 "points",
                 databases[procI].findInstance
                 (
-                    regionDir / polyMesh::meshSubDir,
+                    regionDir/polyMesh::meshSubDir,
                     "points"
                 ),
-                regionDir / polyMesh::meshSubDir,
+                regionDir/polyMesh::meshSubDir,
                 databases[procI],
                 IOobject::MUST_READ,
                 IOobject::NO_WRITE,
