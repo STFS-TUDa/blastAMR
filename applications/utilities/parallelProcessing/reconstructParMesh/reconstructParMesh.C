@@ -8,10 +8,10 @@
 License
     This file is part of OpenFOAM.
 
-    OpenFOAM is free software; you can redistribute it and/or modify it
-    under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
-    option) any later version.
+    OpenFOAM is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
     OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
     ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -19,8 +19,7 @@ License
     for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+    along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Application
     reconstructParMesh
@@ -32,7 +31,7 @@ Description
     used to reconstruct fields.
 
     Note:
-    - uses geometric matching tolerance (set with -mergeTol option)
+    - uses geometric matching tolerance (set with -mergeTol (at your option)
 
     If the parallel case does not have correct procBoundaries use the
     -fullMatch option which will check all boundary faces (bit slower).
@@ -453,7 +452,7 @@ int main(int argc, char *argv[])
                 << "(there is a points file in " << pointsInstance
                 << ")" << endl
                 << "Please rerun with the correct time specified"
-                << " (through the -constant, -time or -latestTime option)."
+                << " (through the -constant, -time or -latestTime (at your option)."
                 << endl << exit(FatalError);
         }
 
