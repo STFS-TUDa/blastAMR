@@ -419,9 +419,8 @@ public:
         );
 
 
-    // Destructor
-
-        ~faceCoupleInfo();
+    //- Destructor
+    ~faceCoupleInfo();
 
 
 

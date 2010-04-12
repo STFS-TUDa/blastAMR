@@ -90,10 +90,9 @@ private:
             {}
 
 
-        // Destructor
-
-            virtual ~directFvPatchFieldMapper()
-            {}
+        //- Destructor
+        virtual ~directFvPatchFieldMapper()
+        {}
 
 
         // Member Functions
