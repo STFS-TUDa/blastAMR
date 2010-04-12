@@ -930,7 +930,7 @@ void Foam::polyMeshAdder::mergePointZones
 
     from1ToAll.setSize(pz1.size());
 
-    forAll (pz1, zoneI)
+    forAll(pz1, zoneI)
     {
         from1ToAll[zoneI] = zoneIndex(pz1[zoneI].name(), zoneNames);
     }
@@ -996,7 +996,7 @@ void Foam::polyMeshAdder::mergeFaceZones
 
     from1ToAll.setSize(fz1.size());
 
-    forAll (fz1, zoneI)
+    forAll(fz1, zoneI)
     {
         from1ToAll[zoneI] = zoneIndex(fz1[zoneI].name(), zoneNames);
     }
@@ -1096,7 +1096,7 @@ void Foam::polyMeshAdder::mergeCellZones
     append(cz0.names(), zoneNames);
 
     from1ToAll.setSize(cz1.size());
-    forAll (cz1, zoneI)
+    forAll(cz1, zoneI)
     {
         from1ToAll[zoneI] = zoneIndex(cz1[zoneI].name(), zoneNames);
     }
