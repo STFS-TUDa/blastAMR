@@ -265,7 +265,7 @@ Foam::List<Foam::polyPatch*> Foam::polyMeshAdder::combinePatches
 
     // Copy patches0 with new sizes. First patches always come from
     // mesh0 and will always be present.
-    for (label patchI = 0; patchI < patches0.size(); patchI++)
+    forAll(patches0, patchI)
     {
         // Originates from mesh0. Clone with new size & filter out empty
         // patch.
@@ -363,7 +363,7 @@ Foam::labelList Foam::polyMeshAdder::getFaceOrder
     labelList oldToNew(owner.size(), -1);
 
     // Leave boundary faces in order
-    for (label faceI = nInternalFaces; faceI < owner.size(); faceI++)
+    for (label faceI = nInternalFaces; faceI < owner.size(); ++faceI)
     {
         oldToNew[faceI] = faceI;
     }

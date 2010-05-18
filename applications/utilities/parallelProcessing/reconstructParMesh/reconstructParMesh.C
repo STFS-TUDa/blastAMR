@@ -279,6 +279,11 @@ autoPtr<mapPolyMesh> mergeSharedPoints
 
 int main(int argc, char *argv[])
 {
+    argList::addNote
+    (
+        "reconstruct a mesh using geometric information only"
+    );
+
     argList::noParallel();
     argList::addOption
     (
@@ -293,15 +298,10 @@ int main(int argc, char *argv[])
         "do (slower) geometric matching on all boundary faces"
     );
 
-    argList::addNote
-    (
-        "reconstruct a mesh using geometric information only"
-    );
-
-#   include "addTimeOptions.H"
-#   include "addRegionOption.H"
-#   include "setRootCase.H"
-#   include "createTime.H"
+    #include "addTimeOptions.H"
+    #include "addRegionOption.H"
+    #include "setRootCase.H"
+    #include "createTime.H"
 
     Info<< "This is an experimental tool which tries to merge"
         << " individual processor" << nl
