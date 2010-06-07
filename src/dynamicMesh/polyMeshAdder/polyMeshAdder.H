@@ -66,10 +66,6 @@ private:
 
     // Private Member Functions
 
-        //- Append all elements of a list to a DynamicList
-        template<class T>
-        static void append(const List<T>&, DynamicList<T>&);
-
         //- Append all mapped elements of a list to a DynamicList
         static void append
         (
@@ -312,12 +308,6 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-#ifdef NoRepository
-#   include "polyMeshAdderTemplates.C"
-#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
