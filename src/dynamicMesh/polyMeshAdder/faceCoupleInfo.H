@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 1991-2009 OpenCFD Ltd.
+    \\  /    A nd           | Copyright (C) 1991-2010 OpenCFD Ltd.
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -301,9 +301,9 @@ class faceCoupleInfo
                 const faceList& patchFaces,
                 const bool sameOrientation,
 
-                labelList& patchToCutPoints,    // patch to (uncompacted) cut points
-                labelList& cutToCompact,        // compaction list
-                labelList& compactToCut         // compaction list
+                labelList& patchToCutPoints,// patch to (uncompacted) cut points
+                labelList& cutToCompact,    // compaction list
+                labelList& compactToCut     // compaction list
             );
 
             //- Returns max distance to masterF of any point on cutF.
