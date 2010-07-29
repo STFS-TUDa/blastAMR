@@ -452,7 +452,8 @@ int main(int argc, char *argv[])
                 << "(there is a points file in " << pointsInstance
                 << ")" << endl
                 << "Please rerun with the correct time specified"
-                << " (through the -constant, -time or -latestTime (at your option)."
+                << " (through the -constant, -time or -latestTime "
+                << "(at your option)."
                 << endl << exit(FatalError);
         }
 
