@@ -11,7 +11,7 @@
     if (turbulentReaction)
     {
         volScalarField tk =
-                Cmix*sqrt(turbulence->muEff()/rho/turbulence->epsilon());
+            Cmix*sqrt(turbulence->muEff()/rho/turbulence->epsilon());
         volScalarField tc = chemistry.tc();
 
         // Chalmers PaSR model
