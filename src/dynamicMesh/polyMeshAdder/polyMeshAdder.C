@@ -127,7 +127,7 @@ Foam::label Foam::polyMeshAdder::patchIndex
             << pName << " in mesh " << caseName
             << " already exists, but patch types"
             << " do not match.\nCreating a composite name as "
-            << allPatchNames[allPatchNames.size() - 1] << endl;
+            << allPatchNames.last() << endl;
 
         return allPatchNames.size() - 1;
     }
