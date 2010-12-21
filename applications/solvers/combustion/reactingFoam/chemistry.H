@@ -10,9 +10,14 @@
     // turbulent time scale
     if (turbulentReaction)
     {
-        volScalarField tk =
-            Cmix*sqrt(turbulence->muEff()/rho/turbulence->epsilon());
-        volScalarField tc = chemistry.tc();
+        volScalarField tk
+        (
+            Cmix*sqrt(turbulence->muEff()/rho/turbulence->epsilon())
+        );
+        volScalarField tc
+        (
+            chemistry.tc()
+        );
 
         // Chalmers PaSR model
         kappa = (runTime.deltaT() + tc)/(runTime.deltaT() + tc + tk);
