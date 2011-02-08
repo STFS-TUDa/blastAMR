@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2004-2010 OpenCFD Ltd.
+    \\  /    A nd           | Copyright (C) 2004-2011 OpenCFD Ltd.
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -43,7 +43,7 @@ Description
        - the cut is always the 'most connected' of the master and slave so
          multiple master or slave points might point to the same cut point.
 
-    @verbatim
+    \verbatim
     e.g. master:
 
         +--+
@@ -63,7 +63,7 @@ Description
         |  |
         |  |
         +--+
-    @endverbatim
+    \endverbatim
     adding both together creates a singly connected 2x2 cavity so suddenly
     the duplicate master points and the duplicate slave points all become
     a single cut point.
@@ -81,7 +81,7 @@ Description
     - slave can have extra edges/points/faces BUT all subfaces have to have
       at least one point on a maste face.
 
-    @verbatim
+    \verbatim
     So master:
     +-------+
     |       |
@@ -104,7 +104,7 @@ Description
     |/  |  \|
     +---+---+
     is ok.
-    @endverbatim
+    \endverbatim
 
     For this kind of matching the order is:
     - match cutpoint to masterpoint
