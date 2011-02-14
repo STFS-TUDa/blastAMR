@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2004-2010 OpenCFD Ltd.
+    \\  /    A nd           | Copyright (C) 2004-2011 OpenCFD Ltd.
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -281,7 +281,8 @@ public:
 
         // Point merging
 
-            //- Find topologically&geometrically shared points.
+            //- Find topologically and geometrically shared points.
+            //
             //  - should only be called for parallel correct mesh
             //    (since uses mesh.globalData)
             //  - returns Map from point to master point (all in mesh point
@@ -293,6 +294,7 @@ public:
             );
 
             //- Helper: Merge points.
+            //
             //  - Gets map from point to destination point
             //  - Removes all points that don't map to themselves
             //  - Modifies all faces that use the points to be removed.
