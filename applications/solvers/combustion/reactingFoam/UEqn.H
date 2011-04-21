@@ -9,7 +9,7 @@
 
     UEqn.relax();
 
-    if (momentumPredictor)
+    if (pimple.momentumPredictor())
     {
         solve(UEqn == -fvc::grad(p));
     }
