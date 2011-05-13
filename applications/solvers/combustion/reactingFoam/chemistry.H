@@ -1,3 +1,4 @@
+if (chemistry.chemistry())
 {
     Info<< "Solving chemistry" << endl;
 
@@ -10,17 +11,29 @@
     // turbulent time scale
     if (turbulentReaction)
     {
-        volScalarField tk
-        (
-            Cmix*sqrt(turbulence->muEff()/rho/turbulence->epsilon())
-        );
-        volScalarField tc
-        (
-            chemistry.tc()
-        );
+        tmp<volScalarField> tepsilon(turbulence->epsilon());
+        const volScalarField& epsilon = tepsilon();
+        tmp<volScalarField> tmuEff(turbulence->muEff());
+        const volScalarField& muEff = tmuEff();
+        tmp<volScalarField> ttc(chemistry.tc());
+        const volScalarField& tc = ttc();
 
-        // Chalmers PaSR model
-        kappa = (runTime.deltaT() + tc)/(runTime.deltaT() + tc + tk);
+        forAll(epsilon, i)
+        {
+            if (epsilon[i] > 0)
+            {
+                // Chalmers PaSR model
+                scalar tk = Cmix.value()*Foam::sqrt(muEff[i]/rho[i]/epsilon[i]);
+                kappa[i] =
+                    (runTime.deltaTValue() + tc[i])
+                   /(runTime.deltaTValue() + tc[i] + tk);
+            }
+            else
+            {
+                // Return to laminar combustion
+                kappa[i] = 1.0;
+            }
+        }
     }
     else
     {
