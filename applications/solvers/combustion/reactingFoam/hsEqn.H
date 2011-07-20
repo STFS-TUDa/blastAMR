@@ -7,7 +7,7 @@
 //      - fvm::laplacian(turbulence->muEff(), hs)  // unit lewis no.
      ==
         DpDt
-      + chemistrySh
+      + combustion->Sh()
     );
 
     hsEqn.relax();
