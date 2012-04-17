@@ -36,7 +36,7 @@ License
 
 defineTypeNameAndDebug(Foam::faceCoupleInfo, 0);
 
-const Foam::scalar Foam::faceCoupleInfo::angleTol_ = 1E-3;
+const Foam::scalar Foam::faceCoupleInfo::angleTol_ = 1e-3;
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
@@ -1014,7 +1014,7 @@ void Foam::faceCoupleInfo::findSlavesCoveringMaster
             mesh0,
             bndFaces                    // boundary faces only
         ),
-        overallBb.extend(rndGen, 1E-4), // overall search domain
+        overallBb.extend(rndGen, 1e-4), // overall search domain
         8,                              // maxLevel
         10,                             // leafsize
         3.0                             // duplicity
