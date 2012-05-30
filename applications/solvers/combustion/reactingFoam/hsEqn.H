@@ -8,7 +8,7 @@
      ==
         dpdt
       - (fvc::ddt(rho, K) + fvc::div(phi, K))
-      + combustion->Sh()
+      + reaction->Sh()
     );
 
     hsEqn.relax();
