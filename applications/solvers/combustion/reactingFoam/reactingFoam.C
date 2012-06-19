@@ -31,7 +31,7 @@ Description
 
 #include "fvCFD.H"
 #include "turbulenceModel.H"
-#include "psiChemistryCombustionModel.H"
+#include "psiCombustionModel.H"
 #include "multivariateScheme.H"
 #include "pimpleControl.H"
 
