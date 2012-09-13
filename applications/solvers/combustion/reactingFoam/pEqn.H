@@ -70,4 +70,7 @@ U = HbyA - rAU*fvc::grad(p);
 U.correctBoundaryConditions();
 K = 0.5*magSqr(U);
 
-dpdt = fvc::ddt(p);
+if (thermo.dpdt())
+{
+    dpdt = fvc::ddt(p);
+}
