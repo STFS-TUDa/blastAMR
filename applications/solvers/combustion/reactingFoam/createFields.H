@@ -6,6 +6,7 @@ autoPtr<combustionModels::psiCombustionModel> reaction
 );
 
 psiReactionThermo& thermo = reaction->thermo();
+thermo.validate(args.executable(), "h", "e");
 
 basicMultiComponentMixture& composition = thermo.composition();
 PtrList<volScalarField>& Y = composition.Y();
@@ -40,7 +41,6 @@ volVectorField U
 
 volScalarField& p = thermo.p();
 const volScalarField& psi = thermo.psi();
-volScalarField& hs = thermo.he();
 const volScalarField& T = thermo.T();
 
 #include "compressibleCreatePhi.H"
@@ -84,7 +84,7 @@ forAll(Y, i)
 {
     fields.add(Y[i]);
 }
-fields.add(hs);
+fields.add(thermo.he());
 
 volScalarField dQ
 (
