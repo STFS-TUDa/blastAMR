@@ -29,7 +29,7 @@ if (pimple.transonic())
             sources(psi, p, rho.name())
         );
 
-        sources.constrain(pEqn, rho.name());
+        sources.constrain(pEqn);
 
         pEqn.solve(mesh.solver(p.select(pimple.finalInnerIter())));
 
@@ -64,7 +64,7 @@ else
             sources(psi, p, rho.name())
         );
 
-        sources.constrain(pEqn, rho.name());
+        sources.constrain(pEqn);
 
         pEqn.solve(mesh.solver(p.select(pimple.finalInnerIter())));
 
