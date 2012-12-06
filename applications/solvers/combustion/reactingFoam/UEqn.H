@@ -5,9 +5,12 @@
       + turbulence->divDevRhoReff(U)
      ==
         rho*g
+      + sources(rho, U)
     );
 
     UEqn.relax();
+
+    sources.constrain(UEqn);
 
     if (pimple.momentumPredictor())
     {

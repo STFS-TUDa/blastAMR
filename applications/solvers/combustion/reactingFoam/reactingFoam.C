@@ -34,6 +34,7 @@ Description
 #include "psiCombustionModel.H"
 #include "multivariateScheme.H"
 #include "pimpleControl.H"
+#include "IObasicSourceList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
