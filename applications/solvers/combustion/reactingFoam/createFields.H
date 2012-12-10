@@ -99,5 +99,3 @@ volScalarField dQ
     mesh,
     dimensionedScalar("dQ", dimEnergy/dimTime, 0.0)
 );
-
-IObasicSourceList sources(mesh);
