@@ -28,6 +28,8 @@
 
     EEqn.solve();
 
+    sources.correct(he);
+
     thermo.correct();
 
     Info<< "min/max(T) = "

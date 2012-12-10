@@ -15,5 +15,7 @@
     if (pimple.momentumPredictor())
     {
         solve(UEqn == -fvc::grad(p));
+
+        sources.correct(U);
         K = 0.5*magSqr(U);
     }

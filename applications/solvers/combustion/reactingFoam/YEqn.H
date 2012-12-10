@@ -37,6 +37,8 @@ tmp<fv::convectionScheme<scalar> > mvConvection
 
             YiEqn.solve(mesh.solver("Yi"));
 
+            sources.correct(Yi);
+
             Yi.max(0.0);
             Yt += Yi;
         }
