@@ -34,9 +34,12 @@ License
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-defineTypeNameAndDebug(Foam::faceCoupleInfo, 0);
+namespace Foam
+{
+defineTypeNameAndDebug(faceCoupleInfo, 0);
 
-const Foam::scalar Foam::faceCoupleInfo::angleTol_ = 1e-3;
+const scalar faceCoupleInfo::angleTol_ = 1e-3;
+}
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
