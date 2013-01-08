@@ -19,16 +19,16 @@
 //    - fvm::laplacian(turbulence->muEff(), he)  // unit lewis no.
      ==
         reaction->Sh()
-      + sources(rho, he)
+      + fvOptions(rho, he)
     );
 
     EEqn.relax();
 
-    sources.constrain(EEqn);
+    fvOptions.constrain(EEqn);
 
     EEqn.solve();
 
-    sources.correct(he);
+    fvOptions.correct(he);
 
     thermo.correct();
 

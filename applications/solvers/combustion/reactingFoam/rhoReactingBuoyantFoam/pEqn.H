@@ -24,14 +24,14 @@
       + phig
     );
 
-    sources.relativeFlux(fvc::interpolate(rho), phiHbyA);
+    fvOptions.relativeFlux(fvc::interpolate(rho), phiHbyA);
 
     fvScalarMatrix p_rghDDtEqn
     (
         fvc::ddt(rho) + psi*correction(fvm::ddt(p_rgh))
       + fvc::div(phiHbyA)
       ==
-        sources(psi, p_rgh, rho.name())
+        fvOptions(psi, p_rgh, rho.name())
     );
 
     while (pimple.correctNonOrthogonal())
@@ -42,7 +42,7 @@
           - fvm::laplacian(rhorAUf, p_rgh)
         );
 
-        sources.constrain(p_rghEqn);
+        fvOptions.constrain(p_rghEqn);
 
         p_rghEqn.solve(mesh.solver(p_rgh.select(pimple.finalInnerIter())));
 
@@ -58,7 +58,7 @@
             // calculated from the relaxed pressure
             U = HbyA + rAU*fvc::reconstruct((phig + p_rghEqn.flux())/rhorAUf);
             U.correctBoundaryConditions();
-            sources.correct(U);
+            fvOptions.correct(U);
             K = 0.5*magSqr(U);
         }
     }
