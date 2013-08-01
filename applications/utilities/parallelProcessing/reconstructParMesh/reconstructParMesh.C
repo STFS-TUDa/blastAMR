@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2012 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2013 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -48,6 +48,7 @@ Description
 #include "faceCoupleInfo.H"
 #include "fvMeshAdder.H"
 #include "polyTopoChange.H"
+#include "zeroGradientFvPatchFields.H"
 
 using namespace Foam;
 
@@ -297,6 +298,12 @@ int main(int argc, char *argv[])
         "fullMatch",
         "do (slower) geometric matching on all boundary faces"
     );
+    argList::addBoolOption
+    (
+        "cellDist",
+        "write cell distribution as a labelList - for use with 'manual' "
+        "decomposition method or as a volScalarField for post-processing."
+    );
 
     #include "addTimeOptions.H"
     #include "addRegionOption.H"
@@ -362,6 +369,7 @@ int main(int argc, char *argv[])
             << nl << "This assumes a correct decomposition." << endl;
     }
 
+    bool writeCellDist = args.optionFound("cellDist");
 
 
     int nProcs = 0;
@@ -507,7 +515,7 @@ int main(int argc, char *argv[])
     {
         // Construct empty mesh.
         Info<< "Constructing empty mesh to add to." << nl << endl;
-        polyMesh masterMesh
+        fvMesh masterMesh
         (
             IOobject
             (
@@ -528,7 +536,7 @@ int main(int argc, char *argv[])
                 << " for time = " << databases[procI].timeName()
                 << nl << endl;
 
-            polyMesh meshToAdd
+            fvMesh meshToAdd
             (
                 IOobject
                 (
@@ -560,7 +568,7 @@ int main(int argc, char *argv[])
             // Add elements to mesh
             Info<< "Adding to master mesh" << nl << endl;
 
-            autoPtr<mapAddedPolyMesh> map = polyMeshAdder::add
+            autoPtr<mapAddedPolyMesh> map = fvMeshAdder::add
             (
                 masterMesh,
                 meshToAdd,
@@ -607,6 +615,67 @@ int main(int argc, char *argv[])
             FatalErrorIn(args.executable())
                 << "Failed writing polyMesh."
                 << exit(FatalError);
+        }
+
+
+
+        if (writeCellDist)
+        {
+            // Write the decomposition as labelList for use with 'manual'
+            // decomposition method.
+            labelIOList cellDecomposition
+            (
+                IOobject
+                (
+                    "cellDecomposition",
+                    masterMesh.facesInstance(),
+                    masterMesh,
+                    IOobject::NO_READ,
+                    IOobject::NO_WRITE,
+                    false
+                ),
+                masterMesh.nCells()
+            );
+
+            forAll(cellProcAddressing, procI)
+            {
+                const labelList& pCells = cellProcAddressing[procI];
+                UIndirectList<label>(cellDecomposition, pCells) = procI;
+            }
+
+            cellDecomposition.write();
+
+            Info<< nl << "Wrote decomposition to "
+                << cellDecomposition.objectPath()
+                << " for use in manual decomposition." << endl;
+
+
+            // Write as volScalarField for postprocessing.
+            volScalarField cellDist
+            (
+                IOobject
+                (
+                    "cellDist",
+                    runTime.timeName(),
+                    masterMesh,
+                    IOobject::NO_READ,
+                    IOobject::AUTO_WRITE
+                ),
+                masterMesh,
+                dimensionedScalar("cellDist", dimless, 0),
+                zeroGradientFvPatchScalarField::typeName
+            );
+
+            forAll(cellDecomposition, cellI)
+            {
+                cellDist[cellI] = cellDecomposition[cellI];
+            }
+
+            cellDist.write();
+
+            Info<< nl << "Wrote decomposition as volScalarField to "
+                << cellDist.name() << " for use in postprocessing."
+                << endl;
         }
     }
 
@@ -769,6 +838,7 @@ int main(int argc, char *argv[])
 
         Info<< endl;
     }
+
 
     Info<< "End.\n" << endl;
 
