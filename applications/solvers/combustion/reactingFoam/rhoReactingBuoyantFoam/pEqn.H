@@ -24,7 +24,7 @@
       + phig
     );
 
-    fvOptions.relativeFlux(fvc::interpolate(rho), phiHbyA);
+    fvOptions.makeRelative(fvc::interpolate(rho), phiHbyA);
 
     fvScalarMatrix p_rghDDtEqn
     (

@@ -18,7 +18,7 @@
           + fvc::ddtPhiCorr(rAU, rho, U, phi)
         );
 
-        fvOptions.relativeFlux(phiHbyA);
+        fvOptions.makeRelative(phiHbyA);
 
         surfaceScalarField phid("phid", fvc::interpolate(thermo.psi())*phiHbyA);
 
@@ -62,7 +62,7 @@
             )
         );
 
-        fvOptions.relativeFlux(fvc::interpolate(rho), phiHbyA);
+        fvOptions.makeRelative(fvc::interpolate(rho), phiHbyA);
 
         fvScalarMatrix pDDtEqn
         (
