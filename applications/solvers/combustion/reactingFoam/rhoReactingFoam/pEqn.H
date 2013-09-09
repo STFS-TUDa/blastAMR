@@ -6,6 +6,8 @@
     thermo.rho() -= psi*p;
 
     volScalarField rAU(1.0/UEqn.A());
+    surfaceScalarField Dp("Dp", fvc::interpolate(rho*rAU));
+
     volVectorField HbyA("HbyA", U);
     HbyA = rAU*UEqn.H();
 
@@ -14,8 +16,10 @@
         surfaceScalarField phiHbyA
         (
             "phiHbyA",
-            (fvc::interpolate(HbyA) & mesh.Sf())
-          + fvc::ddtPhiCorr(rAU, rho, U, phi)
+            (
+                (fvc::interpolate(rho*HbyA) & mesh.Sf())
+              + Dp*fvc::ddtCorr(rho, U, phi)
+            )/fvc::interpolate(rho)
         );
 
         fvOptions.makeRelative(phiHbyA);
@@ -35,7 +39,7 @@
             fvScalarMatrix pEqn
             (
                 pDDtEqn
-              - fvm::laplacian(rho*rAU, p)
+              - fvm::laplacian(Dp, p)
              ==
                 fvOptions(psi, p, rho.name())
             );
@@ -55,10 +59,9 @@
         surfaceScalarField phiHbyA
         (
             "phiHbyA",
-            fvc::interpolate(rho)
-           *(
-                (fvc::interpolate(HbyA) & mesh.Sf())
-              + fvc::ddtPhiCorr(rAU, rho, U, phi)
+            (
+                (fvc::interpolate(rho*HbyA) & mesh.Sf())
+              + Dp*fvc::ddtCorr(rho, U, phi)
             )
         );
 
@@ -77,7 +80,7 @@
             fvScalarMatrix pEqn
             (
                 pDDtEqn
-              - fvm::laplacian(rho*rAU, p)
+              - fvm::laplacian(Dp, p)
             );
 
             fvOptions.constrain(pEqn);

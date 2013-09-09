@@ -6,20 +6,19 @@
     thermo.rho() -= psi*p;
 
     volScalarField rAU(1.0/UEqn.A());
-    surfaceScalarField rhorAUf("Dp", fvc::interpolate(rho*rAU));
+    surfaceScalarField Dp("Dp", fvc::interpolate(rho*rAU));
 
     volVectorField HbyA("HbyA", U);
     HbyA = rAU*UEqn.H();
 
-    surfaceScalarField phig(-rhorAUf*ghf*fvc::snGrad(rho)*mesh.magSf());
+    surfaceScalarField phig(-Dp*ghf*fvc::snGrad(rho)*mesh.magSf());
 
     surfaceScalarField phiHbyA
     (
         "phiHbyA",
-        fvc::interpolate(rho)
-       *(
-            (fvc::interpolate(U) & mesh.Sf())
-          + fvc::ddtPhiCorr(rAU, rho, U, phi)
+        (
+            (fvc::interpolate(rho*HbyA) & mesh.Sf())
+          + Dp*fvc::ddtCorr(rho, U, phi)
         )
       + phig
     );
@@ -39,7 +38,7 @@
         fvScalarMatrix p_rghEqn
         (
             p_rghDDtEqn
-          - fvm::laplacian(rhorAUf, p_rgh)
+          - fvm::laplacian(Dp, p_rgh)
         );
 
         fvOptions.constrain(p_rghEqn);
@@ -56,7 +55,7 @@
 
             // Correct the momentum source with the pressure gradient flux
             // calculated from the relaxed pressure
-            U = HbyA + rAU*fvc::reconstruct((phig + p_rghEqn.flux())/rhorAUf);
+            U = HbyA + rAU*fvc::reconstruct((phig + p_rghEqn.flux())/Dp);
             U.correctBoundaryConditions();
             fvOptions.correct(U);
             K = 0.5*magSqr(U);
