@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2013 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -66,53 +66,6 @@ class fvMeshAdder
 {
 
 private:
-
-
-    // Private class
-
-    class directFvPatchFieldMapper
-    :
-        public fvPatchFieldMapper
-    {
-        // Private data
-
-            const labelList& directAddressing_;
-
-    public:
-
-        // Constructors
-
-            //- Construct from components
-            directFvPatchFieldMapper(const labelList& directAddressing)
-            :
-                fvPatchFieldMapper(),
-                directAddressing_(directAddressing)
-            {}
-
-
-        //- Destructor
-        virtual ~directFvPatchFieldMapper()
-        {}
-
-
-        // Member Functions
-
-            label size() const
-            {
-                return directAddressing_.size();
-            }
-
-            bool direct() const
-            {
-                return true;
-            }
-
-            const labelUList& directAddressing() const
-            {
-                return directAddressing_;
-            }
-    };
-
 
     // Private Member Functions
 
