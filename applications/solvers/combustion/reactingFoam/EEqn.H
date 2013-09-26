@@ -16,7 +16,6 @@
           : -dpdt
         )
       - fvm::laplacian(turbulence->alphaEff(), he)
-//    - fvm::laplacian(turbulence->muEff(), he)  // unit lewis no.
      ==
         reaction->Sh()
       + fvOptions(rho, he)
