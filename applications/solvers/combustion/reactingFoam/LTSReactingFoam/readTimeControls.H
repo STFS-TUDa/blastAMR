@@ -32,17 +32,17 @@ scalar maxDeltaT(pimple.dict().lookupOrDefault<scalar>("maxDeltaT", GREAT));
 // Smoothing parameter (0-1) when smoothing iterations > 0
 scalar rDeltaTSmoothingCoeff
 (
-    pimple.dict().lookupOrDefault<scalar>("rDeltaTSmoothingCoeff", 0.1)
+    pimple.dict().lookupOrDefault<scalar>("rDeltaTSmoothingCoeff", 1)
 );
 
 // Damping coefficient (1-0)
 scalar rDeltaTDampingCoeff
 (
-    pimple.dict().lookupOrDefault<scalar>("rDeltaTDampingCoeff", 1.0)
+    pimple.dict().lookupOrDefault<scalar>("rDeltaTDampingCoeff", 1)
 );
 
 // Maximum change in cell temperature per iteration (relative to previous value)
-scalar alphaTemp(pimple.dict().lookupOrDefault("alphaTemp", 0.5));
+scalar alphaTemp(pimple.dict().lookupOrDefault("alphaTemp", 0.05));
 
 
 // ************************************************************************* //
