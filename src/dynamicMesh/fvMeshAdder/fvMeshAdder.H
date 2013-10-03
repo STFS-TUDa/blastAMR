@@ -38,6 +38,7 @@ SourceFiles
 #define fvMeshAdder_H
 
 #include "polyMeshAdder.H"
+#include "volFieldsFwd.H"
 #include "fvPatchFieldsFwd.H"
 #include "fvsPatchFieldsFwd.H"
 #include "fvPatchFieldMapper.H"
