@@ -38,51 +38,6 @@ License
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-// Append all mapped elements of a list to a DynamicList
-void Foam::polyMeshAdder::append
-(
-    const labelList& map,
-    const labelList& lst,
-    DynamicList<label>& dynLst
-)
-{
-    dynLst.setCapacity(dynLst.size() + lst.size());
-
-    forAll(lst, i)
-    {
-        const label newElem = map[lst[i]];
-
-        if (newElem != -1)
-        {
-            dynLst.append(newElem);
-        }
-    }
-}
-
-
-// Append all mapped elements of a list to a DynamicList
-void Foam::polyMeshAdder::append
-(
-    const labelList& map,
-    const labelList& lst,
-    const SortableList<label>& sortedLst,
-    DynamicList<label>& dynLst
-)
-{
-    dynLst.setCapacity(dynLst.size() + lst.size());
-
-    forAll(lst, i)
-    {
-        const label newElem = map[lst[i]];
-
-        if (newElem != -1 && findSortedIndex(sortedLst, newElem) == -1)
-        {
-            dynLst.append(newElem);
-        }
-    }
-}
-
-
 // Get index of patch in new set of patchnames/types
 Foam::label Foam::polyMeshAdder::patchIndex
 (
@@ -913,6 +868,7 @@ void Foam::polyMeshAdder::mergePrimitives
 
 void Foam::polyMeshAdder::mergePointZones
 (
+    const label nAllPoints,
     const pointZoneMesh& pz0,
     const pointZoneMesh& pz1,
     const labelList& from0ToAllPoints,
@@ -934,53 +890,128 @@ void Foam::polyMeshAdder::mergePointZones
     }
     zoneNames.shrink();
 
-    // Point labels per merged zone
-    pzPoints.setSize(zoneNames.size());
 
+
+    // Zone(s) per point. Two levels: if only one zone
+    // stored in pointToZone. Any extra stored in additionalPointToZones.
+    // This is so we only allocate labelLists per point if absolutely
+    // necesary.
+    labelList pointToZone(nAllPoints, -1);
+    labelListList addPointToZones(nAllPoints);
+
+    // mesh0 zones kept
     forAll(pz0, zoneI)
     {
-        append(from0ToAllPoints, pz0[zoneI], pzPoints[zoneI]);
+        const pointZone& pz = pz0[zoneI];
+
+        forAll(pz, i)
+        {
+            label point0 = pz[i];
+            label allPointI = from0ToAllPoints[point0];
+
+            if (pointToZone[allPointI] == -1)
+            {
+                pointToZone[allPointI] = zoneI;
+            }
+            else if (pointToZone[allPointI] != zoneI)
+            {
+                labelList& pZones = addPointToZones[allPointI];
+                if (findIndex(pZones, zoneI) == -1)
+                {
+                    pZones.append(zoneI);
+                }
+            }
+        }
     }
 
-    // Get sorted zone contents for duplicate element recognition
-    PtrList<SortableList<label> > pzPointsSorted(pzPoints.size());
-    forAll(pzPoints, zoneI)
-    {
-        pzPointsSorted.set
-        (
-            zoneI,
-            new SortableList<label>(pzPoints[zoneI])
-        );
-    }
-
-    // Now we have full addressing for points so do the pointZones of mesh1.
+    // mesh1 zones renumbered
     forAll(pz1, zoneI)
     {
-        // Relabel all points of zone and add to correct pzPoints.
+        const pointZone& pz = pz1[zoneI];
         const label allZoneI = from1ToAll[zoneI];
 
-        append
-        (
-            from1ToAllPoints,
-            pz1[zoneI],
-            pzPointsSorted[allZoneI],
-            pzPoints[allZoneI]
-        );
+        forAll(pz, i)
+        {
+            label point1 = pz[i];
+            label allPointI = from1ToAllPoints[point1];
+
+            if (pointToZone[allPointI] == -1)
+            {
+                pointToZone[allPointI] = allZoneI;
+            }
+            else if (pointToZone[allPointI] != allZoneI)
+            {
+                labelList& pZones = addPointToZones[allPointI];
+                if (findIndex(pZones, allZoneI) == -1)
+                {
+                    pZones.append(allZoneI);
+                }
+            }
+        }
     }
 
+    // Extract back into zones
+
+    // 1. Count
+    labelList nPoints(zoneNames.size(), 0);
+    forAll(pointToZone, allPointI)
+    {
+        label zoneI = pointToZone[allPointI];
+        if (zoneI != -1)
+        {
+            nPoints[zoneI]++;
+        }
+    }
+    forAll(addPointToZones, allPointI)
+    {
+        const labelList& pZones = addPointToZones[allPointI];
+        forAll(pZones, i)
+        {
+            nPoints[pZones[i]]++;
+        }
+    }
+
+    // 2. Fill
+    pzPoints.setSize(zoneNames.size());
+    forAll(pzPoints, zoneI)
+    {
+        pzPoints[zoneI].setCapacity(nPoints[zoneI]);
+    }
+    forAll(pointToZone, allPointI)
+    {
+        label zoneI = pointToZone[allPointI];
+        if (zoneI != -1)
+        {
+            pzPoints[zoneI].append(allPointI);
+        }
+    }
+    forAll(addPointToZones, allPointI)
+    {
+        const labelList& pZones = addPointToZones[allPointI];
+        forAll(pZones, i)
+        {
+            pzPoints[pZones[i]].append(allPointI);
+        }
+    }
     forAll(pzPoints, i)
     {
         pzPoints[i].shrink();
+        stableSort(pzPoints[i]);
     }
 }
 
 
 void Foam::polyMeshAdder::mergeFaceZones
 (
-    const faceZoneMesh& fz0,
-    const faceZoneMesh& fz1,
+    const labelList& allOwner,
+
+    const polyMesh& mesh0,
+    const polyMesh& mesh1,
+
     const labelList& from0ToAllFaces,
     const labelList& from1ToAllFaces,
+
+    const labelList& from1ToAllCells,
 
     DynamicList<word>& zoneNames,
     labelList& from1ToAll,
@@ -988,6 +1019,12 @@ void Foam::polyMeshAdder::mergeFaceZones
     List<DynamicList<bool> >& fzFlips
 )
 {
+    const faceZoneMesh& fz0 = mesh0.faceZones();
+    const labelList& owner0 = mesh0.faceOwner();
+    const faceZoneMesh& fz1 = mesh1.faceZones();
+    const labelList& owner1 = mesh1.faceOwner();
+
+
     zoneNames.setCapacity(fz0.size() + fz1.size());
     zoneNames.append(fz0.names());
 
@@ -1000,72 +1037,146 @@ void Foam::polyMeshAdder::mergeFaceZones
     zoneNames.shrink();
 
 
-    // Create temporary lists for faceZones.
-    fzFaces.setSize(zoneNames.size());
-    fzFlips.setSize(zoneNames.size());
+    // Zone(s) per face
+    labelList faceToZone(allOwner.size(), -1);
+    labelListList addFaceToZones(allOwner.size());
+    boolList faceToFlip(allOwner.size(), false);
+    boolListList addFaceToFlips(allOwner.size());
+
+    // mesh0 zones kept
     forAll(fz0, zoneI)
     {
-        DynamicList<label>& newZone = fzFaces[zoneI];
-        DynamicList<bool>& newFlip = fzFlips[zoneI];
-
-        newZone.setCapacity(fz0[zoneI].size());
-        newFlip.setCapacity(newZone.size());
-
         const labelList& addressing = fz0[zoneI];
         const boolList& flipMap = fz0[zoneI].flipMap();
 
         forAll(addressing, i)
         {
-            label faceI = addressing[i];
+            label face0 = addressing[i];
+            bool flip0 = flipMap[i];
 
-            if (from0ToAllFaces[faceI] != -1)
+            label allFaceI = from0ToAllFaces[face0];
+            if (allFaceI != -1)
             {
-                newZone.append(from0ToAllFaces[faceI]);
-                newFlip.append(flipMap[i]);
+                // Check if orientation same
+                label allCell0 = owner0[face0];
+                if (allOwner[allFaceI] != allCell0)
+                {
+                    flip0 = !flip0;
+                }
+
+                if (faceToZone[allFaceI] == -1)
+                {
+                    faceToZone[allFaceI] = zoneI;
+                    faceToFlip[allFaceI] = flip0;
+                }
+                else if (faceToZone[allFaceI] != zoneI)
+                {
+                    labelList& fZones = addFaceToZones[allFaceI];
+                    boolList& flipZones = addFaceToFlips[allFaceI];
+
+                    if (findIndex(fZones, zoneI) == -1)
+                    {
+                        fZones.append(zoneI);
+                        flipZones.append(flip0);
+                    }
+                }
             }
         }
     }
 
-    // Get sorted zone contents for duplicate element recognition
-    PtrList<SortableList<label> > fzFacesSorted(fzFaces.size());
-    forAll(fzFaces, zoneI)
-    {
-        fzFacesSorted.set
-        (
-            zoneI,
-            new SortableList<label>(fzFaces[zoneI])
-        );
-    }
-
-    // Now we have full addressing for faces so do the faceZones of mesh1.
+    // mesh1 zones renumbered
     forAll(fz1, zoneI)
     {
-        label allZoneI = from1ToAll[zoneI];
-
-        DynamicList<label>& newZone = fzFaces[allZoneI];
-        const SortableList<label>& newZoneSorted = fzFacesSorted[allZoneI];
-        DynamicList<bool>& newFlip = fzFlips[allZoneI];
-
-        newZone.setCapacity(newZone.size() + fz1[zoneI].size());
-        newFlip.setCapacity(newZone.size());
-
         const labelList& addressing = fz1[zoneI];
         const boolList& flipMap = fz1[zoneI].flipMap();
 
+        const label allZoneI = from1ToAll[zoneI];
+
         forAll(addressing, i)
         {
-            label faceI = addressing[i];
-            label allFaceI = from1ToAllFaces[faceI];
+            label face1 = addressing[i];
+            bool flip1 = flipMap[i];
 
-            if
-            (
-                allFaceI != -1
-             && findSortedIndex(newZoneSorted, allFaceI) == -1
-            )
+            label allFaceI = from1ToAllFaces[face1];
+            if (allFaceI != -1)
             {
-                newZone.append(allFaceI);
-                newFlip.append(flipMap[i]);
+                // Check if orientation same
+                label allCell1 = from1ToAllCells[owner1[face1]];
+                if (allOwner[allFaceI] != allCell1)
+                {
+                    flip1 = !flip1;
+                }
+
+                if (faceToZone[allFaceI] == -1)
+                {
+                    faceToZone[allFaceI] = allZoneI;
+                    faceToFlip[allFaceI] = flip1;
+                }
+                else if (faceToZone[allFaceI] != allZoneI)
+                {
+                    labelList& fZones = addFaceToZones[allFaceI];
+                    boolList& flipZones = addFaceToFlips[allFaceI];
+
+                    if (findIndex(fZones, allZoneI) == -1)
+                    {
+                        fZones.append(allZoneI);
+                        flipZones.append(flip1);
+                    }
+                }
             }
+        }
+    }
+
+
+    // Extract back into zones
+
+    // 1. Count
+    labelList nFaces(zoneNames.size(), 0);
+    forAll(faceToZone, allFaceI)
+    {
+        label zoneI = faceToZone[allFaceI];
+        if (zoneI != -1)
+        {
+            nFaces[zoneI]++;
+        }
+    }
+    forAll(addFaceToZones, allFaceI)
+    {
+        const labelList& fZones = addFaceToZones[allFaceI];
+        forAll(fZones, i)
+        {
+            nFaces[fZones[i]]++;
+        }
+    }
+
+    // 2. Fill
+    fzFaces.setSize(zoneNames.size());
+    fzFlips.setSize(zoneNames.size());
+    forAll(fzFaces, zoneI)
+    {
+        fzFaces[zoneI].setCapacity(nFaces[zoneI]);
+        fzFlips[zoneI].setCapacity(nFaces[zoneI]);
+    }
+    forAll(faceToZone, allFaceI)
+    {
+        label zoneI = faceToZone[allFaceI];
+        bool flip = faceToFlip[allFaceI];
+        if (zoneI != -1)
+        {
+            fzFaces[zoneI].append(allFaceI);
+            fzFlips[zoneI].append(flip);
+        }
+    }
+    forAll(addFaceToZones, allFaceI)
+    {
+        const labelList& fZones = addFaceToZones[allFaceI];
+        const boolList& flipZones = addFaceToFlips[allFaceI];
+
+        forAll(fZones, i)
+        {
+            label zoneI = fZones[i];
+            fzFaces[zoneI].append(allFaceI);
+            fzFlips[zoneI].append(flipZones[i]);
         }
     }
 
@@ -1073,12 +1184,19 @@ void Foam::polyMeshAdder::mergeFaceZones
     {
         fzFaces[i].shrink();
         fzFlips[i].shrink();
+
+        labelList order;
+        sortedOrder(fzFaces[i], order);
+        fzFaces[i] = UIndirectList<label>(fzFaces[i], order)();
+        fzFlips[i] = UIndirectList<bool>(fzFlips[i], order)();
     }
 }
 
 
 void Foam::polyMeshAdder::mergeCellZones
 (
+    const label nAllCells,
+
     const cellZoneMesh& cz0,
     const cellZoneMesh& cz1,
     const labelList& from1ToAllCells,
@@ -1099,32 +1217,118 @@ void Foam::polyMeshAdder::mergeCellZones
     zoneNames.shrink();
 
 
-    // Create temporary lists for cellZones.
-    czCells.setSize(zoneNames.size());
+    // Zone(s) per cell. Two levels: if only one zone
+    // stored in cellToZone. Any extra stored in additionalCellToZones.
+    // This is so we only allocate labelLists per cell if absolutely
+    // necesary.
+    labelList cellToZone(nAllCells, -1);
+    labelListList addCellToZones(nAllCells);
+
+    // mesh0 zones kept
     forAll(cz0, zoneI)
     {
-        // Insert mesh0 cells
-        czCells[zoneI].append(cz0[zoneI]);
+        const cellZone& cz = cz0[zoneI];
+        forAll(cz, i)
+        {
+            label cell0 = cz[i];
+
+            if (cellToZone[cell0] == -1)
+            {
+                cellToZone[cell0] = zoneI;
+            }
+            else if (cellToZone[cell0] != zoneI)
+            {
+                labelList& cZones = addCellToZones[cell0];
+                if (findIndex(cZones, zoneI) == -1)
+                {
+                    cZones.append(zoneI);
+                }
+            }
+        }
     }
 
-
-    // Cell mapping is trivial.
+    // mesh1 zones renumbered
     forAll(cz1, zoneI)
     {
+        const cellZone& cz = cz1[zoneI];
         const label allZoneI = from1ToAll[zoneI];
+        forAll(cz, i)
+        {
+            label cell1 = cz[i];
+            label allCellI = from1ToAllCells[cell1];
 
-        append(from1ToAllCells, cz1[zoneI], czCells[allZoneI]);
+            if (cellToZone[allCellI] == -1)
+            {
+                cellToZone[allCellI] = allZoneI;
+            }
+            else if (cellToZone[allCellI] != allZoneI)
+            {
+                labelList& cZones = addCellToZones[allCellI];
+                if (findIndex(cZones, allZoneI) == -1)
+                {
+                    cZones.append(allZoneI);
+                }
+            }
+        }
     }
 
+    // Extract back into zones
+
+    // 1. Count
+    labelList nCells(zoneNames.size(), 0);
+    forAll(cellToZone, allCellI)
+    {
+        label zoneI = cellToZone[allCellI];
+        if (zoneI != -1)
+        {
+            nCells[zoneI]++;
+        }
+    }
+    forAll(addCellToZones, allCellI)
+    {
+        const labelList& cZones = addCellToZones[allCellI];
+        forAll(cZones, i)
+        {
+            nCells[cZones[i]]++;
+        }
+    }
+
+    // 2. Fill
+    czCells.setSize(zoneNames.size());
+    forAll(czCells, zoneI)
+    {
+        czCells[zoneI].setCapacity(nCells[zoneI]);
+    }
+    forAll(cellToZone, allCellI)
+    {
+        label zoneI = cellToZone[allCellI];
+        if (zoneI != -1)
+        {
+            czCells[zoneI].append(allCellI);
+        }
+    }
+    forAll(addCellToZones, allCellI)
+    {
+        const labelList& cZones = addCellToZones[allCellI];
+        forAll(cZones, i)
+        {
+            czCells[cZones[i]].append(allCellI);
+        }
+    }
     forAll(czCells, i)
     {
         czCells[i].shrink();
+        stableSort(czCells[i]);
     }
 }
 
 
 void Foam::polyMeshAdder::mergeZones
 (
+    const label nAllPoints,
+    const labelList& allOwner,
+    const label nAllCells,
+
     const polyMesh& mesh0,
     const polyMesh& mesh1,
     const labelList& from0ToAllPoints,
@@ -1148,6 +1352,7 @@ void Foam::polyMeshAdder::mergeZones
     labelList from1ToAllPZones;
     mergePointZones
     (
+        nAllPoints,
         mesh0.pointZones(),
         mesh1.pointZones(),
         from0ToAllPoints,
@@ -1161,10 +1366,12 @@ void Foam::polyMeshAdder::mergeZones
     labelList from1ToAllFZones;
     mergeFaceZones
     (
-        mesh0.faceZones(),
-        mesh1.faceZones(),
+        allOwner,
+        mesh0,
+        mesh1,
         from0ToAllFaces,
         from1ToAllFaces,
+        from1ToAllCells,
 
         faceZoneNames,
         from1ToAllFZones,
@@ -1175,6 +1382,7 @@ void Foam::polyMeshAdder::mergeZones
     labelList from1ToAllCZones;
     mergeCellZones
     (
+        nAllCells,
         mesh0.cellZones(),
         mesh1.cellZones(),
         from1ToAllCells,
@@ -1353,6 +1561,10 @@ Foam::autoPtr<Foam::polyMesh> Foam::polyMeshAdder::add
 
     mergeZones
     (
+        allPoints.size(),
+        allOwner,
+        nCells,
+
         mesh0,
         mesh1,
 
@@ -1566,6 +1778,10 @@ Foam::autoPtr<Foam::mapAddedPolyMesh> Foam::polyMeshAdder::add
 
     mergeZones
     (
+        allPoints.size(),
+        allOwner,
+        nCells,
+
         mesh0,
         mesh1,
 

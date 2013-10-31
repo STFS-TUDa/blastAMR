@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2013 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -61,28 +61,8 @@ class polyMeshAdder
 {
 
 private:
-    // Private data
-
 
     // Private Member Functions
-
-        //- Append all mapped elements of a list to a DynamicList
-        static void append
-        (
-            const labelList& map,
-            const labelList& lst,
-            DynamicList<label>&
-        );
-
-        //- Append all mapped elements of a list to a DynamicList that are
-        //  not already present in the sorted list.
-        static void append
-        (
-            const labelList& map,
-            const labelList& lst,
-            const SortableList<label>& sortedLst,
-            DynamicList<label>&
-        );
 
         //- Index of patch in allPatches. Add if nonexisting.
         static label patchIndex
@@ -180,6 +160,8 @@ private:
         //- Merge point zones
         static void mergePointZones
         (
+            const label nAllPoints,
+
             const pointZoneMesh& pz0,
             const pointZoneMesh& pz1,
             const labelList& from0ToAllPoints,
@@ -193,10 +175,13 @@ private:
         //- Merge face zones
         static void mergeFaceZones
         (
-            const faceZoneMesh& fz0,
-            const faceZoneMesh& fz1,
+            const labelList& allOwner,
+
+            const polyMesh& mesh0,
+            const polyMesh& mesh1,
             const labelList& from0ToAllFaces,
             const labelList& from1ToAllFaces,
+            const labelList& from1ToAllCells,
 
             DynamicList<word>& zoneNames,
             labelList& from1ToAll,
@@ -207,6 +192,8 @@ private:
         //- Merge cell zones
         static void mergeCellZones
         (
+            const label nAllCells,
+
             const cellZoneMesh& cz0,
             const cellZoneMesh& cz1,
             const labelList& from1ToAllCells,
@@ -219,6 +206,10 @@ private:
         //- Merge point/face/cell zone information
         static void mergeZones
         (
+            const label nAllPoints,
+            const labelList& allOwner,
+            const label nAllCells,
+
             const polyMesh& mesh0,
             const polyMesh& mesh1,
             const labelList& from0ToAllPoints,
