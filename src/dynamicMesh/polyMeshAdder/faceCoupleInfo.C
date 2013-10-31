@@ -1784,7 +1784,7 @@ void Foam::faceCoupleInfo::subDivisionMatch
                     << " points:" << masterPoints[masterEdge[0]]
                     << ' ' << masterPoints[masterEdge[1]]
                     << " corresponding cut edge: (" << cutPoint0
-                    << ' ' << cutPoint1
+                    << ") " << cutPoint1
                     << abort(FatalError);
             }
 
