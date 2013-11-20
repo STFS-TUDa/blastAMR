@@ -650,32 +650,45 @@ int main(int argc, char *argv[])
                 << " for use in manual decomposition." << endl;
 
 
-            // Write as volScalarField for postprocessing.
-            volScalarField cellDist
-            (
-                IOobject
-                (
-                    "cellDist",
-                    runTime.timeName(),
-                    masterMesh,
-                    IOobject::NO_READ,
-                    IOobject::AUTO_WRITE
-                ),
-                masterMesh,
-                dimensionedScalar("cellDist", dimless, 0),
-                zeroGradientFvPatchScalarField::typeName
-            );
-
-            forAll(cellDecomposition, cellI)
+            // Write as volScalarField for postprocessing. Change time to 0
+            // if was 'constant'
             {
-                cellDist[cellI] = cellDecomposition[cellI];
+                const scalar oldTime = runTime.value();
+                const label oldIndex = runTime.timeIndex();
+                if (runTime.timeName() == runTime.constant() && oldIndex == 0)
+                {
+                    runTime.setTime(0, oldIndex+1);
+                }
+
+                volScalarField cellDist
+                (
+                    IOobject
+                    (
+                        "cellDist",
+                        runTime.timeName(),
+                        masterMesh,
+                        IOobject::NO_READ,
+                        IOobject::AUTO_WRITE
+                    ),
+                    masterMesh,
+                    dimensionedScalar("cellDist", dimless, 0),
+                    zeroGradientFvPatchScalarField::typeName
+                );
+
+                forAll(cellDecomposition, cellI)
+                {
+                    cellDist[cellI] = cellDecomposition[cellI];
+                }
+
+                cellDist.write();
+
+                Info<< nl << "Wrote decomposition as volScalarField to "
+                    << cellDist.name() << " for use in postprocessing."
+                    << endl;
+
+                // Restore time
+                runTime.setTime(oldTime, oldIndex);
             }
-
-            cellDist.write();
-
-            Info<< nl << "Wrote decomposition as volScalarField to "
-                << cellDist.name() << " for use in postprocessing."
-                << endl;
         }
     }
 
