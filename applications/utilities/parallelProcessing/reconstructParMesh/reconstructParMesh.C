@@ -475,7 +475,11 @@ int main(int argc, char *argv[])
     word regionName = polyMesh::defaultRegion;
     word regionDir = word::null;
 
-    if (args.optionReadIfPresent("region", regionName))
+    if
+    (
+        args.optionReadIfPresent("region", regionName)
+     && regionName != polyMesh::defaultRegion
+    )
     {
         regionDir = regionName;
         Info<< "Operating on region " << regionName << nl << endl;
