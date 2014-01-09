@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2013 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2014 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -578,7 +578,7 @@ int main(int argc, char *argv[])
 
 
     // Loop over all times
-    forAll(Times, timeI)
+    for (label timeI = startTime; timeI < endTime; timeI++)
     {
         // Set time for global database
         runTime.setTime(Times[timeI], timeI);
@@ -590,6 +590,19 @@ int main(int argc, char *argv[])
         {
             databases[procI].setTime(Times[timeI], timeI);
         }
+
+        const fileName meshPath =
+            databases[0].path()
+           /databases[0].timeName()
+           /regionDir
+           /polyMesh::meshSubDir;
+
+        if (!isFile(meshPath/"faces"))
+        {
+            Info<< "No mesh." << nl << endl;
+            continue;
+        }
+
 
         // Read point on individual processors to determine merge tolerance
         // (otherwise single cell domains might give problems)
