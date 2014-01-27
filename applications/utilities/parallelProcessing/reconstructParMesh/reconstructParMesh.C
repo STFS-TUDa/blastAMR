@@ -816,7 +816,7 @@ int main(int argc, char *argv[])
             );
 
             // Now add turning index to faceProcAddressing.
-            // See reconstrurPar for meaning of turning index.
+            // See reconstructPar for meaning of turning index.
             forAll(faceProcAddr, procFaceI)
             {
                 label masterFaceI = faceProcAddr[procFaceI];
