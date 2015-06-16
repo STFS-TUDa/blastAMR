@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2013 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2013-2015 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -24,6 +24,31 @@ License
 \*---------------------------------------------------------------------------*/
 
 {
+    const dictionary& pimpleDict = pimple.dict();
+
+    // Maximum flow Courant number
+    scalar maxCo(readScalar(pimpleDict.lookup("maxCo")));
+
+    // Maximum time scale
+    scalar maxDeltaT(pimpleDict.lookupOrDefault<scalar>("maxDeltaT", GREAT));
+
+    // Smoothing parameter (0-1) when smoothing iterations > 0
+    scalar rDeltaTSmoothingCoeff
+    (
+        pimpleDict.lookupOrDefault<scalar>("rDeltaTSmoothingCoeff", 0.1)
+    );
+
+    // Damping coefficient (1-0)
+    scalar rDeltaTDampingCoeff
+    (
+        pimpleDict.lookupOrDefault<scalar>("rDeltaTDampingCoeff", 1)
+    );
+
+    // Maximum change in cell temperature per iteration
+    // (relative to previous value)
+    scalar alphaTemp(pimpleDict.lookupOrDefault("alphaTemp", 0.05));
+
+
     Info<< "Time scales min/max:" << endl;
 
     // Cache old reciprocal time scale field
@@ -93,5 +118,6 @@ License
         << gMin(1/rDeltaT.internalField())
         << ", " << gMax(1/rDeltaT.internalField()) << endl;
 }
+
 
 // ************************************************************************* //
