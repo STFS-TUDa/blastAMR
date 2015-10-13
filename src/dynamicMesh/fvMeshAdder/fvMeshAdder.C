@@ -2,8 +2,8 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011 OpenFOAM Foundation
-     \\/     M anipulation  |
+    \\  /    A nd           | Copyright (C) 2011-2014 OpenFOAM Foundation
+     \\/     M anipulation  | Copyright (C) 2015 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -27,6 +27,14 @@ License
 #include "fvMeshAdder.H"
 #include "faceCoupleInfo.H"
 #include "fvMesh.H"
+
+/* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
+
+namespace Foam
+{
+defineTypeNameAndDebug(fvMeshAdder, 0);
+}
+
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
@@ -107,6 +115,12 @@ Foam::autoPtr<Foam::mapAddedPolyMesh> Foam::fvMeshAdder::add
     fvMeshAdder::MapSurfaceFields<sphericalTensor>(mapPtr, mesh0, mesh1);
     fvMeshAdder::MapSurfaceFields<symmTensor>(mapPtr, mesh0, mesh1);
     fvMeshAdder::MapSurfaceFields<tensor>(mapPtr, mesh0, mesh1);
+
+    fvMeshAdder::MapDimFields<scalar>(mapPtr, mesh0, mesh1);
+    fvMeshAdder::MapDimFields<vector>(mapPtr, mesh0, mesh1);
+    fvMeshAdder::MapDimFields<sphericalTensor>(mapPtr, mesh0, mesh1);
+    fvMeshAdder::MapDimFields<symmTensor>(mapPtr, mesh0, mesh1);
+    fvMeshAdder::MapDimFields<tensor>(mapPtr, mesh0, mesh1);
 
     return mapPtr;
 }
