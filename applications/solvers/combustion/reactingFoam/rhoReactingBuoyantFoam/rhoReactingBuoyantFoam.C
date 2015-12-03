@@ -24,6 +24,9 @@ License
 Application
     rhoReactingBuoyantFoam
 
+Group
+    grpCombustionSolvers
+
 Description
     Solver for combustion with chemical reactions using density based
     thermodynamics package, using enahanced buoyancy treatment.

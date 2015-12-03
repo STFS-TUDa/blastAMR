@@ -24,6 +24,9 @@ License
 Application
     reactingFoam
 
+Group
+    grpCombustionSolvers
+
 Description
     Solver for combustion with chemical reactions.
 
