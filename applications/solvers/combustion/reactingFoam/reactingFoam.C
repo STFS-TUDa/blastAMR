@@ -37,7 +37,7 @@ Description
 #include "psiCombustionModel.H"
 #include "multivariateScheme.H"
 #include "pimpleControl.H"
-#include "fvIOoptionList.H"
+#include "fvOptions.H"
 #include "localEulerDdtScheme.H"
 #include "fvcSmooth.H"
 
@@ -54,10 +54,11 @@ int main(int argc, char *argv[])
     #include "createTimeControls.H"
     #include "createRDeltaT.H"
     #include "initContinuityErrs.H"
-    #include "readGravitationalAcceleration.H"
     #include "createFields.H"
     #include "createMRF.H"
     #include "createFvOptions.H"
+
+    turbulence->validate();
 
     if (!LTS)
     {
@@ -98,7 +99,14 @@ int main(int argc, char *argv[])
             // --- Pressure corrector loop
             while (pimple.correct())
             {
-                #include "pEqn.H"
+                if (pimple.consistent())
+                {
+                    #include "pcEqn.H"
+                }
+                else
+                {
+                    #include "pEqn.H"
+                }
             }
 
             if (pimple.turbCorr())
