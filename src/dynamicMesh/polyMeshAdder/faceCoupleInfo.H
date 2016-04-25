@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -142,7 +142,7 @@ SourceFiles
 namespace Foam
 {
 
-typedef HashTable<labelList, edge, Hash<edge> > edgeLookup;
+typedef HashTable<labelList, edge, Hash<edge>> edgeLookup;
 
 
 // Forward declaration of classes
@@ -278,9 +278,9 @@ class faceCoupleInfo
 
         // Face matching
 
-            //- Matches two faces.Determines rotation for f1 to match up
-            // with f0, i.e. the index in f0 of
-            // the first point of f1.
+            //- Matches two faces.
+            //  Determines rotation for f1 to match up with f0,
+            //  i.e. the index in f0 of the first point of f1.
             static label matchFaces
             (
                 const scalar absTol,
@@ -503,7 +503,7 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-#   include "faceCoupleInfoTemplates.C"
+    #include "faceCoupleInfoTemplates.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
