@@ -24,6 +24,9 @@ License
 Application
     reconstructParMesh
 
+Group
+    grpParallelUtilities
+
 Description
     Reconstructs a mesh using geometric information only.
 
