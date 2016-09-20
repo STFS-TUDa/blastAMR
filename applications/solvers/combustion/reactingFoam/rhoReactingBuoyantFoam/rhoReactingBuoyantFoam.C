@@ -28,8 +28,8 @@ Group
     grpCombustionSolvers
 
 Description
-    Solver for combustion with chemical reactions using density based
-    thermodynamics package, using enahanced buoyancy treatment.
+    Solver for combustion with chemical reactions using a density based
+    thermodynamics package with enhanced buoyancy treatment.
 
 \*---------------------------------------------------------------------------*/
 
@@ -46,17 +46,17 @@ Description
 
 int main(int argc, char *argv[])
 {
+    #include "postProcess.H"
+
     #include "setRootCase.H"
     #include "createTime.H"
     #include "createMesh.H"
-
-    pimpleControl pimple(mesh);
-
+    #include "createControl.H"
     #include "createTimeControls.H"
     #include "createRDeltaT.H"
     #include "initContinuityErrs.H"
     #include "createFields.H"
-    #include "createMRF.H"
+    #include "createFieldRefs.H"
     #include "createFvOptions.H"
 
     turbulence->validate();
