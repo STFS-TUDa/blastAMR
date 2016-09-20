@@ -46,15 +46,15 @@ void Foam::fvMeshAdder::MapVolField
 
     {
         // Store old internal field
-        Field<Type> oldInternalField(fld.internalField());
+        Field<Type> oldInternalField(fld.primitiveField());
 
         // Modify internal field
-        Field<Type>& intFld = fld.internalField();
+        Field<Type>& intFld = fld.primitiveFieldRef();
 
         intFld.setSize(mesh.nCells());
 
         intFld.rmap(oldInternalField, meshMap.oldCellMap());
-        intFld.rmap(fldToAdd.internalField(), meshMap.addedCellMap());
+        intFld.rmap(fldToAdd.primitiveField(), meshMap.addedCellMap());
     }
 
 
@@ -62,7 +62,7 @@ void Foam::fvMeshAdder::MapVolField
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     typename GeometricField<Type, fvPatchField, volMesh>::
-    GeometricBoundaryField& bfld = fld.boundaryField();
+    Boundary& bfld = fld.boundaryFieldRef();
 
     {
         const labelList& oldPatchMap = meshMap.oldPatchMap();
@@ -71,34 +71,34 @@ void Foam::fvMeshAdder::MapVolField
 
         // Reorder old patches in order of new ones. Put removed patches at end.
 
-        label unusedPatchI = 0;
+        label unusedPatchi = 0;
 
-        forAll(oldPatchMap, patchI)
+        forAll(oldPatchMap, patchi)
         {
-            label newPatchI = oldPatchMap[patchI];
+            label newPatchi = oldPatchMap[patchi];
 
-            if (newPatchI != -1)
+            if (newPatchi != -1)
             {
-                unusedPatchI++;
+                unusedPatchi++;
             }
         }
 
-        label nUsedPatches = unusedPatchI;
+        label nUsedPatches = unusedPatchi;
 
         // Reorder list for patchFields
         labelList oldToNew(oldPatchMap.size());
 
-        forAll(oldPatchMap, patchI)
+        forAll(oldPatchMap, patchi)
         {
-            label newPatchI = oldPatchMap[patchI];
+            label newPatchi = oldPatchMap[patchi];
 
-            if (newPatchI != -1)
+            if (newPatchi != -1)
             {
-                oldToNew[patchI] = newPatchI;
+                oldToNew[patchi] = newPatchi;
             }
             else
             {
-                oldToNew[patchI] = unusedPatchI++;
+                oldToNew[patchi] = unusedPatchi++;
             }
         }
 
@@ -110,32 +110,32 @@ void Foam::fvMeshAdder::MapVolField
         // Delete unused patches
         for
         (
-            label newPatchI = nUsedPatches;
-            newPatchI < bfld.size();
-            newPatchI++
+            label newPatchi = nUsedPatches;
+            newPatchi < bfld.size();
+            newPatchi++
         )
         {
-            bfld.set(newPatchI, NULL);
+            bfld.set(newPatchi, nullptr);
         }
 
 
         // Map old values
         // ~~~~~~~~~~~~~~
 
-        forAll(oldPatchMap, patchI)
+        forAll(oldPatchMap, patchi)
         {
-            label newPatchI = oldPatchMap[patchI];
+            label newPatchi = oldPatchMap[patchi];
 
-            if (newPatchI != -1)
+            if (newPatchi != -1)
             {
                 labelList newToOld
                 (
                     calcPatchMap
                     (
-                        oldPatchStarts[patchI],
-                        oldPatchSizes[patchI],
+                        oldPatchStarts[patchi],
+                        oldPatchSizes[patchi],
                         meshMap.oldFaceMap(),
-                        mesh.boundaryMesh()[newPatchI],
+                        mesh.boundaryMesh()[newPatchi],
                         -1              // unmapped value
                     )
                 );
@@ -145,19 +145,19 @@ void Foam::fvMeshAdder::MapVolField
 
                 // Create new patchField with same type as existing one.
                 // Note:
-                // - boundaryField already in new order so access with newPatchI
-                // - fld.boundaryField()[newPatchI] both used for type and old
+                // - boundaryField already in new order so access with newPatchi
+                // - fld.boundaryField()[newPatchi] both used for type and old
                 //   value
                 // - hope that field mapping allows aliasing since old and new
                 //   are same memory!
                 bfld.set
                 (
-                    newPatchI,
+                    newPatchi,
                     fvPatchField<Type>::New
                     (
-                        bfld[newPatchI],                // old field
-                        mesh.boundary()[newPatchI],     // new fvPatch
-                        fld.dimensionedInternalField(), // new internal field
+                        bfld[newPatchi],                // old field
+                        mesh.boundary()[newPatchi],     // new fvPatch
+                        fld(), // new internal field
                         patchMapper                     // mapper (new to old)
                     )
                 );
@@ -174,19 +174,19 @@ void Foam::fvMeshAdder::MapVolField
         const labelList& addedPatchMap = meshMap.addedPatchMap();
 
         // Add addedMesh patches
-        forAll(addedPatchMap, patchI)
+        forAll(addedPatchMap, patchi)
         {
-            label newPatchI = addedPatchMap[patchI];
+            label newPatchi = addedPatchMap[patchi];
 
-            if (newPatchI != -1)
+            if (newPatchi != -1)
             {
-                const polyPatch& newPatch = mesh.boundaryMesh()[newPatchI];
+                const polyPatch& newPatch = mesh.boundaryMesh()[newPatchi];
                 const polyPatch& oldPatch =
-                    fldToAdd.mesh().boundaryMesh()[patchI];
+                    fldToAdd.mesh().boundaryMesh()[patchi];
 
-                if (!bfld(newPatchI))
+                if (!bfld(newPatchi))
                 {
-                    // First occurrence of newPatchI. Map from existing
+                    // First occurrence of newPatchi. Map from existing
                     // patchField
 
                     // From new patch faces to patch faces on added mesh.
@@ -206,12 +206,12 @@ void Foam::fvMeshAdder::MapVolField
 
                     bfld.set
                     (
-                        newPatchI,
+                        newPatchi,
                         fvPatchField<Type>::New
                         (
-                            fldToAdd.boundaryField()[patchI], // added field
-                            mesh.boundary()[newPatchI],       // new fvPatch
-                            fld.dimensionedInternalField(),   // new int. field
+                            fldToAdd.boundaryField()[patchi], // added field
+                            mesh.boundary()[newPatchi],       // new fvPatch
+                            fld(),   // new int. field
                             patchMapper                       // mapper
                         )
                     );
@@ -224,18 +224,18 @@ void Foam::fvMeshAdder::MapVolField
                     labelList addedToNew(oldPatch.size(), -1);
                     forAll(addedToNew, i)
                     {
-                        label addedFaceI = oldPatch.start()+i;
-                        label newFaceI = meshMap.addedFaceMap()[addedFaceI];
-                        label patchFaceI = newFaceI-newPatch.start();
-                        if (patchFaceI >= 0 && patchFaceI < newPatch.size())
+                        label addedFacei = oldPatch.start()+i;
+                        label newFacei = meshMap.addedFaceMap()[addedFacei];
+                        label patchFacei = newFacei-newPatch.start();
+                        if (patchFacei >= 0 && patchFacei < newPatch.size())
                         {
-                            addedToNew[i] = patchFaceI;
+                            addedToNew[i] = patchFacei;
                         }
                     }
 
-                    bfld[newPatchI].rmap
+                    bfld[newPatchi].rmap
                     (
-                        fldToAdd.boundaryField()[patchI],
+                        fldToAdd.boundaryField()[patchi],
                         addedToNew
                     );
                 }
@@ -342,7 +342,7 @@ void Foam::fvMeshAdder::MapSurfaceField
     const labelList& oldPatchStarts = meshMap.oldPatchStarts();
 
     typename GeometricField<Type, fvsPatchField, surfaceMesh>::
-    GeometricBoundaryField& bfld = fld.boundaryField();
+    Boundary& bfld = fld.boundaryFieldRef();
 
     // Internal field
     // ~~~~~~~~~~~~~~
@@ -352,7 +352,7 @@ void Foam::fvMeshAdder::MapSurfaceField
         Field<Type> oldField(fld);
 
         // Modify internal field
-        Field<Type>& intFld = fld.internalField();
+        Field<Type>& intFld = fld.primitiveFieldRef();
 
         intFld.setSize(mesh.nInternalFaces());
 
@@ -363,19 +363,19 @@ void Foam::fvMeshAdder::MapSurfaceField
         // Faces that were boundary faces but are not anymore.
         // Use owner value (so lowest numbered cell, i.e. from 'old' not 'added'
         // mesh)
-        forAll(bfld, patchI)
+        forAll(bfld, patchi)
         {
-            const fvsPatchField<Type>& pf = bfld[patchI];
+            const fvsPatchField<Type>& pf = bfld[patchi];
 
-            label start = oldPatchStarts[patchI];
+            label start = oldPatchStarts[patchi];
 
             forAll(pf, i)
             {
-                label newFaceI = meshMap.oldFaceMap()[start + i];
+                label newFacei = meshMap.oldFaceMap()[start + i];
 
-                if (newFaceI >= 0 && newFaceI < mesh.nInternalFaces())
+                if (newFacei >= 0 && newFacei < mesh.nInternalFaces())
                 {
-                    intFld[newFaceI] = pf[i];
+                    intFld[newFacei] = pf[i];
                 }
             }
         }
@@ -391,34 +391,34 @@ void Foam::fvMeshAdder::MapSurfaceField
 
         // Reorder old patches in order of new ones. Put removed patches at end.
 
-        label unusedPatchI = 0;
+        label unusedPatchi = 0;
 
-        forAll(oldPatchMap, patchI)
+        forAll(oldPatchMap, patchi)
         {
-            label newPatchI = oldPatchMap[patchI];
+            label newPatchi = oldPatchMap[patchi];
 
-            if (newPatchI != -1)
+            if (newPatchi != -1)
             {
-                unusedPatchI++;
+                unusedPatchi++;
             }
         }
 
-        label nUsedPatches = unusedPatchI;
+        label nUsedPatches = unusedPatchi;
 
         // Reorder list for patchFields
         labelList oldToNew(oldPatchMap.size());
 
-        forAll(oldPatchMap, patchI)
+        forAll(oldPatchMap, patchi)
         {
-            label newPatchI = oldPatchMap[patchI];
+            label newPatchi = oldPatchMap[patchi];
 
-            if (newPatchI != -1)
+            if (newPatchi != -1)
             {
-                oldToNew[patchI] = newPatchI;
+                oldToNew[patchi] = newPatchi;
             }
             else
             {
-                oldToNew[patchI] = unusedPatchI++;
+                oldToNew[patchi] = unusedPatchi++;
             }
         }
 
@@ -430,32 +430,32 @@ void Foam::fvMeshAdder::MapSurfaceField
         // Delete unused patches
         for
         (
-            label newPatchI = nUsedPatches;
-            newPatchI < bfld.size();
-            newPatchI++
+            label newPatchi = nUsedPatches;
+            newPatchi < bfld.size();
+            newPatchi++
         )
         {
-            bfld.set(newPatchI, NULL);
+            bfld.set(newPatchi, nullptr);
         }
 
 
         // Map old values
         // ~~~~~~~~~~~~~~
 
-        forAll(oldPatchMap, patchI)
+        forAll(oldPatchMap, patchi)
         {
-            label newPatchI = oldPatchMap[patchI];
+            label newPatchi = oldPatchMap[patchi];
 
-            if (newPatchI != -1)
+            if (newPatchi != -1)
             {
                 labelList newToOld
                 (
                     calcPatchMap
                     (
-                        oldPatchStarts[patchI],
-                        oldPatchSizes[patchI],
+                        oldPatchStarts[patchi],
+                        oldPatchSizes[patchi],
                         meshMap.oldFaceMap(),
-                        mesh.boundaryMesh()[newPatchI],
+                        mesh.boundaryMesh()[newPatchi],
                         -1      // unmapped value
                     )
                 );
@@ -464,19 +464,19 @@ void Foam::fvMeshAdder::MapSurfaceField
 
                 // Create new patchField with same type as existing one.
                 // Note:
-                // - boundaryField already in new order so access with newPatchI
-                // - bfld[newPatchI] both used for type and old
+                // - boundaryField already in new order so access with newPatchi
+                // - bfld[newPatchi] both used for type and old
                 //   value
                 // - hope that field mapping allows aliasing since old and new
                 //   are same memory!
                 bfld.set
                 (
-                    newPatchI,
+                    newPatchi,
                     fvsPatchField<Type>::New
                     (
-                        bfld[newPatchI],                // old field
-                        mesh.boundary()[newPatchI],     // new fvPatch
-                        fld.dimensionedInternalField(), // new internal field
+                        bfld[newPatchi],                // old field
+                        mesh.boundary()[newPatchi],     // new fvPatch
+                        fld(), // new internal field
                         patchMapper                     // mapper (new to old)
                     )
                 );
@@ -493,19 +493,19 @@ void Foam::fvMeshAdder::MapSurfaceField
         const labelList& addedPatchMap = meshMap.addedPatchMap();
 
         // Add addedMesh patches
-        forAll(addedPatchMap, patchI)
+        forAll(addedPatchMap, patchi)
         {
-            label newPatchI = addedPatchMap[patchI];
+            label newPatchi = addedPatchMap[patchi];
 
-            if (newPatchI != -1)
+            if (newPatchi != -1)
             {
-                const polyPatch& newPatch = mesh.boundaryMesh()[newPatchI];
+                const polyPatch& newPatch = mesh.boundaryMesh()[newPatchi];
                 const polyPatch& oldPatch =
-                    fldToAdd.mesh().boundaryMesh()[patchI];
+                    fldToAdd.mesh().boundaryMesh()[patchi];
 
-                if (!bfld(newPatchI))
+                if (!bfld(newPatchi))
                 {
-                    // First occurrence of newPatchI. Map from existing
+                    // First occurrence of newPatchi. Map from existing
                     // patchField
 
                     // From new patch faces to patch faces on added mesh.
@@ -525,12 +525,12 @@ void Foam::fvMeshAdder::MapSurfaceField
 
                     bfld.set
                     (
-                        newPatchI,
+                        newPatchi,
                         fvsPatchField<Type>::New
                         (
-                            fldToAdd.boundaryField()[patchI],// added field
-                            mesh.boundary()[newPatchI],      // new fvPatch
-                            fld.dimensionedInternalField(),  // new int. field
+                            fldToAdd.boundaryField()[patchi],// added field
+                            mesh.boundary()[newPatchi],      // new fvPatch
+                            fld(),  // new int. field
                             patchMapper                      // mapper
                         )
                     );
@@ -543,18 +543,18 @@ void Foam::fvMeshAdder::MapSurfaceField
                     labelList addedToNew(oldPatch.size(), -1);
                     forAll(addedToNew, i)
                     {
-                        label addedFaceI = oldPatch.start()+i;
-                        label newFaceI = meshMap.addedFaceMap()[addedFaceI];
-                        label patchFaceI = newFaceI-newPatch.start();
-                        if (patchFaceI >= 0 && patchFaceI < newPatch.size())
+                        label addedFacei = oldPatch.start()+i;
+                        label newFacei = meshMap.addedFaceMap()[addedFacei];
+                        label patchFacei = newFacei-newPatch.start();
+                        if (patchFacei >= 0 && patchFacei < newPatch.size())
                         {
-                            addedToNew[i] = patchFaceI;
+                            addedToNew[i] = patchFacei;
                         }
                     }
 
-                    bfld[newPatchI].rmap
+                    bfld[newPatchi].rmap
                     (
-                        fldToAdd.boundaryField()[patchI],
+                        fldToAdd.boundaryField()[patchi],
                         addedToNew
                     );
                 }
@@ -708,6 +708,82 @@ void Foam::fvMeshAdder::MapDimFields
         else
         {
             WarningInFunction
+                << "Not mapping field " << fld.name()
+                << " since not present on mesh to add"
+                << endl;
+        }
+    }
+}
+
+
+template<class Type>
+void Foam::fvMeshAdder::MapDimField
+(
+    const mapAddedPolyMesh& meshMap,
+
+    DimensionedField<Type, volMesh>& fld,
+    const DimensionedField<Type, volMesh>& fldToAdd
+)
+{
+    const fvMesh& mesh = fld.mesh();
+
+    // Store old field
+    Field<Type> oldField(fld);
+
+    fld.setSize(mesh.nCells());
+
+    fld.rmap(oldField, meshMap.oldCellMap());
+    fld.rmap(fldToAdd, meshMap.addedCellMap());
+}
+
+
+template<class Type>
+void Foam::fvMeshAdder::MapDimFields
+(
+    const mapAddedPolyMesh& meshMap,
+    const fvMesh& mesh,
+    const fvMesh& meshToAdd
+)
+{
+    typedef DimensionedField<Type, volMesh> fldType;
+
+    // Note: use strict flag on lookupClass to avoid picking up
+    //       volFields
+    HashTable<const fldType*> fields
+    (
+        mesh.objectRegistry::lookupClass<fldType>(true)
+    );
+
+    HashTable<const fldType*> fieldsToAdd
+    (
+        meshToAdd.objectRegistry::lookupClass<fldType>(true)
+    );
+
+    for
+    (
+        typename HashTable<const fldType*>::
+            iterator fieldIter = fields.begin();
+        fieldIter != fields.end();
+        ++fieldIter
+    )
+    {
+        fldType& fld = const_cast<fldType&>(*fieldIter());
+
+        if (fieldsToAdd.found(fld.name()))
+        {
+            const fldType& fldToAdd = *fieldsToAdd[fld.name()];
+
+            if (debug)
+            {
+                Pout<< "MapDimFields : mapping " << fld.name()
+                    << " and " << fldToAdd.name() << endl;
+            }
+
+            MapDimField<Type>(meshMap, fld, fldToAdd);
+        }
+        else
+        {
+            WarningIn("fvMeshAdder::MapDimFields(..)")
                 << "Not mapping field " << fld.name()
                 << " since not present on mesh to add"
                 << endl;

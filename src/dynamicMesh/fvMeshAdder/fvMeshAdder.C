@@ -54,11 +54,11 @@ Foam::labelList Foam::fvMeshAdder::calcPatchMap
 
     for (label i = 0; i < oldSize; i++)
     {
-        label newFaceI = oldToNew[oldStart+i];
+        label newFacei = oldToNew[oldStart+i];
 
-        if (newFaceI >= newStart && newFaceI < newStart+newSize)
+        if (newFacei >= newStart && newFacei < newStart+newSize)
         {
-            newToOld[newFaceI-newStart] = i;
+            newToOld[newFacei-newStart] = i;
         }
     }
     return newToOld;
@@ -94,9 +94,9 @@ Foam::autoPtr<Foam::mapAddedPolyMesh> Foam::fvMeshAdder::add
 
     fvBoundaryMesh& fvPatches = const_cast<fvBoundaryMesh&>(mesh0.boundary());
     fvPatches.setSize(patches.size());
-    forAll(patches, patchI)
+    forAll(patches, patchi)
     {
-        fvPatches.set(patchI, fvPatch::New(patches[patchI], fvPatches));
+        fvPatches.set(patchi, fvPatch::New(patches[patchi], fvPatches));
     }
 
     // Do the mapping of the stored fields
