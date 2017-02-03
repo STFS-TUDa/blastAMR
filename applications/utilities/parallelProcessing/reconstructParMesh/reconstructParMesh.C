@@ -3,7 +3,7 @@
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
     \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
-     \\/     M anipulation  | Copyright (C) 2016 OpenCFD Ltd.
+     \\/     M anipulation  | Copyright (C) 2016-2017 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -336,10 +336,7 @@ boundBox procBounds
             )
         );
 
-        boundBox domainBb(points, false);
-
-        bb.min() = min(bb.min(), domainBb.min());
-        bb.max() = max(bb.max(), domainBb.max());
+        bb.add(points);
     }
 
     return bb;
