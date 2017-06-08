@@ -92,8 +92,9 @@ K = 0.5*magSqr(U);
 if (pressureControl.limit(p))
 {
     p.correctBoundaryConditions();
-    rho = thermo.rho();
 }
+
+rho = thermo.rho();
 
 if (thermo.dpdt())
 {
