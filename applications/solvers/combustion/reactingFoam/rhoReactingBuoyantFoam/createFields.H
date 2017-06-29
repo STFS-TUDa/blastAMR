@@ -92,23 +92,6 @@ volScalarField p_rgh
 // Force p_rgh to be consistent with p
 p_rgh = p - rho*gh;
 
-Info<< "Creating field dpdt\n" << endl;
-volScalarField dpdt
-(
-    IOobject
-    (
-        "dpdt",
-        runTime.timeName(),
-        mesh
-    ),
-    mesh,
-    dimensionedScalar("dpdt", p.dimensions()/dimTime, 0)
-);
-
-Info<< "Creating field kinetic energy K\n" << endl;
-volScalarField K("K", 0.5*magSqr(U));
-
-
 multivariateSurfaceInterpolationScheme<scalar>::fieldTable fields;
 
 forAll(Y, i)
@@ -117,18 +100,22 @@ forAll(Y, i)
 }
 fields.add(thermo.he());
 
-volScalarField dQ
+volScalarField Qdot
 (
     IOobject
     (
-        "dQ",
+        "Qdot",
         runTime.timeName(),
         mesh,
-        IOobject::NO_READ,
+        IOobject::READ_IF_PRESENT,
         IOobject::AUTO_WRITE
     ),
     mesh,
-    dimensionedScalar("dQ", dimEnergy/dimTime, 0.0)
+    dimensionedScalar("Qdot", dimEnergy/dimVolume/dimTime, 0.0)
 );
+
+#include "createDpdt.H"
+
+#include "createK.H"
 
 #include "createMRF.H"
