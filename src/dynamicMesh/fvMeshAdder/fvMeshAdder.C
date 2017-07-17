@@ -26,7 +26,6 @@ License
 #include "fvMesh.H"
 #include "fvMeshAdder.H"
 #include "faceCoupleInfo.H"
-#include "fvMesh.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
