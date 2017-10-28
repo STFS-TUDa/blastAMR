@@ -51,7 +51,7 @@ Foam::label Foam::polyMeshAdder::patchIndex
     const word& pType = p.type();
     const word& pName = p.name();
 
-    label patchi = findIndex(allPatchNames, pName);
+    label patchi = allPatchNames.find(pName);
 
     if (patchi == -1)
     {
@@ -96,7 +96,7 @@ Foam::label Foam::polyMeshAdder::zoneIndex
     DynamicList<word>& names
 )
 {
-    label zoneI = findIndex(names, curName);
+    label zoneI = names.find(curName);
 
     if (zoneI != -1)
     {
@@ -912,7 +912,7 @@ void Foam::polyMeshAdder::mergePointZones
             else if (pointToZone[allPointi] != zoneI)
             {
                 labelList& pZones = addPointToZones[allPointi];
-                if (findIndex(pZones, zoneI) == -1)
+                if (!pZones.found(zoneI))
                 {
                     pZones.append(zoneI);
                 }
@@ -938,7 +938,7 @@ void Foam::polyMeshAdder::mergePointZones
             else if (pointToZone[allPointi] != allZoneI)
             {
                 labelList& pZones = addPointToZones[allPointi];
-                if (findIndex(pZones, allZoneI) == -1)
+                if (!pZones.found(allZoneI))
                 {
                     pZones.append(allZoneI);
                 }
@@ -1070,7 +1070,7 @@ void Foam::polyMeshAdder::mergeFaceZones
                     labelList& fZones = addFaceToZones[allFacei];
                     boolList& flipZones = addFaceToFlips[allFacei];
 
-                    if (findIndex(fZones, zoneI) == -1)
+                    if (!fZones.found(zoneI))
                     {
                         fZones.append(zoneI);
                         flipZones.append(flip0);
@@ -1113,7 +1113,7 @@ void Foam::polyMeshAdder::mergeFaceZones
                     labelList& fZones = addFaceToZones[allFacei];
                     boolList& flipZones = addFaceToFlips[allFacei];
 
-                    if (findIndex(fZones, allZoneI) == -1)
+                    if (!fZones.found(allZoneI))
                     {
                         fZones.append(allZoneI);
                         flipZones.append(flip1);
@@ -1235,7 +1235,7 @@ void Foam::polyMeshAdder::mergeCellZones
             else if (cellToZone[cell0] != zoneI)
             {
                 labelList& cZones = addCellToZones[cell0];
-                if (findIndex(cZones, zoneI) == -1)
+                if (!cZones.found(zoneI))
                 {
                     cZones.append(zoneI);
                 }
@@ -1260,7 +1260,7 @@ void Foam::polyMeshAdder::mergeCellZones
             else if (cellToZone[allCelli] != allZoneI)
             {
                 labelList& cZones = addCellToZones[allCelli];
-                if (findIndex(cZones, allZoneI) == -1)
+                if (!cZones.found(allZoneI))
                 {
                     cZones.append(allZoneI);
                 }
@@ -2035,7 +2035,7 @@ Foam::Map<Foam::label> Foam::polyMeshAdder::findSharedPoints
             label sz = connectedPointLabels.size();
 
             // Check just to make sure.
-            if (findIndex(connectedPointLabels, pointi) != -1)
+            if (connectedPointLabels.found(pointi))
             {
                 FatalErrorInFunction
                     << "Duplicate point in sharedPoint addressing." << endl

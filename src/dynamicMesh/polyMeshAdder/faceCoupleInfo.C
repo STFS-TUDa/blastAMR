@@ -1290,7 +1290,7 @@ Foam::label Foam::faceCoupleInfo::matchEdgeFaces
 
                         forAll(masterEFaces, j)
                         {
-                            if (findIndex(masterFaces, masterEFaces[j]) != -1)
+                            if (masterFaces.found(masterEFaces[j]))
                             {
                                 newCandidates.append(masterEFaces[j]);
                             }
