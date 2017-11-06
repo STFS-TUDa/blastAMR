@@ -886,6 +886,15 @@ void Foam::faceCoupleInfo::findPerfectMatchingFaces
     labelList& mesh1Faces
 )
 {
+    // Quick check: skip face matching if either mesh has no faces
+    if (!mesh0.nFaces() || !mesh1.nFaces())
+    {
+        mesh0Faces.clear();
+        mesh1Faces.clear();
+
+        return;
+    }
+
     // Face centres of external faces (without invoking
     // mesh.faceCentres since mesh might have been clearedOut)
 
