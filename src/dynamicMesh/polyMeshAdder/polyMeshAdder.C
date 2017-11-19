@@ -1183,8 +1183,8 @@ void Foam::polyMeshAdder::mergeFaceZones
 
         labelList order;
         sortedOrder(fzFaces[i], order);
-        fzFaces[i] = UIndirectList<label>(fzFaces[i], order)();
-        fzFlips[i] = UIndirectList<bool>(fzFlips[i], order)();
+        fzFaces[i] = labelUIndList(fzFaces[i], order)();
+        fzFlips[i] = boolUIndList(fzFlips[i], order)();
     }
 }
 
