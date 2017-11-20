@@ -396,7 +396,7 @@ void writeCellDistance
     forAll(cellProcAddressing, proci)
     {
         const labelList& pCells = cellProcAddressing[proci];
-        UIndirectList<label>(cellDecomposition, pCells) = proci;
+        labelUIndList(cellDecomposition, pCells) = proci;
     }
 
     cellDecomposition.write();
