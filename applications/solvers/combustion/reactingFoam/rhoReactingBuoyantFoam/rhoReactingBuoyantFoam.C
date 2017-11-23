@@ -34,7 +34,8 @@ Description
 \*---------------------------------------------------------------------------*/
 
 #include "fvCFD.H"
-#include "rhoCombustionModel.H"
+#include "rhoReactionThermo.H"
+#include "CombustionModel.H"
 #include "turbulentFluidThermoModel.H"
 #include "multivariateScheme.H"
 #include "pimpleControl.H"
