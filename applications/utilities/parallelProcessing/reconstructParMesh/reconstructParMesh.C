@@ -504,7 +504,7 @@ int main(int argc, char *argv[])
 
     if
     (
-        args.optionReadIfPresent("region", regionName)
+        args.readIfPresent("region", regionName)
      && regionName != polyMesh::defaultRegion
     )
     {
@@ -513,7 +513,7 @@ int main(int argc, char *argv[])
     }
 
     scalar mergeTol = defaultMergeTol;
-    args.optionReadIfPresent("mergeTol", mergeTol);
+    args.readIfPresent("mergeTol", mergeTol);
 
     scalar writeTol = Foam::pow(10.0, -scalar(IOstream::defaultPrecision()));
 
@@ -534,7 +534,8 @@ int main(int argc, char *argv[])
     }
 
 
-    const bool fullMatch = args.optionFound("fullMatch");
+    const bool fullMatch = args.found("fullMatch");
+    const bool writeCellDist = args.found("cellDist");
 
     if (fullMatch)
     {
@@ -546,13 +547,9 @@ int main(int argc, char *argv[])
             << nl << "This assumes a correct decomposition." << endl;
     }
 
-    bool writeCellDist = args.optionFound("cellDist");
-
-
     label nProcs = fileHandler().nProcs(args.path());
 
     Info<< "Found " << nProcs << " processor directories" << nl << endl;
-
 
     // Read all time databases
     PtrList<Time> databases(nProcs);
