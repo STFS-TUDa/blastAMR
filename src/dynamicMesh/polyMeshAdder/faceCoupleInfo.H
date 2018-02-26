@@ -441,19 +441,19 @@ public:
             //- Addressing engine for coupled faces on mesh0
             const indirectPrimitivePatch& masterPatch() const
             {
-                return masterPatchPtr_();
+                return *masterPatchPtr_;
             }
 
             //- Addressing engine for coupled faces on mesh1
             const indirectPrimitivePatch& slavePatch() const
             {
-                return slavePatchPtr_();
+                return *slavePatchPtr_;
             }
 
             //- Addressing engine for combined set of faces.
             const primitiveFacePatch& cutFaces() const
             {
-                return cutFacesPtr_();
+                return *cutFacesPtr_;
             }
 
             //- Points for combined set of faces.

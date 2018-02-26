@@ -257,7 +257,7 @@ autoPtr<mapPolyMesh> mergeSharedPoints
 
     if (returnReduce(pointToMaster.size(), sumOp<label>()) == 0)
     {
-        return autoPtr<mapPolyMesh>(nullptr);
+        return autoPtr<mapPolyMesh>();
     }
 
     polyTopoChange meshMod(mesh);
@@ -268,7 +268,7 @@ autoPtr<mapPolyMesh> mergeSharedPoints
     autoPtr<mapPolyMesh> map = meshMod.changeMesh(mesh, false, true);
 
     // Update fields. No inflation, parallel sync.
-    mesh.updateMesh(map);
+    mesh.updateMesh(map());
 
     // pointProcAddressing give indices into the master mesh so adapt them
     // for changed point numbering.
@@ -699,7 +699,7 @@ int main(int argc, char *argv[])
                 (
                     masterMesh[proci],
                     meshToAdd,
-                    couples
+                    couples()
                 );
 
                 // Added processor
@@ -738,7 +738,7 @@ int main(int argc, char *argv[])
                     (
                         masterMesh[proci],
                         masterMesh[next],
-                        couples
+                        couples()
                     );
 
                     // Processors that were already in masterMesh
