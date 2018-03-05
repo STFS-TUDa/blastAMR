@@ -652,9 +652,7 @@ int main(int argc, char *argv[])
                             runTime,
                             IOobject::NO_READ
                         ),
-                        xferCopy(pointField()),
-                        xferCopy(faceList()),
-                        xferCopy(cellList())
+                        Zero
                     )
                 );
 

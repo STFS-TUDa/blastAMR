@@ -1645,18 +1645,15 @@ Foam::autoPtr<Foam::polyMesh> Foam::polyMeshAdder::add
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     // Construct mesh
-    autoPtr<polyMesh> tmesh
+    auto meshPtr = autoPtr<polyMesh>::New
     (
-        new polyMesh
-        (
-            io,
-            xferMove(allPoints),
-            xferMove(allFaces),
-            xferMove(allOwner),
-            xferMove(allNeighbour)
-        )
+        io,
+        std::move(allPoints),
+        std::move(allFaces),
+        std::move(allOwner),
+        std::move(allNeighbour)
     );
-    polyMesh& mesh = tmesh();
+    polyMesh& mesh = *meshPtr;
 
     // Add zones to new mesh.
     addZones
@@ -1676,7 +1673,7 @@ Foam::autoPtr<Foam::polyMesh> Foam::polyMeshAdder::add
     // Add patches to new mesh
     mesh.addPatches(allPatches);
 
-    return tmesh;
+    return meshPtr;
 }
 
 
@@ -1965,10 +1962,10 @@ Foam::autoPtr<Foam::mapAddedPolyMesh> Foam::polyMeshAdder::add
     mesh0.resetMotion();    // delete any oldPoints.
     mesh0.resetPrimitives
     (
-        xferMove(allPoints),
-        xferMove(allFaces),
-        xferMove(allOwner),
-        xferMove(allNeighbour),
+        autoPtr<pointField>::New(std::move(allPoints)),
+        autoPtr<faceList>::New(std::move(allFaces)),
+        autoPtr<labelList>::New(std::move(allOwner)),
+        autoPtr<labelList>::New(std::move(allNeighbour)),
         patchSizes,     // size
         patchStarts,    // patchstarts
         validBoundary   // boundary valid?
