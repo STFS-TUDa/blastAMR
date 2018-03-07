@@ -98,15 +98,12 @@ autoPtr<faceCoupleInfo> determineCoupledFaces
 {
     if (fullMatch || masterMesh.nCells() == 0)
     {
-        return autoPtr<faceCoupleInfo>
+        return autoPtr<faceCoupleInfo>::New
         (
-            new faceCoupleInfo
-            (
-                masterMesh,
-                meshToAdd,
-                mergeDist,      // Absolute merging distance
-                true            // Matching faces identical
-            )
+            masterMesh,
+            meshToAdd,
+            mergeDist,      // Absolute merging distance
+            true            // Matching faces identical
         );
     }
     else
@@ -215,20 +212,17 @@ autoPtr<faceCoupleInfo> determineCoupledFaces
         }
         addFaces.shrink();
 
-        return autoPtr<faceCoupleInfo>
+        return autoPtr<faceCoupleInfo>::New
         (
-            new faceCoupleInfo
-            (
-                masterMesh,
-                masterFaces,
-                meshToAdd,
-                addFaces,
-                mergeDist,      // Absolute merging distance
-                true,           // Matching faces identical?
-                false,          // If perfect match are faces already ordered
-                                // (e.g. processor patches)
-                false           // are faces each on separate patch?
-            )
+            masterMesh,
+            masterFaces,
+            meshToAdd,
+            addFaces,
+            mergeDist,      // Absolute merging distance
+            true,           // Matching faces identical?
+            false,          // If perfect match are faces already ordered
+                            // (e.g. processor patches)
+            false           // are faces each on separate patch?
         );
     }
 }
@@ -257,7 +251,7 @@ autoPtr<mapPolyMesh> mergeSharedPoints
 
     if (returnReduce(pointToMaster.size(), sumOp<label>()) == 0)
     {
-        return autoPtr<mapPolyMesh>(nullptr);
+        return autoPtr<mapPolyMesh>();
     }
 
     polyTopoChange meshMod(mesh);
@@ -268,7 +262,7 @@ autoPtr<mapPolyMesh> mergeSharedPoints
     autoPtr<mapPolyMesh> map = meshMod.changeMesh(mesh, false, true);
 
     // Update fields. No inflation, parallel sync.
-    mesh.updateMesh(map);
+    mesh.updateMesh(map());
 
     // pointProcAddressing give indices into the master mesh so adapt them
     // for changed point numbering.
@@ -658,9 +652,7 @@ int main(int argc, char *argv[])
                             runTime,
                             IOobject::NO_READ
                         ),
-                        xferCopy(pointField()),
-                        xferCopy(faceList()),
-                        xferCopy(cellList())
+                        Zero
                     )
                 );
 
@@ -699,7 +691,7 @@ int main(int argc, char *argv[])
                 (
                     masterMesh[proci],
                     meshToAdd,
-                    couples
+                    couples()
                 );
 
                 // Added processor
@@ -738,7 +730,7 @@ int main(int argc, char *argv[])
                     (
                         masterMesh[proci],
                         masterMesh[next],
-                        couples
+                        couples()
                     );
 
                     // Processors that were already in masterMesh
