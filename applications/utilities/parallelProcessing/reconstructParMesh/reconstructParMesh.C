@@ -421,7 +421,7 @@ void writeCellDistance
                 IOobject::AUTO_WRITE
             ),
             masterMesh,
-            dimensionedScalar("cellDist", dimless, 0),
+            dimensionedScalar(dimless, Zero),
             extrapolatedCalculatedFvPatchScalarField::typeName
         );
 
