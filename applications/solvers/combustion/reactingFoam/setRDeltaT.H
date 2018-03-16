@@ -104,7 +104,7 @@ License
                 mesh
             ),
             mesh,
-            dimensionedScalar("rDeltaTY", rDeltaT.dimensions(), 0)
+            dimensionedScalar(rDeltaT.dimensions(), Zero)
         );
 
         bool foundY = false;
