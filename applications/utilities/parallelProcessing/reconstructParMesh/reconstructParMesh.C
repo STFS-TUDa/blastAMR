@@ -251,7 +251,7 @@ autoPtr<mapPolyMesh> mergeSharedPoints
 
     if (returnReduce(pointToMaster.size(), sumOp<label>()) == 0)
     {
-        return autoPtr<mapPolyMesh>();
+        return nullptr;
     }
 
     polyTopoChange meshMod(mesh);
