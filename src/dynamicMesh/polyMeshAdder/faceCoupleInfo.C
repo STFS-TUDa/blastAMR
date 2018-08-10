@@ -458,8 +458,11 @@ Foam::label Foam::faceCoupleInfo::mostAlignedCutEdge
 
             eVec /= magEVec;
 
-            vector eToEndPoint(localPoints[edgeEnd] - localPoints[otherPointi]);
-            eToEndPoint /= mag(eToEndPoint);
+            const vector eToEndPoint =
+                normalised
+                (
+                    localPoints[edgeEnd] - localPoints[otherPointi]
+                );
 
             scalar cosAngle = eVec & eToEndPoint;
 
