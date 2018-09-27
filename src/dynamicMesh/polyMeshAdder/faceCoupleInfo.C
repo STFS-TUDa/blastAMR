@@ -908,7 +908,7 @@ void Foam::faceCoupleInfo::findPerfectMatchingFaces
             mesh0.faces(),
             mesh0.points(),
             mesh0.nInternalFaces(),
-            mesh0.nFaces() - mesh0.nInternalFaces()
+            mesh0.nBoundaryFaces()
         )
     );
 
@@ -919,7 +919,7 @@ void Foam::faceCoupleInfo::findPerfectMatchingFaces
             mesh1.faces(),
             mesh1.points(),
             mesh1.nInternalFaces(),
-            mesh1.nFaces() - mesh1.nInternalFaces()
+            mesh1.nBoundaryFaces()
         )
     );
 
@@ -984,11 +984,10 @@ void Foam::faceCoupleInfo::findSlavesCoveringMaster
 )
 {
     // Construct octree from all mesh0 boundary faces
-    labelList bndFaces(mesh0.nFaces()-mesh0.nInternalFaces());
-    forAll(bndFaces, i)
-    {
-        bndFaces[i] = mesh0.nInternalFaces() + i;
-    }
+    labelList bndFaces
+    (
+        identity(mesh0.nBoundaryFaces(), mesh0.nInternalFaces())
+    );
 
     treeBoundBox overallBb(mesh0.points());
 
@@ -1016,8 +1015,8 @@ void Foam::faceCoupleInfo::findSlavesCoveringMaster
 
     // Search nearest face for every mesh1 boundary face.
 
-    labelHashSet mesh0Set(mesh0.nFaces() - mesh0.nInternalFaces());
-    labelHashSet mesh1Set(mesh1.nFaces() - mesh1.nInternalFaces());
+    labelHashSet mesh0Set(mesh0.nBoundaryFaces());
+    labelHashSet mesh1Set(mesh1.nBoundaryFaces());
 
     for
     (
