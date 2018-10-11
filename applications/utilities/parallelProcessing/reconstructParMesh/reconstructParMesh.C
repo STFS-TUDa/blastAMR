@@ -550,7 +550,7 @@ int main(int argc, char *argv[])
     forAll(databases, proci)
     {
         Info<< "Reading database "
-            << args.caseName()/fileName(word("processor") + name(proci))
+            << args.caseName()/("processor" + Foam::name(proci))
             << endl;
 
         databases.set
@@ -560,7 +560,7 @@ int main(int argc, char *argv[])
             (
                 Time::controlDictName,
                 args.rootPath(),
-                args.caseName()/fileName(word("processor") + name(proci))
+                args.caseName()/("processor" + Foam::name(proci))
             )
         );
     }
