@@ -30,7 +30,7 @@ actions
     {
         name    c0;
         type    cellSet;
-        action  delete;
+        action  subtract;
         source  boxToCell;
         sourceInfo
         {
