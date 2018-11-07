@@ -32,10 +32,7 @@ actions
         type    cellSet;
         action  subtract;
         source  boxToCell;
-        sourceInfo
-        {
-            box (0.375 0.375 0) (0.625 0.625 0.25);
-        }
+        box     (0.375 0.375 0) (0.625 0.625 0.25);
     }
 );
 
