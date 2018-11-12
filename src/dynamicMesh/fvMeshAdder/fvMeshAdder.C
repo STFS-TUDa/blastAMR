@@ -71,7 +71,8 @@ Foam::autoPtr<Foam::mapAddedPolyMesh> Foam::fvMeshAdder::add
     fvMesh& mesh0,
     const fvMesh& mesh1,
     const faceCoupleInfo& coupleInfo,
-    const bool validBoundary
+    const bool validBoundary,
+    const bool fullyMapped
 )
 {
     mesh0.clearOut();
@@ -101,17 +102,20 @@ Foam::autoPtr<Foam::mapAddedPolyMesh> Foam::fvMeshAdder::add
 
     // Do the mapping of the stored fields
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    fvMeshAdder::MapVolFields<scalar>(map, mesh0, mesh1);
-    fvMeshAdder::MapVolFields<vector>(map, mesh0, mesh1);
-    fvMeshAdder::MapVolFields<sphericalTensor>(map, mesh0, mesh1);
-    fvMeshAdder::MapVolFields<symmTensor>(map, mesh0, mesh1);
-    fvMeshAdder::MapVolFields<tensor>(map, mesh0, mesh1);
+    fvMeshAdder::MapVolFields<scalar>(map, mesh0, mesh1, fullyMapped);
+    fvMeshAdder::MapVolFields<vector>(map, mesh0, mesh1, fullyMapped);
+    fvMeshAdder::MapVolFields<sphericalTensor>(map, mesh0, mesh1, fullyMapped);
+    fvMeshAdder::MapVolFields<symmTensor>(map, mesh0, mesh1, fullyMapped);
+    fvMeshAdder::MapVolFields<tensor>(map, mesh0, mesh1, fullyMapped);
 
-    fvMeshAdder::MapSurfaceFields<scalar>(map, mesh0, mesh1);
-    fvMeshAdder::MapSurfaceFields<vector>(map, mesh0, mesh1);
-    fvMeshAdder::MapSurfaceFields<sphericalTensor>(map, mesh0, mesh1);
-    fvMeshAdder::MapSurfaceFields<symmTensor>(map, mesh0, mesh1);
-    fvMeshAdder::MapSurfaceFields<tensor>(map, mesh0, mesh1);
+    fvMeshAdder::MapSurfaceFields<scalar>(map, mesh0, mesh1, fullyMapped);
+    fvMeshAdder::MapSurfaceFields<vector>(map, mesh0, mesh1, fullyMapped);
+    fvMeshAdder::MapSurfaceFields<sphericalTensor>
+    (
+        map, mesh0, mesh1, fullyMapped
+    );
+    fvMeshAdder::MapSurfaceFields<symmTensor>(map, mesh0, mesh1, fullyMapped);
+    fvMeshAdder::MapSurfaceFields<tensor>(map, mesh0, mesh1, fullyMapped);
 
     fvMeshAdder::MapDimFields<scalar>(map, mesh0, mesh1);
     fvMeshAdder::MapDimFields<vector>(map, mesh0, mesh1);

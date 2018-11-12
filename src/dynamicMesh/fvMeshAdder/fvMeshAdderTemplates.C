@@ -36,7 +36,8 @@ void Foam::fvMeshAdder::MapVolField
     const mapAddedPolyMesh& meshMap,
 
     GeometricField<Type, fvPatchField, volMesh>& fld,
-    const GeometricField<Type, fvPatchField, volMesh>& fldToAdd
+    const GeometricField<Type, fvPatchField, volMesh>& fldToAdd,
+    const bool fullyMapped
 )
 {
     const fvMesh& mesh = fld.mesh();
@@ -142,6 +143,12 @@ void Foam::fvMeshAdder::MapVolField
 
                 directFvPatchFieldMapper patchMapper(newToOld);
 
+                // Override mapping (for use in e.g. fvMeshDistribute where
+                // it sorts mapping out itself)
+                if (fullyMapped)
+                {
+                    patchMapper.hasUnmapped() = false;
+                }
 
                 // Create new patchField with same type as existing one.
                 // Note:
@@ -204,6 +211,13 @@ void Foam::fvMeshAdder::MapVolField
 
                     directFvPatchFieldMapper patchMapper(newToAdded);
 
+                    // Override mapping (for use in e.g. fvMeshDistribute where
+                    // it sorts mapping out itself)
+                    if (fullyMapped)
+                    {
+                        patchMapper.hasUnmapped() = false;
+                    }
+
                     bfld.set
                     (
                         newPatchi,
@@ -250,7 +264,8 @@ void Foam::fvMeshAdder::MapVolFields
 (
     const mapAddedPolyMesh& meshMap,
     const fvMesh& mesh,
-    const fvMesh& meshToAdd
+    const fvMesh& meshToAdd,
+    const bool fullyMapped
 )
 {
     HashTable<const GeometricField<Type, fvPatchField, volMesh>*> fields
@@ -312,7 +327,7 @@ void Foam::fvMeshAdder::MapVolFields
                 << "MapVolFields : mapping " << fld.name()
                 << " and " << fldToAdd.name() << endl;
 
-            MapVolField<Type>(meshMap, fld, fldToAdd);
+            MapVolField<Type>(meshMap, fld, fldToAdd, fullyMapped);
         }
         else
         {
@@ -331,7 +346,8 @@ void Foam::fvMeshAdder::MapSurfaceField
     const mapAddedPolyMesh& meshMap,
 
     GeometricField<Type, fvsPatchField, surfaceMesh>& fld,
-    const GeometricField<Type, fvsPatchField, surfaceMesh>& fldToAdd
+    const GeometricField<Type, fvsPatchField, surfaceMesh>& fldToAdd,
+    const bool fullyMapped
 )
 {
     const fvMesh& mesh = fld.mesh();
@@ -458,6 +474,13 @@ void Foam::fvMeshAdder::MapSurfaceField
 
                 directFvPatchFieldMapper patchMapper(newToOld);
 
+                // Override mapping (for use in e.g. fvMeshDistribute where
+                // it sorts mapping out itself)
+                if (fullyMapped)
+                {
+                    patchMapper.hasUnmapped() = false;
+                }
+
                 // Create new patchField with same type as existing one.
                 // Note:
                 // - boundaryField already in new order so access with newPatchi
@@ -519,6 +542,13 @@ void Foam::fvMeshAdder::MapSurfaceField
 
                     directFvPatchFieldMapper patchMapper(newToAdded);
 
+                    // Override mapping (for use in e.g. fvMeshDistribute where
+                    // it sorts mapping out itself)
+                    if (fullyMapped)
+                    {
+                        patchMapper.hasUnmapped() = false;
+                    }
+
                     bfld.set
                     (
                         newPatchi,
@@ -565,7 +595,8 @@ void Foam::fvMeshAdder::MapSurfaceFields
 (
     const mapAddedPolyMesh& meshMap,
     const fvMesh& mesh,
-    const fvMesh& meshToAdd
+    const fvMesh& meshToAdd,
+    const bool fullyMapped
 )
 {
     typedef GeometricField<Type, fvsPatchField, surfaceMesh> fldType;
@@ -619,7 +650,7 @@ void Foam::fvMeshAdder::MapSurfaceFields
                 << "MapSurfaceFields : mapping " << fld.name()
                 << " and " << fldToAdd.name() << endl;
 
-            MapSurfaceField<Type>(meshMap, fld, fldToAdd);
+            MapSurfaceField<Type>(meshMap, fld, fldToAdd, fullyMapped);
         }
         else
         {
