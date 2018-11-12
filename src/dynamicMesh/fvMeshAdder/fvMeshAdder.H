@@ -89,7 +89,8 @@ private:
             const mapAddedPolyMesh& meshMap,
 
             GeometricField<Type, fvPatchField, volMesh>& fld,
-            const GeometricField<Type, fvPatchField, volMesh>& fldToAdd
+            const GeometricField<Type, fvPatchField, volMesh>& fldToAdd,
+            const bool fullyMapped
         );
 
         //- Update single surfaceField.
@@ -99,7 +100,8 @@ private:
             const mapAddedPolyMesh& meshMap,
 
             GeometricField<Type, fvsPatchField, surfaceMesh>& fld,
-            const GeometricField<Type, fvsPatchField, surfaceMesh>& fldToAdd
+            const GeometricField<Type, fvsPatchField, surfaceMesh>& fldToAdd,
+            const bool fullyMapped
         );
 
         //- Update single dimensionedField.
@@ -126,16 +128,21 @@ public:
             fvMesh& mesh0,
             const fvMesh& mesh1,
             const faceCoupleInfo& coupleInfo,
-            const bool validBoundary = true
+            const bool validBoundary = true,
+            const bool fullyMapped = false
         );
 
-        //- Map all volFields of Type
+        //- Map all volFields of Type.
+        //  Optionally override mapping detection
+        //  of unmapped values (e.g. used in fvMeshDistribute since it fixes
+        //  up mapping itself)
         template<class Type>
         static void MapVolFields
         (
             const mapAddedPolyMesh&,
             const fvMesh& mesh,
-            const fvMesh& meshToAdd
+            const fvMesh& meshToAdd,
+            const bool fullyMapped = false
         );
 
         //- Map all surfaceFields of Type
@@ -144,7 +151,8 @@ public:
         (
             const mapAddedPolyMesh&,
             const fvMesh& mesh,
-            const fvMesh& meshToAdd
+            const fvMesh& meshToAdd,
+            const bool fullyMapped = false
         );
 
         //- Map all DimensionedFields of Type
