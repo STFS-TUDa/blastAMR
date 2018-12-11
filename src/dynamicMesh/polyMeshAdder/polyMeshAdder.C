@@ -949,7 +949,7 @@ void Foam::polyMeshAdder::mergePointZones
     // Extract back into zones
 
     // 1. Count
-    labelList nPoints(zoneNames.size(), 0);
+    labelList nPoints(zoneNames.size(), Zero);
     forAll(pointToZone, allPointi)
     {
         label zoneI = pointToZone[allPointi];
@@ -1127,7 +1127,7 @@ void Foam::polyMeshAdder::mergeFaceZones
     // Extract back into zones
 
     // 1. Count
-    labelList nFaces(zoneNames.size(), 0);
+    labelList nFaces(zoneNames.size(), Zero);
     forAll(faceToZone, allFacei)
     {
         label zoneI = faceToZone[allFacei];
@@ -1271,7 +1271,7 @@ void Foam::polyMeshAdder::mergeCellZones
     // Extract back into zones
 
     // 1. Count
-    labelList nCells(zoneNames.size(), 0);
+    labelList nCells(zoneNames.size(), Zero);
     forAll(cellToZone, allCelli)
     {
         label zoneI = cellToZone[allCelli];
@@ -1506,7 +1506,7 @@ Foam::autoPtr<Foam::polyMesh> Foam::polyMeshAdder::add
     label nCells;
 
     // Sizes per patch
-    labelList nFaces(allPatchNames.size(), 0);
+    labelList nFaces(allPatchNames.size(), Zero);
 
     // Maps
     labelList from0ToAllFaces(mesh0.nFaces(), -1);
@@ -1720,7 +1720,7 @@ Foam::autoPtr<Foam::mapAddedPolyMesh> Foam::polyMeshAdder::add
     labelList allNeighbour;
     label nInternalFaces;
     // Sizes per patch
-    labelList nFaces(allPatchNames.size(), 0);
+    labelList nFaces(allPatchNames.size(), Zero);
     label nCells;
 
     // Maps
