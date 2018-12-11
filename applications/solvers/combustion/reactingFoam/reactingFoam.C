@@ -47,6 +47,11 @@ Description
 
 int main(int argc, char *argv[])
 {
+    argList::addNote
+    (
+        "Solver for combustion with chemical reactions"
+    );
+
     #include "postProcess.H"
 
     #include "addCheckCaseOptions.H"

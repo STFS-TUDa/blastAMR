@@ -28,7 +28,7 @@ Group
     grpCombustionSolvers
 
 Description
-    Solver for combustion with chemical reactions using a density based
+    Solver for combustion with chemical reactions using a density-based
     thermodynamics package with enhanced buoyancy treatment.
 
 \*---------------------------------------------------------------------------*/
@@ -47,6 +47,13 @@ Description
 
 int main(int argc, char *argv[])
 {
+    argList::addNote
+    (
+        "Solver for combustion with chemical reactions using density-based"
+        " thermodynamics package,"
+        " with enhanced buoyancy treatment."
+    );
+
     #include "postProcess.H"
 
     #include "addCheckCaseOptions.H"

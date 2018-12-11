@@ -28,7 +28,7 @@ Group
     grpCombustionSolvers
 
 Description
-    Solver for combustion with chemical reactions using density based
+    Solver for combustion with chemical reactions using density-based
     thermodynamics package.
 
 \*---------------------------------------------------------------------------*/
@@ -48,6 +48,12 @@ Description
 
 int main(int argc, char *argv[])
 {
+    argList::addNote
+    (
+        "Solver for combustion with chemical reactions using density-based"
+        " thermodynamics package."
+    );
+
     #include "postProcess.H"
 
     #include "addCheckCaseOptions.H"
