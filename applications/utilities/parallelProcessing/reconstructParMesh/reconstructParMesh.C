@@ -506,8 +506,7 @@ int main(int argc, char *argv[])
         Info<< "Operating on region " << regionName << nl << endl;
     }
 
-    scalar mergeTol = defaultMergeTol;
-    args.readIfPresent("mergeTol", mergeTol);
+    const scalar mergeTol = args.opt<scalar>("mergeTol", defaultMergeTol);
 
     scalar writeTol = Foam::pow(10.0, -scalar(IOstream::defaultPrecision()));
 
