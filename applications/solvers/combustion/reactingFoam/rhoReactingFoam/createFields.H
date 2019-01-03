@@ -98,26 +98,7 @@ volScalarField Qdot
 
 #include "createMRF.H"
 
-dimensionedScalar rhoMax
-(
-    dimensionedScalar::lookupOrDefault
-    (
-        "rhoMax",
-        pimple.dict(),
-        dimDensity,
-        GREAT
-    )
-);
-
-dimensionedScalar rhoMin
-(
-    dimensionedScalar::lookupOrDefault
-    (
-        "rhoMin",
-        pimple.dict(),
-        dimDensity,
-        0
-    )
-);
+const dimensionedScalar rhoMax("rhoMax", dimDensity, GREAT, pimple.dict());
+const dimensionedScalar rhoMin("rhoMin", dimDensity, Zero, pimple.dict());
 
 #include "createFvOptions.H"
