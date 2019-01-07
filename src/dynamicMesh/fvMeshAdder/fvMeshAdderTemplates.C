@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2015-2016 OpenCFD Ltd.
+    \\  /    A nd           | Copyright (C) 2015-2019 OpenCFD Ltd.
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
                             | Copyright (C) 2011-2016 OpenFOAM Foundation
@@ -64,8 +64,7 @@ void Foam::fvMeshAdder::MapVolField
     // Patch fields from old mesh
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    typename GeometricField<Type, fvPatchField, volMesh>::
-    Boundary& bfld = fld.boundaryFieldRef();
+    auto& bfld = fld.boundaryFieldRef();
 
     {
         const labelList& oldPatchMap = meshMap.oldPatchMap();
@@ -93,7 +92,7 @@ void Foam::fvMeshAdder::MapVolField
 
         forAll(oldPatchMap, patchi)
         {
-            label newPatchi = oldPatchMap[patchi];
+            const label newPatchi = oldPatchMap[patchi];
 
             if (newPatchi != -1)
             {
@@ -270,18 +269,16 @@ void Foam::fvMeshAdder::MapVolFields
     const bool fullyMapped
 )
 {
-    HashTable<const GeometricField<Type, fvPatchField, volMesh>*> fields
+    typedef GeometricField<Type, fvPatchField, volMesh> fldType;
+
+    HashTable<const fldType*> fields
     (
-        mesh.objectRegistry::lookupClass
-        <GeometricField<Type, fvPatchField, volMesh>>
-        ()
+        mesh.objectRegistry::lookupClass<fldType>()
     );
 
-    HashTable<const GeometricField<Type, fvPatchField, volMesh>*> fieldsToAdd
+    HashTable<const fldType*> fieldsToAdd
     (
-        meshToAdd.objectRegistry::lookupClass
-        <GeometricField<Type, fvPatchField, volMesh>>
-        ()
+        meshToAdd.objectRegistry::lookupClass<fldType>()
     );
 
     // It is necessary to enforce that all old-time fields are stored
@@ -289,41 +286,25 @@ void Foam::fvMeshAdder::MapVolFields
     // old-time-level field is mapped before the field itself, sizes
     // will not match.
 
-    for
-    (
-        typename HashTable<const GeometricField<Type, fvPatchField, volMesh>*>::
-            iterator fieldIter = fields.begin();
-        fieldIter != fields.end();
-        ++fieldIter
-    )
+    forAllIters(fields, fieldIter)
     {
+        fldType& fld = const_cast<fldType&>(*fieldIter());
+
         DebugPout
-            << "MapVolFields : Storing old time for " << fieldIter()->name()
+            << "MapVolFields : Storing old time for " << fld.name()
             << endl;
 
-        const_cast<GeometricField<Type, fvPatchField, volMesh>*>(fieldIter())
-            ->storeOldTimes();
+        fld.storeOldTimes();
     }
 
 
-    for
-    (
-        typename HashTable<const GeometricField<Type, fvPatchField, volMesh>*>::
-            iterator fieldIter = fields.begin();
-        fieldIter != fields.end();
-        ++fieldIter
-    )
+    forAllIters(fields, fieldIter)
     {
-        GeometricField<Type, fvPatchField, volMesh>& fld =
-            const_cast<GeometricField<Type, fvPatchField, volMesh>&>
-            (
-                *fieldIter()
-            );
+        fldType& fld = const_cast<fldType&>(*fieldIter());
 
         if (fieldsToAdd.found(fld.name()))
         {
-            const GeometricField<Type, fvPatchField, volMesh>& fldToAdd =
-                *fieldsToAdd[fld.name()];
+            const fldType& fldToAdd = *fieldsToAdd[fld.name()];
 
             DebugPout
                 << "MapVolFields : mapping " << fld.name()
@@ -355,8 +336,7 @@ void Foam::fvMeshAdder::MapSurfaceField
     const fvMesh& mesh = fld.mesh();
     const labelList& oldPatchStarts = meshMap.oldPatchStarts();
 
-    typename GeometricField<Type, fvsPatchField, surfaceMesh>::
-    Boundary& bfld = fld.boundaryFieldRef();
+    auto& bfld = fld.boundaryFieldRef();
 
     // Internal field
     // ~~~~~~~~~~~~~~
@@ -424,7 +404,7 @@ void Foam::fvMeshAdder::MapSurfaceField
 
         forAll(oldPatchMap, patchi)
         {
-            label newPatchi = oldPatchMap[patchi];
+            const label newPatchi = oldPatchMap[patchi];
 
             if (newPatchi != -1)
             {
@@ -618,29 +598,19 @@ void Foam::fvMeshAdder::MapSurfaceFields
     // old-time-level field is mapped before the field itself, sizes
     // will not match.
 
-    for
-    (
-        typename HashTable<const fldType*>::
-            iterator fieldIter = fields.begin();
-        fieldIter != fields.end();
-        ++fieldIter
-    )
+    forAllIters(fields, fieldIter)
     {
+        fldType& fld = const_cast<fldType&>(*fieldIter());
+
         DebugPout
             << "MapSurfaceFields : Storing old time for "
-            << fieldIter()->name() << endl;
+            << fld.name() << endl;
 
-        const_cast<fldType*>(fieldIter())->storeOldTimes();
+        fld.storeOldTimes();
     }
 
 
-    for
-    (
-        typename HashTable<const fldType*>::
-            iterator fieldIter = fields.begin();
-        fieldIter != fields.end();
-        ++fieldIter
-    )
+    forAllIters(fields, fieldIter)
     {
         fldType& fld = const_cast<fldType&>(*fieldIter());
 
@@ -708,13 +678,7 @@ void Foam::fvMeshAdder::MapDimFields
         meshToAdd.objectRegistry::lookupClass<fldType>(true)
     );
 
-    for
-    (
-        typename HashTable<const fldType*>::
-            iterator fieldIter = fields.begin();
-        fieldIter != fields.end();
-        ++fieldIter
-    )
+    forAllIters(fields, fieldIter)
     {
         fldType& fld = const_cast<fldType&>(*fieldIter());
 
