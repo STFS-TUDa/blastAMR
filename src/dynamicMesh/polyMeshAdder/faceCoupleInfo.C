@@ -367,8 +367,9 @@ bool Foam::faceCoupleInfo::regionEdge
                 return true;
             }
         }
-        return false;
     }
+
+    return false;
 }
 
 
