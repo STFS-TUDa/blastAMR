@@ -14,7 +14,6 @@ EXE_INC = \
     -I$(LIB_SRC)/ODE/lnInclude \
     -I$(LIB_SRC)/combustionModels/lnInclude
 
-
 EXE_LIBS = \
     -lfiniteVolume \
     -lfvOptions \
