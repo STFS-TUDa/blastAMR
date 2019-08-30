@@ -19,7 +19,7 @@ functions
     sampleSets
     {
         type    sets;
-        libs    ("libsampling.so");
+        libs    (sampling);
 
         writeControl  timeStep;
         writeInterval 1;
