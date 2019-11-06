@@ -5,6 +5,6 @@ cd ${0%/*} || exit 1                                # Run from this directory
 
 cleanCase0
 
-rm system/cellSetDict > /dev/null 2>&1
+rm -f system/cellSetDict
 
 #------------------------------------------------------------------------------
