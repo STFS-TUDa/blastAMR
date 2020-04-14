@@ -3,7 +3,6 @@ cd "${0%/*}" || exit                                # Run from this directory
 . ${WM_PROJECT_DIR:?}/bin/tools/CleanFunctions      # Tutorial clean functions
 #------------------------------------------------------------------------------
 
-cleanCase
-\cp 0/alpha.water.orig 0/alpha.water
+cleanCase0
 
 #------------------------------------------------------------------------------
