@@ -10,7 +10,6 @@ FoamFile
     version     2.0;
     format      ascii;
     class       volScalarField;
-    location    "0";
     object      k;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -28,7 +27,7 @@ boundaryField
         value           $internalField;
     }
 
-    walls
+    "(obstacle|walls)"
     {
         type            kqRWallFunction;
         value           $internalField;
