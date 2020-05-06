@@ -1,5 +1,4 @@
 EXE_INC = \
-    -I. \
     -I$(FOAM_SOLVERS)/combustion/reactingFoam \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
