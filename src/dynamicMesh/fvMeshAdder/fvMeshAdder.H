@@ -51,7 +51,7 @@ SourceFiles
 namespace Foam
 {
 
-// Forward declaration of classes
+// Forward Declarations
 class IOobject;
 class faceCoupleInfo;
 class IOobjectList;
@@ -68,7 +68,6 @@ class fvMeshAdder
 :
     public polyMeshAdder
 {
-
 private:
 
     // Private Member Functions

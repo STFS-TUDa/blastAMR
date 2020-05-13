@@ -6,6 +6,7 @@
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
     Copyright (C) 2011-2017 OpenFOAM Foundation
+    Copyright (C) 2020 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -147,7 +148,7 @@ namespace Foam
 typedef HashTable<labelList, edge, Hash<edge>> edgeLookup;
 
 
-// Forward declaration of classes
+// Forward Declarations
 class face;
 class primitiveMesh;
 class polyPatch;
@@ -159,16 +160,16 @@ class polyMesh;
 
 class faceCoupleInfo
 {
-    // Private data
+    // Private Data
 
         //- Angle matching tolerance.
         static const scalar angleTol_;
 
         //- Master patch
-        autoPtr<indirectPrimitivePatch> masterPatchPtr_;
+        unique_ptr<indirectPrimitivePatch> masterPatchPtr_;
 
         //- Slave patch
-        autoPtr<indirectPrimitivePatch> slavePatchPtr_;
+        unique_ptr<indirectPrimitivePatch> slavePatchPtr_;
 
 
         //- Description of cut.
@@ -185,7 +186,8 @@ class faceCoupleInfo
         //  them)
         //  Orientation of cutFaces should be same as masterFaces!
         pointField cutPoints_;
-        autoPtr<primitiveFacePatch> cutFacesPtr_;
+
+        unique_ptr<primitiveFacePatch> cutFacesPtr_;
 
         //- Additional point coupling information. Is between points on
         //  boundary of both meshes.
@@ -432,7 +434,7 @@ public:
 
 
     //- Destructor
-    ~faceCoupleInfo();
+    ~faceCoupleInfo() = default;
 
 
 

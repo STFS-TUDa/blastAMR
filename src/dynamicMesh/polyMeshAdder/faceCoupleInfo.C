@@ -2088,12 +2088,6 @@ Foam::faceCoupleInfo::faceCoupleInfo
 }
 
 
-// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
-
-Foam::faceCoupleInfo::~faceCoupleInfo()
-{}
-
-
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 Foam::labelList Foam::faceCoupleInfo::faceLabels(const polyPatch& pp)
