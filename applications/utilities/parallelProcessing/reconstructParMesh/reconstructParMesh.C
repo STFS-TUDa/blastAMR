@@ -6,7 +6,7 @@
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
     Copyright (C) 2011-2016 OpenFOAM Foundation
-    Copyright (C) 2016-2017 OpenCFD Ltd.
+    Copyright (C) 2016-2020 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -509,7 +509,8 @@ int main(int argc, char *argv[])
         Info<< "Operating on region " << regionName << nl << endl;
     }
 
-    const scalar mergeTol = args.get<scalar>("mergeTol", defaultMergeTol);
+    const scalar mergeTol =
+        args.getOrDefault<scalar>("mergeTol", defaultMergeTol);
 
     scalar writeTol = Foam::pow(10.0, -scalar(IOstream::defaultPrecision()));
 
