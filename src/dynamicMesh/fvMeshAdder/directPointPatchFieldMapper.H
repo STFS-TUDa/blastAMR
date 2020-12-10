@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Copyright (C) 2016-2019 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2019 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -22,98 +22,81 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::points0MotionSolver
+    Foam::directPointPatchFieldMapper
 
 Description
-    Virtual base class for displacement motion solvers.
-
-SourceFiles
-    points0MotionSolver.C
+    direct PointPatchFieldMapper
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef points0MotionSolver_H
-#define points0MotionSolver_H
+#ifndef directPointPatchFieldMapper_H
+#define directPointPatchFieldMapper_H
 
-#include "motionSolver.H"
-#include "pointFields.H"
-#include "pointIOField.H"
+#include "pointPatchFieldMapper.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-class mapPolyMesh;
-
 /*---------------------------------------------------------------------------*\
-                   Class points0MotionSolver Declaration
+                 Class directPointPatchFieldMapper Declaration
 \*---------------------------------------------------------------------------*/
 
-class points0MotionSolver
+class directPointPatchFieldMapper
 :
-    public motionSolver
+    public generalPointPatchFieldMapper
 {
-protected:
 
-    // Protected data
+    //- Addressing from new back to old
+    const labelUList& directAddressing_;
 
-        //- Starting points
-        pointIOField points0_;
-
-        //- Return IOobject for points0
-        IOobject points0IO(const polyMesh& mesh) const;
+    //- Does map contain any unmapped values
+    bool hasUnmapped_;
 
 
 public:
 
-    //- Runtime type information
-    TypeName("points0MotionSolver");
-
-
     // Constructors
 
-        //- Construct from mesh and dictionary
-        points0MotionSolver
-        (
-            const polyMesh&,
-            const dictionary&,
-            const word& type
-        );
-
-        //- Disallow default bitwise copy construction
-        points0MotionSolver(const points0MotionSolver&) = delete;
-
+        //- Construct given addressing
+        directPointPatchFieldMapper(const labelUList& directAddressing)
+        :
+            directAddressing_(directAddressing),
+            hasUnmapped_(false)
+        {
+            if (directAddressing_.size() && min(directAddressing_) < 0)
+            {
+                hasUnmapped_ = true;
+            }
+        }
 
     //- Destructor
-    virtual ~points0MotionSolver();
+    virtual ~directPointPatchFieldMapper()
+    {}
 
 
     // Member Functions
 
-        //- Return reference to the reference field
-        pointField& points0()
+        label size() const
         {
-            return points0_;
+            return directAddressing_.size();
         }
 
-        //- Return reference to the reference field
-        const pointField& points0() const
+        bool direct() const
         {
-            return points0_;
+            return true;
         }
 
-        //- Update local data for geometry changes
-        virtual void movePoints(const pointField&);
+        bool hasUnmapped() const
+        {
+            return hasUnmapped_;
+        }
 
-        //-  Update local data for topology changes
-        virtual void updateMesh(const mapPolyMesh&);
-
-
-    // Member Operators
-
-        //- Disallow default bitwise assignment
-        void operator=(const points0MotionSolver&) = delete;
+        const labelUList& directAddressing() const
+        {
+            return directAddressing_;
+        }
 };
 
 
