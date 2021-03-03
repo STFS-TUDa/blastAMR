@@ -6,7 +6,7 @@
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
     Copyright (C) 2011-2016 OpenFOAM Foundation
-    Copyright (C) 2020 OpenCFD Ltd.
+    Copyright (C) 2020-2021 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -246,6 +246,33 @@ class polyMeshAdder
         );
 
 
+        //- Multi-mesh addition
+
+            //- Find n'th processor patch going to nbrProci. Usually n=0 except
+            //- for e.g. processorCyclic
+            static label procPatchIndex
+            (
+                const polyBoundaryMesh& pbm,
+                const label nbrProci,
+                const label n
+            );
+
+            //- Determine shared points. Takes pairs of one-to-one patches
+            //0 that are converted into internal faces
+            static void compactPoints
+            (
+                const UPtrList<polyMesh>& meshes,
+                const labelListList& localBoundaryFace,
+                const labelListList& remoteFaceProc,
+                const labelListList& remoteBoundaryFace,
+                const labelListList& remoteFaceStart,
+                const globalIndex& globalPoints,
+
+                labelListList& pointProcAddressing,
+                labelListList& localPoints
+            );
+
+
 public:
 
     // Member Functions
@@ -294,6 +321,54 @@ public:
                 const polyMesh&,
                 const Map<label>& pointToMaster,
                 polyTopoChange& meshMod
+            );
+
+
+        // Multi-mesh merging. Expects same patches (apart from processor
+        // patches)
+
+            //- Helper: find pairs of processor patches. Return number of
+            //- non-processor patches
+            static label procPatchPairs
+            (
+                const UPtrList<polyMesh>& meshes,
+                List<DynamicList<label>>& localPatch,
+                List<DynamicList<label>>& remoteMesh,
+                List<DynamicList<label>>& remotePatch
+            );
+
+            //- Helper: expand list of coupled patches into pairs of coupled
+            //- faces
+            static void patchFacePairs
+            (
+                const UPtrList<polyMesh>& meshes,
+                const List<DynamicList<label>>& localPatch,
+                const List<DynamicList<label>>& remoteMesh,
+                const List<DynamicList<label>>& remotePatch,
+                labelListList& localBoundaryFace,
+                labelListList& remoteFaceMesh,
+                labelListList& remoteBoundaryFace
+            );
+
+            //- Add multiple meshes
+            static void add
+            (
+                const UPtrList<polyMesh>& meshes,
+                const UList<labelList>& patchMap,
+
+                const labelListList& localBoundaryFace,
+                const labelListList& remoteFaceMesh,
+                const labelListList& remoteBoundaryFace,
+                const labelListList& remoteFaceStart,
+
+                const UList<labelList>& pointZoneMap,
+                const UList<labelList>& faceZoneMap,
+                const UList<labelList>& cellZoneMap,
+
+                polyTopoChange& meshMod,
+                labelListList& cellProcAddressing,
+                labelListList& faceProcAddressing,
+                labelListList& pointProcAddressing
             );
 };
 

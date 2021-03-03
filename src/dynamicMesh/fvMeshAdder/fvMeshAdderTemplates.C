@@ -6,7 +6,7 @@
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
     Copyright (C) 2011-2016 OpenFOAM Foundation
-    Copyright (C) 2015-2019 OpenCFD Ltd.
+    Copyright (C) 2015-2021 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -50,7 +50,7 @@ void Foam::fvMeshAdder::MapVolField
 
     {
         // Store old internal field
-        Field<Type> oldInternalField(fld.primitiveField());
+        const Field<Type> oldInternalField(fld.primitiveField());
 
         // Modify internal field
         Field<Type>& intFld = fld.primitiveFieldRef();
@@ -127,7 +127,7 @@ void Foam::fvMeshAdder::MapVolField
 
         forAll(oldPatchMap, patchi)
         {
-            label newPatchi = oldPatchMap[patchi];
+            const label newPatchi = oldPatchMap[patchi];
 
             if (newPatchi != -1)
             {
@@ -185,7 +185,7 @@ void Foam::fvMeshAdder::MapVolField
         // Add addedMesh patches
         forAll(addedPatchMap, patchi)
         {
-            label newPatchi = addedPatchMap[patchi];
+            const label newPatchi = addedPatchMap[patchi];
 
             if (newPatchi != -1)
             {
@@ -344,7 +344,7 @@ void Foam::fvMeshAdder::MapSurfaceField
 
     // Store old internal field
     {
-        Field<Type> oldField(fld);
+        const Field<Type> oldField(fld);
 
         // Modify internal field
         Field<Type>& intFld = fld.primitiveFieldRef();
@@ -390,7 +390,7 @@ void Foam::fvMeshAdder::MapSurfaceField
 
         forAll(oldPatchMap, patchi)
         {
-            label newPatchi = oldPatchMap[patchi];
+            const label newPatchi = oldPatchMap[patchi];
 
             if (newPatchi != -1)
             {
@@ -439,7 +439,7 @@ void Foam::fvMeshAdder::MapSurfaceField
 
         forAll(oldPatchMap, patchi)
         {
-            label newPatchi = oldPatchMap[patchi];
+            const label newPatchi = oldPatchMap[patchi];
 
             if (newPatchi != -1)
             {
@@ -497,7 +497,7 @@ void Foam::fvMeshAdder::MapSurfaceField
         // Add addedMesh patches
         forAll(addedPatchMap, patchi)
         {
-            label newPatchi = addedPatchMap[patchi];
+            const label newPatchi = addedPatchMap[patchi];
 
             if (newPatchi != -1)
             {
@@ -648,7 +648,7 @@ void Foam::fvMeshAdder::MapDimField
     const fvMesh& mesh = fld.mesh();
 
     // Store old field
-    Field<Type> oldField(fld);
+    const Field<Type> oldField(fld);
 
     fld.setSize(mesh.nCells());
 
@@ -700,6 +700,590 @@ void Foam::fvMeshAdder::MapDimFields
                 << " since not present on mesh to add"
                 << endl;
         }
+    }
+}
+
+
+//- Multi-mesh mapping
+
+template<class Type>
+void Foam::fvMeshAdder::MapDimField
+(
+    UPtrList<DimensionedField<Type, volMesh>>& flds,
+    const labelListList& cellProcAddressing,
+    const bool fullyMapped
+)
+{
+    // Add fields to fields[0] after adding the meshes to meshes[0].
+    // Mesh[0] is the sum of all meshes. Fields are not yet mapped.
+
+    if (flds.size() == 0 || !flds.set(0))
+    {
+        FatalErrorInFunction << "Not valid field at element 0"
+            << " in field list of size " << flds.size() << exit(FatalError);
+    }
+
+
+    // Internal field
+    // ~~~~~~~~~~~~~~
+
+    {
+        // Store old internal field
+        const Field<Type> oldInternalField(flds[0].primitiveField());
+
+        // Modify internal field
+        Field<Type>& intFld = flds[0].primitiveFieldRef();
+
+        // Set to new mesh size
+        intFld.setSize(flds[0].mesh().nCells());
+        // Add fld0
+        intFld.rmap(oldInternalField, cellProcAddressing[0]);
+
+        for (label meshi = 1; meshi < flds.size(); meshi++)
+        {
+            if (flds.set(meshi))
+            {
+                const Field<Type>& addFld = flds[meshi].primitiveFieldRef();
+                intFld.rmap(addFld, cellProcAddressing[meshi]);
+            }
+        }
+    }
+}
+
+
+template<class Type>
+void Foam::fvMeshAdder::MapVolField
+(
+    UPtrList<GeometricField<Type, fvPatchField, volMesh>>& flds,
+    const labelList& oldPatchStarts0,
+    const labelList& oldPatchSizes0,
+    const labelListList& patchProcAddressing,
+    const labelListList& cellProcAddressing,
+    const labelListList& faceProcAddressing,
+    const bool fullyMapped
+)
+{
+    // Add fields to fields[0] after adding the meshes to meshes[0].
+    // Mesh[0] is the sum of all meshes. Fields are not yet mapped.
+
+    if (flds.size() == 0 || !flds.set(0))
+    {
+        FatalErrorInFunction << "Not valid field at element 0"
+            << " in field list of size " << flds.size() << exit(FatalError);
+    }
+
+
+    // Internal field
+    // ~~~~~~~~~~~~~~
+
+    {
+        // Store old internal field
+        const Field<Type> oldInternalField(flds[0].primitiveField());
+
+        // Modify internal field
+        Field<Type>& intFld = flds[0].primitiveFieldRef();
+
+        // Set to new mesh size
+        intFld.setSize(flds[0].mesh().nCells());
+        // Add fld0
+        intFld.rmap(oldInternalField, cellProcAddressing[0]);
+
+        for (label meshi = 1; meshi < flds.size(); meshi++)
+        {
+            if (flds.set(meshi))
+            {
+                const Field<Type>& addFld = flds[meshi].primitiveFieldRef();
+                intFld.rmap(addFld, cellProcAddressing[meshi]);
+            }
+        }
+    }
+
+
+    // Patch fields from old mesh
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    auto& bfld0 = flds[0].boundaryFieldRef();
+    //Pout<< "   Adding patchfields for field " << flds[0].name() << endl;
+    forAll(bfld0, patchi)
+    {
+        //Pout<< "    patch:" << patchi
+        //    << " patch:" << flds[0].mesh().boundaryMesh()[patchi].name()
+        //    << " size:" << flds[0].mesh().boundaryMesh()[patchi].size()
+        //    << endl;
+        //Pout<< "    patchField:" << bfld0[patchi].size()
+        //    << endl;
+
+        labelList newToOld
+        (
+            calcPatchMap
+            (
+                oldPatchStarts0[patchi],
+                oldPatchSizes0[patchi],
+                faceProcAddressing[0],
+                bfld0[patchi].patch().patch(),
+                -1              // unmapped value
+            )
+        );
+
+        directFvPatchFieldMapper patchMapper(newToOld);
+
+        // Override mapping (for use in e.g. fvMeshDistribute where
+        // it sorts mapping out itself)
+        if (fullyMapped)
+        {
+            patchMapper.hasUnmapped() = false;
+        }
+
+        bfld0[patchi].autoMap(patchMapper);
+    }
+
+    for (label meshi = 1; meshi < flds.size(); meshi++)
+    {
+        if (flds.set(meshi))
+        {
+            const auto& bfld = flds[meshi].boundaryFieldRef();
+
+            const labelList& patchMap = patchProcAddressing[meshi];
+
+            forAll(patchMap, oldPatchi)
+            {
+                const auto& fvp = bfld[oldPatchi].patch();
+                const label newPatchi = patchMap[oldPatchi];
+
+                //Pout<< "    oldPatch:" << oldPatchi
+                //    << " newPatch:" << newPatchi << endl;
+
+                if (newPatchi >= 0 && newPatchi < bfld0.size())
+                {
+                    const auto& fvp0 = bfld0[newPatchi].patch();
+                    labelList addedToNew(bfld[oldPatchi].size(), -1);
+                    forAll(addedToNew, i)
+                    {
+                        const label newFacei =
+                            faceProcAddressing[meshi][fvp.start()+i];
+                        const label patchFacei = newFacei-fvp0.start();
+                        if
+                        (
+                            patchFacei >= 0
+                         && patchFacei < fvp0.size()
+                        )
+                        {
+                            addedToNew[i] = patchFacei;
+                        }
+                    }
+
+                    bfld0[newPatchi].rmap(bfld[oldPatchi], addedToNew);
+                }
+                else
+                {
+                    WarningInFunction << "Ignoring old patch "
+                        << bfld[oldPatchi].patch().name() << " on field "
+                        << flds[meshi].name() << endl;  //exit(FatalError);
+                }
+            }
+        }
+    }
+}
+
+
+template<class Type>
+void Foam::fvMeshAdder::MapSurfaceField
+(
+    UPtrList<GeometricField<Type, fvsPatchField, surfaceMesh>>& flds,
+    const labelList& oldFaceOwner0,
+    const labelList& oldPatchStarts0,
+    const labelList& oldPatchSizes0,
+    const labelListList& patchProcAddressing,
+    const labelListList& cellProcAddressing,
+    const labelListList& faceProcAddressing,
+    const bool fullyMapped
+)
+{
+    // Add fields to fields[0] after adding the meshes to meshes[0].
+    // Mesh[0] is the sum of all meshes. Fields are not yet mapped.
+
+    if (flds.size() == 0 || !flds.set(0))
+    {
+        FatalErrorInFunction << "Not valid field at element 0"
+            << " in field list of size " << flds.size() << exit(FatalError);
+    }
+
+    const fvMesh& mesh0 = flds[0].mesh();
+
+
+    // Internal field
+    // ~~~~~~~~~~~~~~
+
+    {
+        // Store old internal field
+        const Field<Type> oldInternalField(flds[0].primitiveField());
+
+        // Modify internal field
+        Field<Type>& intFld = flds[0].primitiveFieldRef();
+
+        // Set to new mesh size
+        intFld.setSize(mesh0.nInternalFaces());
+
+        // Map
+        forAll(flds, meshi)
+        {
+            if (flds.set(meshi))
+            {
+                const labelList& faceMap = faceProcAddressing[meshi];
+                const auto& fld = flds[meshi];
+
+                // Map internal field
+                if (meshi == 0)
+                {
+                    intFld.rmap(oldInternalField, faceMap);
+                }
+                else
+                {
+                    intFld.rmap(fld.primitiveField(), faceMap);
+                }
+
+                // Map faces that were boundary faces but are not anymore.
+                // There will be two meshes that provide the same face. Use
+                // owner one.
+                const auto& bfld = flds[meshi].boundaryField();
+
+                forAll(bfld, oldPatchi)
+                {
+                    const fvsPatchField<Type>& pf = bfld[oldPatchi];
+                    //Pout<< "patch:" << pf.patch().name() << endl;
+                    forAll(pf, patchFacei)
+                    {
+                        // Get new face, mapped face owner
+                        label newFacei;
+                        label newOwn;
+                        if (meshi == 0)
+                        {
+                            // Do not access mesh information since in-place
+                            // modified
+                            const label oldFacei =
+                                oldPatchStarts0[oldPatchi]+patchFacei;
+                            newFacei = faceProcAddressing[meshi][oldFacei];
+                            const label oldOwn = oldFaceOwner0[oldFacei];
+                            newOwn = cellProcAddressing[meshi][oldOwn];
+
+                            //Pout<< "MESH0: pfi:" << patchFacei
+                            //    << " old face:" << oldFacei
+                            //    << " new face:" << newFacei
+                            //    << " at:" << mesh0.faceCentres()[newFacei]
+                            //    << " oldOwn:" << oldOwn
+                            //    << " newOwn:" << newOwn << endl;
+                        }
+                        else
+                        {
+                            const label oldFacei =
+                                pf.patch().start()+patchFacei;
+                            newFacei = faceProcAddressing[meshi][oldFacei];
+                            const label oldOwn =
+                                fld.mesh().faceOwner()[oldFacei];
+                            newOwn = cellProcAddressing[meshi][oldOwn];
+
+                            //Pout<< "MESH:" << meshi << " pfi:" << patchFacei
+                            //    << " old face:" << oldFacei
+                            //    << " new face:" << newFacei
+                            //    << " at:" << mesh0.faceCentres()[newFacei]
+                            //    << " oldOwn:" << oldOwn
+                            //    << " newOwn:" << newOwn << endl;
+                        }
+
+                        if
+                        (
+                            newFacei >= 0
+                         && newFacei < mesh0.nInternalFaces()
+                         && (newOwn == mesh0.faceOwner()[newFacei])
+                        )
+                        {
+                            intFld[newFacei] = pf[patchFacei];
+                        }
+                        //else
+                        //{
+                        //    Pout<< "    ignoring pfi:" << patchFacei
+                        //        << " value:" << pf[patchFacei]
+                        //        << " since newFacei:" << newFacei
+                        //        << " since newOwn:" << newOwn
+                        //        << " own:" << mesh0.faceOwner()[newFacei]
+                        //        << endl;
+                        //}
+                    }
+                }
+            }
+        }
+    }
+
+
+    // Patch fields from old mesh
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    auto& bfld0 = flds[0].boundaryFieldRef();
+    forAll(bfld0, patchi)
+    {
+        labelList newToOld
+        (
+            calcPatchMap
+            (
+                oldPatchStarts0[patchi],
+                oldPatchSizes0[patchi],
+                faceProcAddressing[0],
+                bfld0[patchi].patch().patch(),
+                -1              // unmapped value
+            )
+        );
+
+        directFvPatchFieldMapper patchMapper(newToOld);
+
+        // Override mapping (for use in e.g. fvMeshDistribute where
+        // it sorts mapping out itself)
+        if (fullyMapped)
+        {
+            patchMapper.hasUnmapped() = false;
+        }
+
+        bfld0[patchi].autoMap(patchMapper);
+    }
+
+    for (label meshi = 1; meshi < flds.size(); meshi++)
+    {
+        if (flds.set(meshi))
+        {
+            const auto& bfld = flds[meshi].boundaryFieldRef();
+
+            const labelList& patchMap = patchProcAddressing[meshi];
+
+            forAll(patchMap, oldPatchi)
+            {
+                const auto& fvp = bfld[oldPatchi].patch();
+                const label newPatchi = patchMap[oldPatchi];
+                if (newPatchi >= 0 && newPatchi < bfld0.size())
+                {
+                    const auto& fvp0 = bfld0[newPatchi].patch();
+                    labelList addedToNew(bfld[oldPatchi].size(), -1);
+                    forAll(addedToNew, i)
+                    {
+                        const label newFacei =
+                            faceProcAddressing[meshi][fvp.start()+i];
+                        const label patchFacei = newFacei-fvp0.start();
+                        if
+                        (
+                            patchFacei >= 0
+                         && patchFacei < fvp0.size()
+                        )
+                        {
+                            addedToNew[i] = patchFacei;
+                        }
+                    }
+
+                    bfld0[newPatchi].rmap(bfld[oldPatchi], addedToNew);
+                }
+                else
+                {
+                    WarningInFunction << "Ignoring old patch "
+                        << bfld[oldPatchi].patch().name() << " on field "
+                        << flds[meshi].name() << endl;  //exit(FatalError);
+                }
+            }
+        }
+    }
+}
+
+
+template<class Type>
+void Foam::fvMeshAdder::MapVolFields
+(
+    const UPtrList<fvMesh>& meshes,
+    const labelList& oldPatchStarts0,
+    const labelList& oldPatchSizes0,
+    const labelListList& patchProcAddressing,
+    const labelListList& cellProcAddressing,
+    const labelListList& faceProcAddressing,
+    const labelListList& pointProcAddressing,
+    const bool fullyMapped
+)
+{
+    typedef GeometricField<Type, fvPatchField, volMesh> fldType;
+
+    if (meshes.size() == 0 || !meshes.set(0))
+    {
+        FatalErrorInFunction << "Not valid field at element 0"
+            << " in mesh list of size " << meshes.size() << exit(FatalError);
+    }
+    const fvMesh& mesh0 = meshes[0];
+
+    HashTable<const fldType*> fields
+    (
+        mesh0.objectRegistry::lookupClass<fldType>()
+    );
+
+
+    // It is necessary to enforce that all old-time fields are stored
+    // before the mapping is performed.  Otherwise, if the
+    // old-time-level field is mapped before the field itself, sizes
+    // will not match.
+
+    for (const auto& fld : fields)
+    {
+        DebugPout
+            << "MapVolFields : Storing old time for " << fld->name()
+            << endl;
+
+        const_cast<fldType&>(*fld).storeOldTimes();
+    }
+
+
+    for (const auto& fld : fields)
+    {
+        const word& name0 = fld->name();
+
+        DebugPout
+            << "MapVolFields : mapping " << name0 << endl;
+
+        UPtrList<fldType> meshToField(meshes.size());
+        forAll(meshes, meshi)
+        {
+            if (meshes.set(meshi))
+            {
+                auto& meshFld = meshes[meshi].
+                    objectRegistry::lookupObjectRef<fldType>(name0);
+                meshToField.set(meshi, &meshFld);
+            }
+        }
+
+        MapVolField
+        (
+            meshToField,
+            oldPatchStarts0,
+            oldPatchSizes0,
+            patchProcAddressing,
+            cellProcAddressing,
+            faceProcAddressing,
+            fullyMapped
+        );
+    }
+}
+
+
+template<class Type>
+void Foam::fvMeshAdder::MapDimFields
+(
+    const UPtrList<fvMesh>& meshes,
+    const labelListList& cellProcAddressing,
+    const bool fullyMapped
+)
+{
+    typedef DimensionedField<Type, volMesh> fldType;
+
+    if (meshes.size() == 0 || !meshes.set(0))
+    {
+        FatalErrorInFunction << "Not valid field at element 0"
+            << " in mesh list of size " << meshes.size() << exit(FatalError);
+    }
+    const fvMesh& mesh0 = meshes[0];
+
+    HashTable<const fldType*> fields
+    (
+        mesh0.objectRegistry::lookupClass<fldType>()
+    );
+
+
+    for (const auto& fld : fields)
+    {
+        const word& name0 = fld->name();
+
+        DebugPout
+            << "MapDimFields : mapping " << name0 << endl;
+
+        UPtrList<fldType> meshToField(meshes.size());
+        forAll(meshes, meshi)
+        {
+            if (meshes.set(meshi))
+            {
+                auto& meshFld = meshes[meshi].
+                    objectRegistry::lookupObjectRef<fldType>(name0);
+                meshToField.set(meshi, &meshFld);
+            }
+        }
+
+        MapDimField(meshToField, cellProcAddressing, fullyMapped);
+    }
+}
+
+
+template<class Type>
+void Foam::fvMeshAdder::MapSurfaceFields
+(
+    const UPtrList<fvMesh>& meshes,
+    const labelList& oldFaceOwner0,
+    const labelList& oldPatchStarts0,
+    const labelList& oldPatchSizes0,
+    const labelListList& patchProcAddressing,
+    const labelListList& cellProcAddressing,
+    const labelListList& faceProcAddressing,
+    const labelListList& pointProcAddressing,
+    const bool fullyMapped
+)
+{
+    typedef GeometricField<Type, fvsPatchField, surfaceMesh> fldType;
+
+    if (meshes.size() == 0 || !meshes.set(0))
+    {
+        FatalErrorInFunction << "Not valid field at element 0"
+            << " in mesh list of size " << meshes.size() << exit(FatalError);
+    }
+    const auto& mesh0 = meshes[0];
+
+    HashTable<const fldType*> fields
+    (
+        mesh0.objectRegistry::lookupClass<fldType>()
+    );
+
+
+    // It is necessary to enforce that all old-time fields are stored
+    // before the mapping is performed.  Otherwise, if the
+    // old-time-level field is mapped before the field itself, sizes
+    // will not match.
+
+    for (const auto& fld : fields)
+    {
+        DebugPout
+            << "MapSurfaceFields : Storing old time for " << fld->name()
+            << endl;
+
+        const_cast<fldType&>(*fld).storeOldTimes();
+    }
+
+
+    for (const auto& fld : fields)
+    {
+        const word& name0 = fld->name();
+
+        DebugPout
+            << "MapSurfaceFields : Mapping " << fld->name() << endl;
+
+        UPtrList<fldType> meshToField(meshes.size());
+        forAll(meshes, meshi)
+        {
+            if (meshes.set(meshi))
+            {
+                auto& meshFld = meshes[meshi].
+                    objectRegistry::lookupObjectRef<fldType>(name0);
+                meshToField.set(meshi, &meshFld);
+            }
+        }
+
+        MapSurfaceField
+        (
+            meshToField,
+            oldFaceOwner0,
+            oldPatchStarts0,
+            oldPatchSizes0,
+            patchProcAddressing,
+            cellProcAddressing,
+            faceProcAddressing,
+            fullyMapped
+        );
     }
 }
 

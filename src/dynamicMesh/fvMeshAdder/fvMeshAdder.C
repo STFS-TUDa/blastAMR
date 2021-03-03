@@ -6,6 +6,7 @@
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
     Copyright (C) 2011-2016 OpenFOAM Foundation
+    Copyright (C) 2021 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -28,6 +29,7 @@ License
 #include "fvMesh.H"
 #include "fvMeshAdder.H"
 #include "faceCoupleInfo.H"
+#include "polyTopoChange.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -50,8 +52,8 @@ Foam::labelList Foam::fvMeshAdder::calcPatchMap
 {
     labelList newToOld(newPatch.size(), unmappedValue);
 
-    label newStart = newPatch.start();
-    label newSize = newPatch.size();
+    const label newStart = newPatch.start();
+    const label newSize = newPatch.size();
 
     for (label i = 0; i < oldSize; i++)
     {
@@ -124,6 +126,337 @@ Foam::autoPtr<Foam::mapAddedPolyMesh> Foam::fvMeshAdder::add
     fvMeshAdder::MapDimFields<sphericalTensor>(map, mesh0, mesh1);
     fvMeshAdder::MapDimFields<symmTensor>(map, mesh0, mesh1);
     fvMeshAdder::MapDimFields<tensor>(map, mesh0, mesh1);
+
+    return mapPtr;
+}
+
+
+Foam::autoPtr<Foam::mapPolyMesh> Foam::fvMeshAdder::add
+(
+    const label myProci,            // index of mesh to modify
+    UPtrList<fvMesh>& fvMeshes,
+    const labelList& oldFaceOwner,  // face owner for myProci mesh
+
+    // Coupling info
+    const labelListList& localBoundaryFace,
+    const labelListList& remoteFaceProc,
+    const labelListList& remoteBoundaryFace,
+
+    labelListList& constructPatchMap,
+    labelListList& constructCellMap,
+    labelListList& constructFaceMap,
+    labelListList& constructPointMap
+)
+{
+    // Do in-place addition. Modifies fvMeshes[myProci]
+
+    UPtrList<polyMesh> meshes(fvMeshes.size());
+    forAll(fvMeshes, proci)
+    {
+        if (fvMeshes.set(proci))
+        {
+            meshes.set(proci, &fvMeshes[proci]);
+        }
+    }
+
+
+    // All matched faces assumed to have vertex0 matched
+    labelListList remoteFaceStart(meshes.size());
+    forAll(localBoundaryFace, proci)
+    {
+        const labelList& procFaces = localBoundaryFace[proci];
+        remoteFaceStart[proci].setSize(procFaces.size(), 0);
+    }
+
+    // Assume all meshes have same global patches
+    labelListList patchMap(meshes.size());
+    labelListList pointZoneMap(meshes.size());
+    labelListList faceZoneMap(meshes.size());
+    labelListList cellZoneMap(meshes.size());
+    forAll(meshes, proci)
+    {
+        if (meshes.set(proci))
+        {
+            const polyMesh& mesh = meshes[proci];
+            patchMap[proci] = identity(mesh.boundaryMesh().nNonProcessor());
+            pointZoneMap[proci] = identity(mesh.pointZones().size());
+            faceZoneMap[proci] = identity(mesh.faceZones().size());
+            cellZoneMap[proci] = identity(mesh.cellZones().size());
+        }
+    }
+
+
+    // Swap myProci to 0th element
+    if (myProci != 0)
+    {
+        polyMesh* pm0 = meshes.get(0);
+        polyMesh* pmi = meshes.get(myProci);
+        meshes.set(0, pmi);
+        meshes.set(myProci, pm0);
+
+        fvMesh* fvm0 = fvMeshes.get(0);
+        fvMesh* fvmi = fvMeshes.get(myProci);
+        fvMeshes.set(0, fvmi);
+        fvMeshes.set(myProci, fvm0);
+
+        //Pout<< "swapped from 0 to " << myProci << endl;
+        //forAll(meshes, meshi)
+        //{
+        //    Pout<< "meshi:" << meshi << endl;
+        //    if (meshes.set(meshi))
+        //    {
+        //        Pout<< "    nCells:" << meshes[meshi].nCells() << endl;
+        //    }
+        //}
+
+
+        // Swap (and renumber) patch face information
+        labelListList& lbf = const_cast<labelListList&>(localBoundaryFace);
+        std::swap(lbf[0], lbf[myProci]);
+
+        labelListList& rfp = const_cast<labelListList&>(remoteFaceProc);
+        std::swap(rfp[0], rfp[myProci]);
+        forAll(rfp, proci)
+        {
+            for (label& proc : rfp[proci])
+            {
+                if (proc == 0) proc = myProci;
+                else if (proc == myProci) proc = 0;
+            }
+        }
+        labelListList& rbf = const_cast<labelListList&>(remoteBoundaryFace);
+        std::swap(rbf[0], rbf[myProci]);
+
+        labelListList& rfs = const_cast<labelListList&>(remoteFaceStart);
+        std::swap(rfs[0], rfs[myProci]);
+
+        // Swap optional renumbering maps
+        std::swap(patchMap[0], patchMap[myProci]);
+        std::swap(pointZoneMap[0], pointZoneMap[myProci]);
+        std::swap(faceZoneMap[0], faceZoneMap[myProci]);
+        std::swap(cellZoneMap[0], cellZoneMap[myProci]);
+    }
+
+    polyTopoChange meshMod(meshes[0].boundaryMesh().size(), true);
+    // Collect statistics for sizing
+    label nCells = 0;
+    label nFaces = 0;
+    label nPoints = 0;
+    forAll(meshes, proci)
+    {
+        if (meshes.set(proci))
+        {
+            const polyMesh& mesh = meshes[proci];
+            nCells += mesh.nCells();
+            nFaces += mesh.nFaces();
+            nPoints += mesh.nPoints();
+        }
+    }
+    meshMod.setCapacity(nPoints, nFaces, nCells);
+
+    // Add all cells in meshes' order
+    polyMeshAdder::add
+    (
+        meshes,
+        patchMap,
+
+        // Information on (one-to-one) boundary faces to stitch
+        localBoundaryFace,
+        remoteFaceProc,
+        remoteBoundaryFace,
+        remoteFaceStart,
+
+        pointZoneMap,
+        faceZoneMap,
+        cellZoneMap,
+
+        meshMod,
+
+        constructCellMap,
+        constructFaceMap,
+        constructPointMap
+    );
+
+    // Replace mesh
+    autoPtr<mapPolyMesh> mapPtr
+    (
+        meshMod.changeMesh
+        (
+            fvMeshes[0],        // note: still swapped to position 0
+            false               // no inflation
+        )
+    );
+
+    // Update fields. Note that this tries to interpolate from the mesh
+    // before adding all the remote meshes so is quite wrong.
+    //fvMeshes[0.updateMesh(mapPtr());
+    // Update polyMesh but not fvMesh to avoid mapping all the fields
+    fvMeshes[0].polyMesh::updateMesh(mapPtr());
+
+    // Now reverseFaceMap contains from order in which face was added
+    // to mesh face (after e.g. upper-triangular ordering)
+
+    // Renumber output of any mesh ordering done by changeMesh
+    for (labelList& cellMap : constructCellMap)
+    {
+        inplaceRenumber(mapPtr().reverseCellMap(), cellMap);
+    }
+    for (labelList& faceMap : constructFaceMap)
+    {
+        inplaceRenumber(mapPtr().reverseFaceMap(), faceMap);
+    }
+    for (labelList& pointMap : constructPointMap)
+    {
+        inplaceRenumber(mapPtr().reversePointMap(), pointMap);
+    }
+
+    // constructPatchMap is patchMap with -1 for the removed
+    // patches
+    forAll(meshes, meshi)
+    {
+        if (meshes.set(meshi))
+        {
+            constructPatchMap[meshi] = patchMap[meshi];
+        }
+    }
+
+    // Map all fields
+    fvMeshAdder::MapVolFields<scalar>
+    (
+        fvMeshes,
+        mapPtr().oldPatchStarts(),
+        mapPtr().oldPatchSizes(),
+        patchMap,
+        constructCellMap,
+        constructFaceMap,
+        constructPointMap
+    );
+    fvMeshAdder::MapVolFields<vector>
+    (
+        fvMeshes,
+        mapPtr().oldPatchStarts(),
+        mapPtr().oldPatchSizes(),
+        patchMap,
+        constructCellMap,
+        constructFaceMap,
+        constructPointMap
+    );
+    fvMeshAdder::MapVolFields<sphericalTensor>
+    (
+        fvMeshes,
+        mapPtr().oldPatchStarts(),
+        mapPtr().oldPatchSizes(),
+        patchMap,
+        constructCellMap,
+        constructFaceMap,
+        constructPointMap
+    );
+    fvMeshAdder::MapVolFields<symmTensor>
+    (
+        fvMeshes,
+        mapPtr().oldPatchStarts(),
+        mapPtr().oldPatchSizes(),
+        patchMap,
+        constructCellMap,
+        constructFaceMap,
+        constructPointMap
+    );
+    fvMeshAdder::MapVolFields<tensor>
+    (
+        fvMeshes,
+        mapPtr().oldPatchStarts(),
+        mapPtr().oldPatchSizes(),
+        patchMap,
+        constructCellMap,
+        constructFaceMap,
+        constructPointMap
+    );
+    fvMeshAdder::MapSurfaceFields<scalar>
+    (
+        fvMeshes,
+        oldFaceOwner,
+        mapPtr().oldPatchStarts(),
+        mapPtr().oldPatchSizes(),
+        patchMap,
+        constructCellMap,
+        constructFaceMap,
+        constructPointMap
+    );
+    fvMeshAdder::MapSurfaceFields<vector>
+    (
+        fvMeshes,
+        oldFaceOwner,
+        mapPtr().oldPatchStarts(),
+        mapPtr().oldPatchSizes(),
+        patchMap,
+        constructCellMap,
+        constructFaceMap,
+        constructPointMap
+    );
+    fvMeshAdder::MapSurfaceFields<sphericalTensor>
+    (
+        fvMeshes,
+        oldFaceOwner,
+        mapPtr().oldPatchStarts(),
+        mapPtr().oldPatchSizes(),
+        patchMap,
+        constructCellMap,
+        constructFaceMap,
+        constructPointMap
+    );
+    fvMeshAdder::MapSurfaceFields<symmTensor>
+    (
+        fvMeshes,
+        oldFaceOwner,
+        mapPtr().oldPatchStarts(),
+        mapPtr().oldPatchSizes(),
+        patchMap,
+        constructCellMap,
+        constructFaceMap,
+        constructPointMap
+    );
+    fvMeshAdder::MapSurfaceFields<tensor>
+    (
+        fvMeshes,
+        oldFaceOwner,
+        mapPtr().oldPatchStarts(),
+        mapPtr().oldPatchSizes(),
+        patchMap,
+        constructCellMap,
+        constructFaceMap,
+        constructPointMap
+    );
+
+
+    // Swap returned data back to processor order
+    if (myProci != 0)
+    {
+        fvMesh* fvm0 = fvMeshes.get(0);
+        fvMesh* fvmi = fvMeshes.get(myProci);
+        fvMeshes.set(0, fvmi);
+        fvMeshes.set(myProci, fvm0);
+
+        // Swap (and renumber) patch face information
+        labelListList& lbf = const_cast<labelListList&>(localBoundaryFace);
+        std::swap(lbf[0], lbf[myProci]);
+        labelListList& rfp = const_cast<labelListList&>(remoteFaceProc);
+        std::swap(rfp[0], rfp[myProci]);
+        forAll(rfp, proci)
+        {
+            for (label& proc : rfp[proci])
+            {
+                if (proc == 0) proc = myProci;
+                else if (proc == myProci) proc = 0;
+            }
+        }
+        labelListList& rbf = const_cast<labelListList&>(remoteBoundaryFace);
+        std::swap(rbf[0], rbf[myProci]);
+
+        std::swap(constructPatchMap[0], constructPatchMap[myProci]);
+        std::swap(constructCellMap[0], constructCellMap[myProci]);
+        std::swap(constructFaceMap[0], constructFaceMap[myProci]);
+        std::swap(constructPointMap[0], constructPointMap[myProci]);
+    }
 
     return mapPtr;
 }
