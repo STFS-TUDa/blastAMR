@@ -317,8 +317,14 @@ Foam::autoPtr<Foam::mapPolyMesh> Foam::fvMeshAdder::add
         if (meshes.set(meshi))
         {
             constructPatchMap[meshi] = patchMap[meshi];
+            constructPatchMap[meshi].setSize
+            (
+                meshes[meshi].boundaryMesh().size(),
+                -1
+            );
         }
     }
+
 
     // Map all fields
     fvMeshAdder::MapVolFields<scalar>
