@@ -1033,18 +1033,6 @@ int main(int argc, char *argv[])
                 meshes.set(proci, &fvMeshes[proci]);
             }
 
-            // Collect statistics
-            label nCells = 0;
-            label nFaces = 0;
-            label nPoints = 0;
-            forAll(meshes, proci)
-            {
-                const polyMesh& mesh = meshes[proci];
-                nCells += mesh.nCells();
-                nFaces += mesh.nFaces();
-                nPoints += mesh.nPoints();
-            }
-
             // Get pairs of patches to stitch. These pairs have to
             // - have ordered, opposite faces (so one to one correspondence)
             List<DynamicList<label>> localPatch;
@@ -1167,16 +1155,25 @@ int main(int argc, char *argv[])
             masterOwner = masterMesh.faceOwner();
 
             // Write reconstructed mesh
-            const word oldCaseName = masterMesh.time().caseName();
-            const_cast<Time&>(masterMesh.time()).caseName() =
-                runTime.caseName();
+            // Override:
+            //  - caseName
+            //  - processorCase flag
+            // so the resulting mesh goes to the correct location (even with
+            // collated). The better way of solving this is to construct
+            // (zero) mesh on the undecomposed runTime.
+            Time& masterTime = const_cast<Time&>(masterMesh.time());
+
+            const word oldCaseName = masterTime.caseName();
+            masterTime.caseName() = runTime.caseName();
+            const bool oldProcCase(masterTime.processorCase(false));
 
             writeMesh(masterMesh, cellProcAddressing);
             if (writeCellDist)
             {
                 writeDistribution(runTime, masterMesh, cellProcAddressing);
             }
-            const_cast<Time&>(masterMesh.time()).caseName() = oldCaseName;
+            masterTime.caseName() = oldCaseName;
+            masterTime.processorCase(oldProcCase);
         }
 
 
