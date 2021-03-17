@@ -432,7 +432,11 @@ Foam::autoPtr<Foam::mapPolyMesh> Foam::fvMeshAdder::add
         constructFaceMap,
         constructPointMap
     );
-
+    fvMeshAdder::MapDimFields<scalar>(fvMeshes, constructCellMap);
+    fvMeshAdder::MapDimFields<vector>(fvMeshes, constructCellMap);
+    fvMeshAdder::MapDimFields<sphericalTensor>(fvMeshes, constructCellMap);
+    fvMeshAdder::MapDimFields<symmTensor>(fvMeshes, constructCellMap);
+    fvMeshAdder::MapDimFields<tensor>(fvMeshes, constructCellMap);
 
     // Swap returned data back to processor order
     if (myProci != 0)

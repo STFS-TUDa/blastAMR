@@ -292,8 +292,7 @@ void Foam::fvMeshAdder::MapVolFields
         fldType& fld = const_cast<fldType&>(*fieldIter());
 
         DebugPout
-            << "MapVolFields : Storing old time for " << fld.name()
-            << endl;
+            << "MapVolFields : Storing old time for " << fld.name() << endl;
 
         fld.storeOldTimes();
     }
@@ -317,8 +316,7 @@ void Foam::fvMeshAdder::MapVolFields
         {
             WarningInFunction
                 << "Not mapping field " << fld.name()
-                << " since not present on mesh to add"
-                << endl;
+                << " since not present on mesh to add" << endl;
         }
     }
 }
@@ -604,8 +602,7 @@ void Foam::fvMeshAdder::MapSurfaceFields
         fldType& fld = const_cast<fldType&>(*fieldIter());
 
         DebugPout
-            << "MapSurfaceFields : Storing old time for "
-            << fld.name() << endl;
+            << "MapSurfaceFields : Storing old time for " << fld.name() << endl;
 
         fld.storeOldTimes();
     }
@@ -629,8 +626,7 @@ void Foam::fvMeshAdder::MapSurfaceFields
         {
             WarningInFunction
                 << "Not mapping field " << fld.name()
-                << " since not present on mesh to add"
-                << endl;
+                << " since not present on mesh to add" << endl;
         }
     }
 }
@@ -697,8 +693,7 @@ void Foam::fvMeshAdder::MapDimFields
         {
             WarningInFunction
                 << "Not mapping field " << fld.name()
-                << " since not present on mesh to add"
-                << endl;
+                << " since not present on mesh to add" << endl;
         }
     }
 }
@@ -717,7 +712,12 @@ void Foam::fvMeshAdder::MapDimField
     // Add fields to fields[0] after adding the meshes to meshes[0].
     // Mesh[0] is the sum of all meshes. Fields are not yet mapped.
 
-    if (flds.size() == 0 || !flds.set(0))
+    if
+    (
+        flds.size() == 0
+    || !flds.set(0)
+    || cellProcAddressing.size() != flds.size()
+    )
     {
         FatalErrorInFunction << "Not valid field at element 0"
             << " in field list of size " << flds.size() << exit(FatalError);
@@ -729,10 +729,10 @@ void Foam::fvMeshAdder::MapDimField
 
     {
         // Store old internal field
-        const Field<Type> oldInternalField(flds[0].primitiveField());
+        const Field<Type> oldInternalField(flds[0]);
 
         // Modify internal field
-        Field<Type>& intFld = flds[0].primitiveFieldRef();
+        Field<Type>& intFld = flds[0];
 
         // Set to new mesh size
         intFld.setSize(flds[0].mesh().nCells());
@@ -743,7 +743,7 @@ void Foam::fvMeshAdder::MapDimField
         {
             if (flds.set(meshi))
             {
-                const Field<Type>& addFld = flds[meshi].primitiveFieldRef();
+                const Field<Type>& addFld = flds[meshi];
                 intFld.rmap(addFld, cellProcAddressing[meshi]);
             }
         }
@@ -1174,6 +1174,7 @@ void Foam::fvMeshAdder::MapDimFields
 )
 {
     typedef DimensionedField<Type, volMesh> fldType;
+    typedef GeometricField<Type, fvPatchField, volMesh> excludeType;
 
     if (meshes.size() == 0 || !meshes.set(0))
     {
@@ -1190,23 +1191,31 @@ void Foam::fvMeshAdder::MapDimFields
 
     for (const auto& fld : fields)
     {
-        const word& name0 = fld->name();
-
-        DebugPout
-            << "MapDimFields : mapping " << name0 << endl;
-
-        UPtrList<fldType> meshToField(meshes.size());
-        forAll(meshes, meshi)
+        if (!isA<excludeType>(*fld))
         {
-            if (meshes.set(meshi))
-            {
-                auto& meshFld = meshes[meshi].
-                    objectRegistry::lookupObjectRef<fldType>(name0);
-                meshToField.set(meshi, &meshFld);
-            }
-        }
+            const word& name0 = fld->name();
 
-        MapDimField(meshToField, cellProcAddressing, fullyMapped);
+            DebugPout
+                << "MapDimFields : mapping " << name0 << endl;
+
+            UPtrList<fldType> meshToField(meshes.size());
+            forAll(meshes, meshi)
+            {
+                if (meshes.set(meshi))
+                {
+                    auto& meshFld = meshes[meshi].
+                        objectRegistry::lookupObjectRef<fldType>(name0);
+                    meshToField.set(meshi, &meshFld);
+                }
+            }
+
+            MapDimField(meshToField, cellProcAddressing, fullyMapped);
+        }
+        else
+        {
+            DebugPout
+                << "MapDimFields : ignoring " << fld->name() << endl;
+        }
     }
 }
 
