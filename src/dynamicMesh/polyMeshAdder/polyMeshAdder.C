@@ -6,7 +6,7 @@
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
     Copyright (C) 2011-2016 OpenFOAM Foundation
-    Copyright (C) 2019,2021 OpenCFD Ltd.
+    Copyright (C) 2019-2021 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -916,10 +916,7 @@ void Foam::polyMeshAdder::mergePointZones
             else if (pointToZone[allPointi] != zoneI)
             {
                 labelList& pZones = addPointToZones[allPointi];
-                if (!pZones.found(zoneI))
-                {
-                    pZones.append(zoneI);
-                }
+                pZones.appendUniq(zoneI);
             }
         }
     }
@@ -942,10 +939,7 @@ void Foam::polyMeshAdder::mergePointZones
             else if (pointToZone[allPointi] != allZoneI)
             {
                 labelList& pZones = addPointToZones[allPointi];
-                if (!pZones.found(allZoneI))
-                {
-                    pZones.append(allZoneI);
-                }
+                pZones.appendUniq(allZoneI);
             }
         }
     }
@@ -1074,9 +1068,8 @@ void Foam::polyMeshAdder::mergeFaceZones
                     labelList& fZones = addFaceToZones[allFacei];
                     boolList& flipZones = addFaceToFlips[allFacei];
 
-                    if (!fZones.found(zoneI))
+                    if (fZones.appendUniq(zoneI))
                     {
-                        fZones.append(zoneI);
                         flipZones.append(flip0);
                     }
                 }
@@ -1117,9 +1110,8 @@ void Foam::polyMeshAdder::mergeFaceZones
                     labelList& fZones = addFaceToZones[allFacei];
                     boolList& flipZones = addFaceToFlips[allFacei];
 
-                    if (!fZones.found(allZoneI))
+                    if (fZones.appendUniq(allZoneI))
                     {
-                        fZones.append(allZoneI);
                         flipZones.append(flip1);
                     }
                 }
@@ -1239,10 +1231,7 @@ void Foam::polyMeshAdder::mergeCellZones
             else if (cellToZone[cell0] != zoneI)
             {
                 labelList& cZones = addCellToZones[cell0];
-                if (!cZones.found(zoneI))
-                {
-                    cZones.append(zoneI);
-                }
+                cZones.appendUniq(zoneI);
             }
         }
     }
@@ -1264,10 +1253,7 @@ void Foam::polyMeshAdder::mergeCellZones
             else if (cellToZone[allCelli] != allZoneI)
             {
                 labelList& cZones = addCellToZones[allCelli];
-                if (!cZones.found(allZoneI))
-                {
-                    cZones.append(allZoneI);
-                }
+                cZones.appendUniq(allZoneI);
             }
         }
     }
