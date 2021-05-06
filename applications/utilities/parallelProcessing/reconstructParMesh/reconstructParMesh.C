@@ -475,52 +475,38 @@ void writeMaps
     const labelUList& boundaryProcAddressing
 )
 {
+    const fileName outputDir
+    (
+        procMesh.time().caseName()
+      / procMesh.facesInstance()
+      / polyMesh::meshSubDir
+    );
+
+    IOobject ioAddr
+    (
+        "procAddressing",
+        procMesh.facesInstance(),
+        polyMesh::meshSubDir,
+        procMesh,
+        IOobject::NO_READ,
+        IOobject::NO_WRITE,
+        false                       // Do not register
+    );
+
+
     // From processor point to reconstructed mesh point
 
-    Info<< "Writing pointProcAddressing to "
-        << procMesh.time().caseName()
-          /procMesh.facesInstance()
-          /polyMesh::meshSubDir
-        << endl;
-
-    labelIOList
-    (
-        IOobject
-        (
-            "pointProcAddressing",
-            procMesh.facesInstance(),
-            polyMesh::meshSubDir,
-            procMesh,
-            IOobject::NO_READ,
-            IOobject::NO_WRITE,
-            false                       // Do not register
-        ),
-        pointProcAddressing
-    ).write();
+    Info<< "Writing pointProcAddressing to " << outputDir << endl;
+    ioAddr.rename("pointProcAddressing");
+    labelIOList(ioAddr, pointProcAddressing).write();
 
 
     // From processor face to reconstructed mesh face
 
-    Info<< "Writing faceProcAddressing to "
-        << procMesh.time().caseName()
-          /procMesh.facesInstance()
-          /polyMesh::meshSubDir
-        << endl;
+    Info<< "Writing faceProcAddressing to " << outputDir << endl;
+    ioAddr.rename("faceProcAddressing");
 
-    labelIOList faceProcAddr
-    (
-        IOobject
-        (
-            "faceProcAddressing",
-            procMesh.facesInstance(),
-            polyMesh::meshSubDir,
-            procMesh,
-            IOobject::NO_READ,
-            IOobject::NO_WRITE,
-            false                       // Do not register
-        ),
-        faceProcAddressing
-    );
+    labelIOList faceProcAddr(ioAddr, faceProcAddressing);
 
     // Now add turning index to faceProcAddressing.
     // See reconstructPar for meaning of turning index.
@@ -563,51 +549,16 @@ void writeMaps
 
     // From processor cell to reconstructed mesh cell
 
-    Info<< "Writing cellProcAddressing to "
-        << procMesh.time().caseName()
-          /procMesh.facesInstance()
-          /polyMesh::meshSubDir
-        << endl;
-
-    labelIOList
-    (
-        IOobject
-        (
-            "cellProcAddressing",
-            procMesh.facesInstance(),
-            polyMesh::meshSubDir,
-            procMesh,
-            IOobject::NO_READ,
-            IOobject::NO_WRITE,
-            false                       // Do not register
-        ),
-        cellProcAddressing
-    ).write();
-
+    Info<< "Writing cellProcAddressing to " << outputDir << endl;
+    ioAddr.rename("cellProcAddressing");
+    labelIOList(ioAddr, cellProcAddressing).write();
 
 
     // From processor patch to reconstructed mesh patch
 
-    Info<< "Writing boundaryProcAddressing to "
-        << procMesh.time().caseName()
-          /procMesh.facesInstance()
-          /polyMesh::meshSubDir
-        << endl;
-
-    labelIOList
-    (
-        IOobject
-        (
-            "boundaryProcAddressing",
-            procMesh.facesInstance(),
-            polyMesh::meshSubDir,
-            procMesh,
-            IOobject::NO_READ,
-            IOobject::NO_WRITE,
-            false                       // Do not register
-        ),
-        boundaryProcAddressing
-    ).write();
+    Info<< "Writing boundaryProcAddressing to " << outputDir << endl;
+    ioAddr.rename("boundaryProcAddressing");
+    labelIOList(ioAddr, boundaryProcAddressing).write();
 
     Info<< endl;
 }
@@ -668,8 +619,8 @@ int main(int argc, char *argv[])
         << endl;
 
 
-    word regionName = polyMesh::defaultRegion;
-    word regionDir = word::null;
+    word regionName(polyMesh::defaultRegion);
+    word regionDir;
 
     if
     (
