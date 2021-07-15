@@ -45,7 +45,6 @@ SourceFiles
 #include "polyMesh.H"
 #include "mapAddedPolyMesh.H"
 #include "faceCoupleInfo.H"
-#include "SortableList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
