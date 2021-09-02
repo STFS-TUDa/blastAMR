@@ -396,7 +396,7 @@ void writeDistribution
     cellDecomposition.write();
 
     Info<< nl << "Wrote decomposition to "
-        << runTime.relativePath(cellDecomposition.objectPath())
+        << cellDecomposition.objectRelPath()
         << " for use in manual decomposition." << endl;
 
     // Write as volScalarField for postprocessing. Change time to 0
@@ -434,7 +434,7 @@ void writeDistribution
         cellDist.write();
 
         Info<< nl << "Wrote decomposition to "
-            << runTime.relativePath(cellDist.objectPath())
+            << cellDist.objectRelPath()
             << " (volScalarField) for visualization."
             << endl;
 
