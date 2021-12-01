@@ -37,7 +37,7 @@ License
 #include "fvMesh.H"
 #undef curTimeIndex_
 
-#include "adaptiveBlastFvMesh.H"
+#include "adaptiveFvMesh.H"
 #include "addToRunTimeSelectionTable.H"
 #include "surfaceInterpolate.H"
 #include "volFields.H"
@@ -57,11 +57,11 @@ License
 
 namespace Foam
 {
-    defineTypeNameAndDebug(adaptiveBlastFvMesh, 0);
+    defineTypeNameAndDebug(adaptiveFvMesh, 0);
     addToRunTimeSelectionTable
     (
         dynamicBlastFvMesh,
-        adaptiveBlastFvMesh,
+        adaptiveFvMesh,
         IOobject
     );
 
@@ -79,7 +79,7 @@ namespace Foam
 
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
-Foam::label Foam::adaptiveBlastFvMesh::count
+Foam::label Foam::adaptiveFvMesh::count
 (
     const PackedBoolList& l,
     const unsigned int val
@@ -105,7 +105,7 @@ Foam::label Foam::adaptiveBlastFvMesh::count
 }
 
 
-void Foam::adaptiveBlastFvMesh::calculateProtectedCells
+void Foam::adaptiveFvMesh::calculateProtectedCells
 (
     PackedBoolList& unrefineableCell
 ) const
@@ -211,7 +211,7 @@ void Foam::adaptiveBlastFvMesh::calculateProtectedCells
 }
 
 
-void Foam::adaptiveBlastFvMesh::readDict()
+void Foam::adaptiveFvMesh::readDict()
 {
     const dictionary refineDict
     (
@@ -239,7 +239,7 @@ void Foam::adaptiveBlastFvMesh::readDict()
 
 // Refines cells, maps fields and recalculates (an approximate) flux
 Foam::autoPtr<Foam::mapPolyMesh>
-Foam::adaptiveBlastFvMesh::refine
+Foam::adaptiveFvMesh::refine
 (
     const labelList& cellsToRefine
 )
@@ -488,7 +488,7 @@ Foam::adaptiveBlastFvMesh::refine
 
 
 Foam::autoPtr<Foam::mapPolyMesh>
-Foam::adaptiveBlastFvMesh::unrefine
+Foam::adaptiveFvMesh::unrefine
 (
     const labelList& splitElems
 )
@@ -659,7 +659,7 @@ Foam::adaptiveBlastFvMesh::unrefine
 
 
 Foam::scalarField
-Foam::adaptiveBlastFvMesh::maxPointField(const scalarField& pFld) const
+Foam::adaptiveFvMesh::maxPointField(const scalarField& pFld) const
 {
     scalarField vFld(nCells(), -GREAT);
 
@@ -676,7 +676,7 @@ Foam::adaptiveBlastFvMesh::maxPointField(const scalarField& pFld) const
 }
 
 Foam::scalarField
-Foam::adaptiveBlastFvMesh::maxCellField(const volScalarField& vFld) const
+Foam::adaptiveFvMesh::maxCellField(const volScalarField& vFld) const
 {
     scalarField pFld(nPoints(), -GREAT);
 
@@ -694,7 +694,7 @@ Foam::adaptiveBlastFvMesh::maxCellField(const volScalarField& vFld) const
 
 /*
 Foam::scalarField
-Foam::adaptiveBlastFvMesh::minCellField(const volScalarField& vFld) const
+Foam::adaptiveFvMesh::minCellField(const volScalarField& vFld) const
 {
     scalarField pFld(nPoints(), -GREAT);
 
@@ -713,7 +713,7 @@ Foam::adaptiveBlastFvMesh::minCellField(const volScalarField& vFld) const
 
 // Simple (non-parallel) interpolation by averaging.
 Foam::scalarField
-Foam::adaptiveBlastFvMesh::cellToPoint(const scalarField& vFld) const
+Foam::adaptiveFvMesh::cellToPoint(const scalarField& vFld) const
 {
     scalarField pFld(nPoints());
 
@@ -732,7 +732,7 @@ Foam::adaptiveBlastFvMesh::cellToPoint(const scalarField& vFld) const
 }
 
 
-Foam::scalarField Foam::adaptiveBlastFvMesh::error
+Foam::scalarField Foam::adaptiveFvMesh::error
 (
     const scalarField& fld,
     const scalar minLevel,
@@ -754,7 +754,7 @@ Foam::scalarField Foam::adaptiveBlastFvMesh::error
 }
 
 
-void Foam::adaptiveBlastFvMesh::selectRefineCandidates
+void Foam::adaptiveFvMesh::selectRefineCandidates
 (
     const scalar lowerRefineLevel,
     const scalar upperRefineLevel,
@@ -801,7 +801,7 @@ void Foam::adaptiveBlastFvMesh::selectRefineCandidates
 }
 
 
-Foam::labelList Foam::adaptiveBlastFvMesh::selectRefineCells
+Foam::labelList Foam::adaptiveFvMesh::selectRefineCells
 (
     const label maxCells,
     const labelList& maxRefinement,
@@ -894,7 +894,7 @@ Foam::labelList Foam::adaptiveBlastFvMesh::selectRefineCells
 // YO- This is here only to preserve compatibility with the official release.
 //     It is not used by the refinement procedure, but some utilities such as
 //     decomposePar rely on it.
-Foam::labelList Foam::adaptiveBlastFvMesh::selectUnrefinePoints
+Foam::labelList Foam::adaptiveFvMesh::selectUnrefinePoints
 (
     const scalar unrefineLevel,
     const PackedBoolList& markedCell,
@@ -954,7 +954,7 @@ Foam::labelList Foam::adaptiveBlastFvMesh::selectUnrefinePoints
 }
 //-YO
 
-void Foam::adaptiveBlastFvMesh::extendMarkedCells
+void Foam::adaptiveFvMesh::extendMarkedCells
 (
     PackedBoolList& markedCell
 ) const
@@ -996,7 +996,7 @@ void Foam::adaptiveBlastFvMesh::extendMarkedCells
 }
 
 
-void Foam::adaptiveBlastFvMesh::checkEightAnchorPoints
+void Foam::adaptiveFvMesh::checkEightAnchorPoints
 (
     PackedBoolList& protectedCell,
     label& nProtected
@@ -1046,7 +1046,7 @@ void Foam::adaptiveBlastFvMesh::checkEightAnchorPoints
 }
 
 
-void Foam::adaptiveBlastFvMesh::setProtectedCells()
+void Foam::adaptiveFvMesh::setProtectedCells()
 {
     const labelList& cellLevel = meshCutter_->cellLevel();
     const labelList& pointLevel = meshCutter_->pointLevel();
@@ -1125,7 +1125,7 @@ void Foam::adaptiveBlastFvMesh::setProtectedCells()
 
 
 template<class T>
-void Foam::adaptiveBlastFvMesh::mapNewInternalFaces
+void Foam::adaptiveFvMesh::mapNewInternalFaces
 (
     const labelList& faceMap
 )
@@ -1134,7 +1134,7 @@ void Foam::adaptiveBlastFvMesh::mapNewInternalFaces
 }
 
 
-void Foam::adaptiveBlastFvMesh::updateMesh(const mapPolyMesh& mpm)
+void Foam::adaptiveFvMesh::updateMesh(const mapPolyMesh& mpm)
 {
 
     if
@@ -1164,7 +1164,7 @@ void Foam::adaptiveBlastFvMesh::updateMesh(const mapPolyMesh& mpm)
 }
 
 
-void Foam::adaptiveBlastFvMesh::distribute
+void Foam::adaptiveFvMesh::distribute
 (
     const mapDistributePolyMesh& map
 )
@@ -1219,8 +1219,9 @@ void Foam::adaptiveBlastFvMesh::distribute
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::adaptiveBlastFvMesh::adaptiveBlastFvMesh(const IOobject& io)
+Foam::adaptiveFvMesh::adaptiveFvMesh(const IOobject& io)
 :
+    dynamicFvMesh(io),
     dynamicBlastFvMesh(io),
     error_(errorEstimator::New(*this, dynamicMeshDict())),
     meshCutter_(hexRef::New(*this)),
@@ -1616,13 +1617,13 @@ Foam::adaptiveBlastFvMesh::adaptiveBlastFvMesh(const IOobject& io)
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::adaptiveBlastFvMesh::~adaptiveBlastFvMesh()
+Foam::adaptiveFvMesh::~adaptiveFvMesh()
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::adaptiveBlastFvMesh::mapFields(const mapPolyMesh& mpm)
+void Foam::adaptiveFvMesh::mapFields(const mapPolyMesh& mpm)
 {
     dynamicBlastFvMesh::mapFields(mpm);
 
@@ -1635,21 +1636,14 @@ void Foam::adaptiveBlastFvMesh::mapFields(const mapPolyMesh& mpm)
     mapNewInternalFaces<tensor>(mpm.faceMap());
 }
 
-bool Foam::adaptiveBlastFvMesh::update()
+bool Foam::adaptiveFvMesh::update()
 {
     return false;
 }
 
 
-bool Foam::adaptiveBlastFvMesh::refine(const bool correctError)
+bool Foam::adaptiveFvMesh::refine()
 {
-    //- Correct error
-    if (correctError)
-    {
-        updateError();
-        updateErrorBoundaries();
-    }
-
     // Re-read dictionary. Chosen since usually -small so trivial amount
     // of time compared to actual refinement. Also very useful to be able
     // to modify on-the-fly.
@@ -1706,6 +1700,9 @@ bool Foam::adaptiveBlastFvMesh::refine(const bool correctError)
 
         //- Update coefficients
         error_->read(refineDict);
+
+        error_->update();
+        error_->error().correctBoundaryConditions();
 
         labelList maxRefinement(error_->maxRefinement());
         label maxLevel(gMax(maxRefinement));
@@ -1936,25 +1933,7 @@ bool Foam::adaptiveBlastFvMesh::refine(const bool correctError)
 }
 
 
-void Foam::adaptiveBlastFvMesh::updateError()
-{
-//     if (this->time().outputTime() && errorEstimator::debug)
-//     {
-//         error_->update(false);
-//         error_->error().write();
-//     }
-    //- Update error field
-    error_->update();
-}
-
-void Foam::adaptiveBlastFvMesh::updateErrorBoundaries()
-{
-    //- Update error field
-    error_->error().correctBoundaryConditions();
-}
-
-
-bool Foam::adaptiveBlastFvMesh::balance()
+bool Foam::adaptiveFvMesh::balance()
 {
     //Part 1 - Call normal update from dynamicRefineBlastFvMesh
     const dictionary& balanceDict
@@ -2030,7 +2009,7 @@ bool Foam::adaptiveBlastFvMesh::balance()
 }
 
 
-bool Foam::adaptiveBlastFvMesh::writeObject
+bool Foam::adaptiveFvMesh::writeObject
 (
     IOstream::streamFormat fmt,
     IOstream::versionNumber ver,
