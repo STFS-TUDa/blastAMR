@@ -23,9 +23,9 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "hexRef2D.H"
+#include "hexRef2DAxi.H"
 
-#include "emptyPolyPatch.H"
+#include "wedgePolyPatch.H"
 
 #include "addToRunTimeSelectionTable.H"
 
@@ -47,23 +47,25 @@ License
 #include "refinementData.H"
 #include "refinementDistanceData.H"
 #include "degenerateMatcher.H"
+#include "dynMeshTools.H"
 
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    defineTypeNameAndDebug(hexRef2D, 0);
-    addToRunTimeSelectionTable(hexRef, hexRef2D, mesh);
-    addToRunTimeSelectionTable(hexRef, hexRef2D, levelsHist);
-    addToRunTimeSelectionTable(hexRef, hexRef2D, levels);
+    defineTypeNameAndDebug(hexRef2DAxi, 0);
+    addToRunTimeSelectionTable(hexRef, hexRef2DAxi, mesh);
+    addToRunTimeSelectionTable(hexRef, hexRef2DAxi, levelsHist);
+    addToRunTimeSelectionTable(hexRef, hexRef2DAxi, levels);
 }
+
 
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
 // Check whether pointi is an anchor on celli.
 // If it is not check whether any other point on the face is an anchor cell.
-Foam::label Foam::hexRef2D::getAnchorCell
+Foam::label Foam::hexRef2DAxi::getAnchorCell
 (
     const labelListList& cellAnchorPoints,
     const labelListList& cellAddedCells,
@@ -134,7 +136,6 @@ Foam::label Foam::hexRef2D::getAnchorCell
     }
 }
 
-
 // Internal faces are one per edge between anchor points. So one per midPoint
 // between the anchor points. Here we store the information on the midPoint
 // and if we have enough information:
@@ -143,7 +144,7 @@ Foam::label Foam::hexRef2D::getAnchorCell
 // we add the face. Note that this routine can get called anywhere from
 // two times (two unrefined faces) to four times (two refined faces) so
 // the first call that adds the information creates the face.
-Foam::label Foam::hexRef2D::storeMidPointInfo
+Foam::label Foam::hexRef2DAxi::storeMidPointInfo
 (
     const labelListList& cellAnchorPoints,
     const labelListList& cellAddedCells,
@@ -193,7 +194,7 @@ Foam::label Foam::hexRef2D::storeMidPointInfo
     }
 
 
-    // Check if this call of storeMidPointinfo is the one that completed all
+    // Check if this call of storeMidPointInfo is the one that completed all
     // the necessary information.
 
     if (changed && haveTwoAnchors)
@@ -261,15 +262,18 @@ Foam::label Foam::hexRef2D::storeMidPointInfo
 
             newFaceVerts.append(edgeMidPointi);
 
-            insertEdgeSplit
-            (
-                edgeMidPoint,
-                edgeMidPointi,
-                edgeMidPointj,
-                newFaceVerts
-            );
+            if (edgeMidPointi != edgeMidPointj)
+            {
+                insertEdgeSplit
+                (
+                    edgeMidPoint,
+                    edgeMidPointi,
+                    edgeMidPointj,
+                    newFaceVerts
+                );
+                newFaceVerts.append(edgeMidPointj);
+            }
 
-            newFaceVerts.append(edgeMidPointj);
             newFaceVerts.append(faceMidPoint[face1]);
         }
         else
@@ -294,15 +298,18 @@ Foam::label Foam::hexRef2D::storeMidPointInfo
                 edgeMidPointj = f[edgeMid];
             }
 
-            newFaceVerts.append(edgeMidPointj);
+            if (edgeMidPointi != edgeMidPointj)
+            {
+                newFaceVerts.append(edgeMidPointj);
 
-            insertEdgeSplit
-            (
-                edgeMidPoint,
-                edgeMidPointj,
-                edgeMidPointi,
-                newFaceVerts
-            );
+                insertEdgeSplit
+                (
+                    edgeMidPoint,
+                    edgeMidPointj,
+                    edgeMidPointi,
+                    newFaceVerts
+                );
+            }
 
             newFaceVerts.append(edgeMidPointi);
 
@@ -376,7 +383,7 @@ Foam::label Foam::hexRef2D::storeMidPointInfo
                 neiPt = mesh_.points()[anchorPointi];
             }
 
-            checkInternalOrientation
+            meshTools::checkInternalOrientation
             (
                 meshMod,
                 celli,
@@ -387,9 +394,10 @@ Foam::label Foam::hexRef2D::storeMidPointInfo
             );
         }
 
-        return addInternalFace
+        return meshTools::addInternalFace
         (
             meshMod,
+            mesh_,
             facei,
             anchorPointi,
             newFace,
@@ -405,7 +413,7 @@ Foam::label Foam::hexRef2D::storeMidPointInfo
 
 
 // Creates all the 4 internal faces for celli.
-void Foam::hexRef2D::createInternalFaces
+void Foam::hexRef2DAxi::createInternalFaces
 (
     const labelListList& cellAnchorPoints,
     const labelListList& cellAddedCells,
@@ -457,7 +465,7 @@ void Foam::hexRef2D::createInternalFaces
             // In 2D case this should never happen, as the shared faces with uncutted mesh
             // can be only the ones splitted in two which have two anchors and two middle edge points.
 
-            Info << "Should never happen: nAnchors == 1" << endl;
+            //Info << "Should never happen: nAnchors == 1" << endl;
 
             // Find the one anchor.
             label anchorFp = -1;
@@ -502,11 +510,11 @@ void Foam::hexRef2D::createInternalFaces
             faceMidPointi = 1234567890;        // again not nice
 
         }
-        else if (nAnchors == 4)
+        else if (nAnchors == 4 || nAnchors == 3)
         {
             // There is no face middle yet but the face will be marked for
-            // splitting. For non-empty faces, faceMidPoint[facei] will be 1234567890,
-            // which is not a point ID. This is checked in storeMidPointinfo.
+            // splitting. For non-wedge faces, faceMidPoint[facei] will be 1234567890,
+            // which is not a point ID. This is checked in storeMidPointInfo.
 
             faceMidPointi = faceMidPoint[facei];
         }
@@ -527,9 +535,9 @@ void Foam::hexRef2D::createInternalFaces
 
 
         // Now loop over all the anchors (might be just one) and store
-        // the edge mids connected to it. storeMidPointinfo will collect
+        // the edge mids connected to it. storeMidPointInfo will collect
         // all the info and combine it all.
-        // Only empty faces are considered as they are split like the 3D case.
+        // Only wedge faces are considered as they are split like the 3D case.
 
         if(faceMidPoint[facei] != 1234567890 && faceMidPointi != 1234567890)
         {
@@ -553,9 +561,9 @@ void Foam::hexRef2D::createInternalFaces
                     if (pointLevel_[f[fp1]] <= cLevel)
                     {
                         // Anchor. Edge will be split.
-                        label edgeI = fEdges[fp0];
+                        label edgei = fEdges[fp0];
 
-                        edgeMidPointi = edgeMidPoint[edgeI];
+                        edgeMidPointi = edgeMidPoint[edgei];
 
                         if (edgeMidPointi == -1)
                         {
@@ -631,9 +639,9 @@ void Foam::hexRef2D::createInternalFaces
                     if (pointLevel_[f[fpMin1]] <= cLevel)
                     {
                         // Anchor. Edge will be split.
-                        label edgeI = fEdges[fpMin1];
+                        label edgei = fEdges[fpMin1];
 
-                        edgeMidPointi = edgeMidPoint[edgeI];
+                        edgeMidPointi = edgeMidPoint[edgei];
 
                         if (edgeMidPointi == -1)
                         {
@@ -707,7 +715,7 @@ void Foam::hexRef2D::createInternalFaces
                     }
                 }   // done anchor
             } // done face
-        }   // done check empty condition
+        }   // done check wedge condition
 
         if (nFacesAdded == 4)
         {
@@ -720,14 +728,14 @@ void Foam::hexRef2D::createInternalFaces
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 // Construct from mesh, read refinement data
-Foam::hexRef2D::hexRef2D(const polyMesh& mesh, const bool readHistory)
+Foam::hexRef2DAxi::hexRef2DAxi(const polyMesh& mesh, const bool readHistory)
 :
     hexRef(mesh, readHistory)
 {}
 
 
 // Construct from components
-Foam::hexRef2D::hexRef2D
+Foam::hexRef2DAxi::hexRef2DAxi
 (
     const polyMesh& mesh,
     const labelList& cellLevel,
@@ -741,7 +749,7 @@ Foam::hexRef2D::hexRef2D
 
 
 // Construct from components
-Foam::hexRef2D::hexRef2D
+Foam::hexRef2DAxi::hexRef2DAxi
 (
     const polyMesh& mesh,
     const labelList& cellLevel,
@@ -756,7 +764,7 @@ Foam::hexRef2D::hexRef2D
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 // Top level driver to insert topo changes to do all refinement.
-Foam::labelListList Foam::hexRef2D::setRefinement
+Foam::labelListList Foam::hexRef2DAxi::setRefinement
 (
     const labelList& cellLabels,
     polyTopoChange& meshMod
@@ -764,7 +772,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
 {
     if (debug)
     {
-        Pout<< "hexRef2D::setRefinement :"
+        Pout<< "hexRef2DAxi::setRefinement :"
             << " Checking initial mesh just to make sure" << endl;
 
         checkMesh();
@@ -793,7 +801,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
 
     if (debug)
     {
-        Pout<< "hexRef2D::setRefinement :"
+        Pout<< "hexRef2DAxi::setRefinement :"
             << " Allocating " << cellLabels.size() << " cell midpoints."
             << endl;
     }
@@ -817,8 +825,8 @@ Foam::labelListList Foam::hexRef2D::setRefinement
     {
         const label & patchID = mesh_.boundaryMesh().whichPatch(facei);
 
-//        if (isA<emptyPolyPatch>(mesh_.boundaryMesh()[patchID])
-        if (mesh_.boundaryMesh()[patchID].type() == "empty")
+//        if (isA<wedgePolyPatch>(mesh_.boundaryMesh()[patchID])
+        if (mesh_.boundaryMesh()[patchID].type() == "wedge")
         {
             isDivisibleFace[facei] = true;
             const labelList& fEdges = mesh_.faceEdges(facei);
@@ -844,7 +852,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
             }
         }
 
-        Pout<< "hexRef2D::setRefinement : Dumping " << splitCells.size()
+        Pout<< "hexRef2DAxi::setRefinement : Dumping " << splitCells.size()
             << " cells to split to cellSet " << splitCells.objectPath()
             << endl;
 
@@ -858,7 +866,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
 
     if (debug)
     {
-        Pout<< "hexRef2D::setRefinement :"
+        Pout<< "hexRef2DAxi::setRefinement :"
             << " Allocating edge midpoints."
             << endl;
     }
@@ -878,16 +886,16 @@ Foam::labelListList Foam::hexRef2D::setRefinement
             const labelList& cEdges = mesh_.cellEdges(celli);
             forAll(cEdges, i)
             {
-                label edgeI = cEdges[i];
-                const edge& e = mesh_.edges()[edgeI];
+                label edgei = cEdges[i];
+                const edge& e = mesh_.edges()[edgei];
                 if
                 (
-                 isDivisibleEdge[edgeI]
+                 isDivisibleEdge[edgei]
                  && pointLevel_[e[0]] <= cellLevel_[celli]
                  && pointLevel_[e[1]] <= cellLevel_[celli]
                 )
                 {
-                    edgeMidPoint[edgeI] = 12345;    // mark need for splitting
+                    edgeMidPoint[edgei] = 12345;    // mark need for splitting
                 }
             }
         }
@@ -912,14 +920,17 @@ Foam::labelListList Foam::hexRef2D::setRefinement
         // This needs doing for if people do not write binary and we slowly
         // get differences.
 
+        // Add split edges
+        labelList newEdgePoints(edgeMidPoint.size(), -1);
+
         pointField edgeMids(mesh_.nEdges(), point(-GREAT, -GREAT, -GREAT));
 
-        forAll(edgeMidPoint, edgeI)
+        forAll(edgeMidPoint, edgei)
         {
-            if (edgeMidPoint[edgeI] >= 0)
+            if (edgeMidPoint[edgei] >= 0)
             {
                 // Edge marked to be split.
-                edgeMids[edgeI] = mesh_.edges()[edgeI].centre(mesh_.points());
+                edgeMids[edgei] = mesh_.edges()[edgei].centre(mesh_.points());
             }
         }
         syncTools::syncEdgePositions
@@ -932,27 +943,30 @@ Foam::labelListList Foam::hexRef2D::setRefinement
 
 
         // Phase 2: introduce points at the synced locations.
-        forAll(edgeMidPoint, edgeI)
+        DynamicList<label> splitEdges(edgeMidPoint.size());
+        forAll(edgeMidPoint, edgei)
         {
-            if (edgeMidPoint[edgeI] >= 0)
+            if (edgeMidPoint[edgei] >= 0)
             {
                 // Edge marked to be split. Replace edgeMidPoint with actual
                 // point label.
 
-                const edge& e = mesh_.edges()[edgeI];
+                const edge& e = mesh_.edges()[edgei];
 
-                edgeMidPoint[edgeI] = meshMod.setAction
+                edgeMidPoint[edgei] = meshMod.setAction
                 (
                     polyAddPoint
                     (
-                        edgeMids[edgeI],            // point
+                        edgeMids[edgei],            // point
                         e[0],                       // master point
                         -1,                         // zone for point
                         true                        // supports a cell
                     )
                 );
+                splitEdges.append(edgei);
+                newEdgePoints[edgei] = edgeMidPoint[edgei];
 
-                newPointLevel(edgeMidPoint[edgeI]) =
+                newPointLevel(edgeMidPoint[edgei]) =
                     max
                     (
                         pointLevel_[e[0]],
@@ -961,23 +975,24 @@ Foam::labelListList Foam::hexRef2D::setRefinement
                   + 1;
             }
         }
+        locationMapper_.addSplitEdges(splitEdges, newEdgePoints);
     }
 
     if (debug)
     {
         OFstream str(mesh_.time().path()/"edgeMidPoint.obj");
 
-        forAll(edgeMidPoint, edgeI)
+        forAll(edgeMidPoint, edgei)
         {
-            if (edgeMidPoint[edgeI] >= 0)
+            if (edgeMidPoint[edgei] >= 0)
             {
-                const edge& e = mesh_.edges()[edgeI];
+                const edge& e = mesh_.edges()[edgei];
 
                 meshTools::writeOBJ(str, e.centre(mesh_.points()));
             }
         }
 
-        Pout<< "hexRef2D::setRefinement :"
+        Pout<< "hexRef2DAxi::setRefinement :"
             << " Dumping edge centres to split to file " << str.name() << endl;
     }
 
@@ -988,7 +1003,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
 
     if (debug)
     {
-        Pout<< "hexRef2D::setRefinement :"
+        Pout<< "hexRef2DAxi::setRefinement :"
             << " Allocating face midpoints."
             << endl;
     }
@@ -1027,7 +1042,8 @@ Foam::labelListList Foam::hexRef2D::setRefinement
              || newNeiLevel > faceAnchorLevel[facei]
             )
             {
-                faceMidPoint[facei] = 1234567890;    // mark to be split (not a real nice way)
+                // mark to be split (not a real nice way)
+                faceMidPoint[facei] = 1234567890;
             }
         }
     }
@@ -1064,7 +1080,8 @@ Foam::labelListList Foam::hexRef2D::setRefinement
             {
                 label own = mesh_.faceOwner()[facei];
                 label ownLevel = cellLevel_[own];
-                label newOwnLevel = ownLevel + (cellMidPoint[own] >= 0 ? 1 : 0);
+                label newOwnLevel =
+                    ownLevel + (cellMidPoint[own] >= 0 ? 1 : 0);
 
                 if
                 (
@@ -1072,7 +1089,8 @@ Foam::labelListList Foam::hexRef2D::setRefinement
                  || newNeiLevel[i] > faceAnchorLevel[facei]
                 )
                 {
-                    faceMidPoint[facei] = 1234567890;    // mark to be split (not really nice way)
+                    // mark to be split (not really nice way)
+                    faceMidPoint[facei] = 1234567890;
                 }
             }
         }
@@ -1095,6 +1113,10 @@ Foam::labelListList Foam::hexRef2D::setRefinement
     {
         // Phase 1: determine mid points and sync. See comment for edgeMids
         // above
+
+        // Add split faces
+        labelList newFacePoints(faceMidPoint.size(), -1);
+
         pointField bFaceMids
         (
             mesh_.nFaces()-mesh_.nInternalFaces(),
@@ -1117,6 +1139,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
             maxEqOp<vector>()
         );
 
+        DynamicList<label> splitFaces(faceMidPoint.size());
         forAll(faceMidPoint, facei)
         {
             if (faceMidPoint[facei] >= 0 && isDivisibleFace[facei])
@@ -1140,11 +1163,16 @@ Foam::labelListList Foam::hexRef2D::setRefinement
                     )
                 );
 
+                splitFaces.append(facei);
+                newFacePoints[facei] = faceMidPoint[facei];
+
+
                 // Determine the level of the corner points and midpoint will
                 // be one higher.
                 newPointLevel(faceMidPoint[facei]) = faceAnchorLevel[facei]+1;
             }
         }
+        locationMapper_.addSplitFaces(splitFaces, newFacePoints);
     }
 
     if (debug)
@@ -1159,7 +1187,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
             }
         }
 
-        Pout<< "hexRef2D::setRefinement : Dumping " << splitFaces.size()
+        Pout<< "hexRef2DAxi::setRefinement : Dumping " << splitFaces.size()
             << " faces to split to faceSet " << splitFaces.objectPath() << endl;
 
         splitFaces.write();
@@ -1182,7 +1210,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
 
     if (debug)
     {
-        Pout<< "hexRef2D::setRefinement :"
+        Pout<< "hexRef2DAxi::setRefinement :"
             << " Finding cell anchorPoints (8 per cell)"
             << endl;
     }
@@ -1247,10 +1275,16 @@ Foam::labelListList Foam::hexRef2D::setRefinement
                     const labelList cPoints(mesh_.cellPoints(celli));
 
                     FatalErrorInFunction
-                        << "cell " << celli
+                        << "cell " << celli << " "
+                        << mesh_.cells()[celli].centre
+                           (
+                                mesh_.points(),
+                                mesh_.faces()
+                           ) << " "
                         << " of level " << cellLevel_[celli]
                         << " does not seem to have 8 points of equal or"
                         << " lower level" << endl
+                        << "nAnchorPoints: " << nAnchorPoints[celli] << nl
                         << "cellPoints:" << cPoints << endl
                         << "pointLevels:"
                         << IndirectList<label>(pointLevel_, cPoints)() << endl
@@ -1266,7 +1300,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
 
     if (debug)
     {
-        Pout<< "hexRef2D::setRefinement :"
+        Pout<< "hexRef2DAxi::setRefinement :"
             << " Adding cells (1 per anchorPoint)"
             << endl;
     }
@@ -1319,7 +1353,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
 
     if (debug)
     {
-        Pout<< "hexRef2D::setRefinement :"
+        Pout<< "hexRef2DAxi::setRefinement :"
             << " Marking faces to be handled"
             << endl;
     }
@@ -1349,11 +1383,11 @@ Foam::labelListList Foam::hexRef2D::setRefinement
             }
         }
 
-        forAll(edgeMidPoint, edgeI)
+        forAll(edgeMidPoint, edgei)
         {
-            if (edgeMidPoint[edgeI] >= 0)
+            if (edgeMidPoint[edgei] >= 0)
             {
-                const labelList& eFaces = mesh_.edgeFaces(edgeI);
+                const labelList& eFaces = mesh_.edgeFaces(edgei);
 
                 forAll(eFaces, i)
                 {
@@ -1369,7 +1403,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
 
     if (debug)
     {
-        Pout<< "hexRef2D::setRefinement : Splitting faces" << endl;
+        Pout<< "hexRef2DAxi::setRefinement : Splitting faces" << endl;
     }
 
     forAll(faceMidPoint, facei)
@@ -1440,79 +1474,106 @@ Foam::labelListList Foam::hexRef2D::setRefinement
 
                         if (debug)
                         {
-                            if (mesh_.isInternalFace(facei))
-                            {
-                                label oldOwn = mesh_.faceOwner()[facei];
-                                label oldNei = mesh_.faceNeighbour()[facei];
-                                checkInternalOrientation
-                                (
-                                    meshMod,
-                                    oldOwn,
-                                    facei,
-                                    mesh_.cellCentres()[oldOwn],
-                                    mesh_.cellCentres()[oldNei],
-                                    newFace
-                                );
-                            }
-                            else
-                            {
-                                label oldOwn = mesh_.faceOwner()[facei];
-                                checkBoundaryOrientation
-                                (
-                                    meshMod,
-                                    oldOwn,
-                                    facei,
-                                    mesh_.cellCentres()[oldOwn],
-                                    mesh_.faceCentres()[facei],
-                                    newFace
-                                );
-                            }
+                            meshTools::checkFaceOrientation
+                            (
+                                meshMod,
+                                mesh_,
+                                facei,
+                                newFace
+                            );
                         }
+
                         if (!modifiedFace)
                         {
                             modifiedFace = true;
-                            modFace(meshMod, facei, newFace, own, nei);
+                            meshTools::modifyFace
+                            (
+                                meshMod,
+                                mesh_,
+                                facei,
+                                newFace,
+                                own,
+                                nei
+                            );
                         }
                         else
                         {
-                            addFace(meshMod, facei, newFace, own, nei);
+                            meshTools::addFace
+                            (
+                                meshMod,
+                                mesh_,
+                                facei,
+                                newFace,
+                                own,
+                                nei
+                            );
                         }
                     }
                 }
             }
             else
             {
-                face newFace(2);
+                face newFace(4);
                 forAll(f,fp)
                 {
                     label pointi = f[fp];
                     label nextpointi = f[f.fcIndex(fp)];
-                    label edgeI = meshTools::findEdge (mesh_, pointi, nextpointi);
-                    if (edgeMidPoint[edgeI] >=0)
+                    label edgei = meshTools::findEdge (mesh_, pointi, nextpointi);
+                    if (edgeMidPoint[edgei] >=0)
                     {
-                        DynamicList<label> faceVerts(4);
-                        label pointJ = f[f.rcIndex(fp)];
-                        faceVerts.append(pointi);
-                        walkFaceToMid
-                        (
-                            edgeMidPoint,
-                            anchorLevel,
-                            facei,
-                            fp,
-                            faceVerts
-                        );
+                        label pointj = f[f.rcIndex(fp)];
+                        label prevPointj = f[f.rcIndex(f.rcIndex(fp))];
+                        label edgep = meshTools::findEdge(mesh_, prevPointj, pointj);
+                        if (edgeMidPoint[edgep] >= 0)
+                        {
+                            DynamicList<label> faceVerts(4);
+                            faceVerts.append(pointi);
+                            walkFaceToMid
+                            (
+                                edgeMidPoint,
+                                anchorLevel,
+                                facei,
+                                fp,
+                                faceVerts
+                            );
 
-                        walkFaceFromMid
-                        (
-                            edgeMidPoint,
-                            anchorLevel,
-                            facei,
-                            f.rcIndex(fp),
-                            faceVerts
-                        );
+                            walkFaceFromMid
+                            (
+                                edgeMidPoint,
+                                anchorLevel,
+                                facei,
+                                f.rcIndex(fp),
+                                faceVerts
+                            );
 
-                        faceVerts.append(pointJ);
-                        newFace.transfer(faceVerts);
+                            faceVerts.append(pointj);
+                            newFace.transfer(faceVerts);
+                        }
+                        else
+                        {
+                            DynamicList<label> faceVerts(3);
+                            faceVerts.append(pointi);
+                            walkFaceToMid
+                            (
+                                edgeMidPoint,
+                                anchorLevel,
+                                facei,
+                                fp,
+                                faceVerts
+                            );
+
+                            walkFaceFromMid
+                            (
+                                edgeMidPoint,
+                                anchorLevel,
+                                facei,
+                                fp,
+                                faceVerts
+                            );
+
+                            newFace.transfer(faceVerts);
+                        }
+
                         label own, nei;
                         getFaceNeighbours
                         (
@@ -1526,42 +1587,39 @@ Foam::labelListList Foam::hexRef2D::setRefinement
 
                         if (debug)
                         {
-                            if (mesh_.isInternalFace(facei))
-                            {
-                                label oldOwn = mesh_.faceOwner()[facei];
-                                label oldNei = mesh_.faceNeighbour()[facei];
-                                checkInternalOrientation
-                                (
-                                    meshMod,
-                                    oldOwn,
-                                    facei,
-                                    mesh_.cellCentres()[oldOwn],
-                                    mesh_.cellCentres()[oldNei],
-                                    newFace
-                                );
-                            }
-                            else
-                            {
-                                label oldOwn = mesh_.faceOwner()[facei];
-                                checkBoundaryOrientation
-                                (
-                                    meshMod,
-                                    oldOwn,
-                                    facei,
-                                    mesh_.cellCentres()[oldOwn],
-                                    mesh_.faceCentres()[facei],
-                                    newFace
-                                );
-                            }
+                            meshTools::checkFaceOrientation
+                            (
+                                meshMod,
+                                mesh_,
+                                facei,
+                                newFace
+                            );
                         }
+
                         if (!modifiedFace)
                         {
                             modifiedFace = true;
-                            modFace(meshMod, facei, newFace, own, nei);
+                            meshTools::modifyFace
+                            (
+                                meshMod,
+                                mesh_,
+                                facei,
+                                newFace,
+                                own,
+                                nei
+                            );
                         }
                         else
                         {
-                            addFace(meshMod, facei, newFace, own, nei);
+                            meshTools::addFace
+                            (
+                                meshMod,
+                                mesh_,
+                                facei,
+                                newFace,
+                                own,
+                                nei
+                            );
                         }
                     }
                 }
@@ -1578,7 +1636,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
 
     if (debug)
     {
-        Pout<< "hexRef2D::setRefinement :"
+        Pout<< "hexRef2DAxi::setRefinement :"
             << " Adding edge splits to unsplit faces"
             << endl;
     }
@@ -1586,13 +1644,13 @@ Foam::labelListList Foam::hexRef2D::setRefinement
     DynamicList<label> eFacesStorage;
     DynamicList<label> fEdgesStorage;
 
-    forAll(edgeMidPoint, edgeI)
+    forAll(edgeMidPoint, edgei)
     {
-        if (edgeMidPoint[edgeI] >= 0)
+        if (edgeMidPoint[edgei] >= 0)
         {
             // Split edge. Check that face not already handled above.
 
-            const labelList& eFaces = mesh_.edgeFaces(edgeI, eFacesStorage);
+            const labelList& eFaces = mesh_.edgeFaces(edgei, eFacesStorage);
 
             forAll(eFaces, i)
             {
@@ -1615,11 +1673,11 @@ Foam::labelListList Foam::hexRef2D::setRefinement
                     {
                         newFaceVerts.append(f[fp]);
 
-                        label edgeI = fEdges[fp];
+                        label edgei = fEdges[fp];
 
-                        if (edgeMidPoint[edgeI] >= 0)
+                        if (edgeMidPoint[edgei] >= 0)
                         {
-                            newFaceVerts.append(edgeMidPoint[edgeI]);
+                            newFaceVerts.append(edgeMidPoint[edgei]);
                         }
                     }
 
@@ -1645,38 +1703,24 @@ Foam::labelListList Foam::hexRef2D::setRefinement
 
                     if (debug)
                     {
-                        if (mesh_.isInternalFace(facei))
-                        {
-                            label oldOwn = mesh_.faceOwner()[facei];
-                            label oldNei = mesh_.faceNeighbour()[facei];
-
-                            checkInternalOrientation
-                            (
-                                meshMod,
-                                oldOwn,
-                                facei,
-                                mesh_.cellCentres()[oldOwn],
-                                mesh_.cellCentres()[oldNei],
-                                newFace
-                            );
-                        }
-                        else
-                        {
-                            label oldOwn = mesh_.faceOwner()[facei];
-
-                            checkBoundaryOrientation
-                            (
-                                meshMod,
-                                oldOwn,
-                                facei,
-                                mesh_.cellCentres()[oldOwn],
-                                mesh_.faceCentres()[facei],
-                                newFace
-                            );
-                        }
+                        meshTools::checkFaceOrientation
+                        (
+                            meshMod,
+                            mesh_,
+                            facei,
+                            newFace
+                        );
                     }
 
-                    modFace(meshMod, facei, newFace, own, nei);
+                    meshTools::modifyFace
+                    (
+                        meshMod,
+                        mesh_,
+                        facei,
+                        newFace,
+                        own,
+                        nei
+                    );
 
                     // Mark face as having been handled
                     affectedFace.unset(facei);
@@ -1691,7 +1735,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
 
     if (debug)
     {
-        Pout<< "hexRef2D::setRefinement :"
+        Pout<< "hexRef2DAxi::setRefinement :"
             << " Changing owner/neighbour for otherwise unaffected faces"
             << endl;
     }
@@ -1718,7 +1762,15 @@ Foam::labelListList Foam::hexRef2D::setRefinement
                 nei
             );
 
-            modFace(meshMod, facei, f, own, nei);
+            meshTools::modifyFace
+            (
+                meshMod,
+                mesh_,
+                facei,
+                f,
+                own,
+                nei
+            );
 
             // Mark face as having been handled
             affectedFace.unset(facei);
@@ -1736,7 +1788,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
 
     if (debug)
     {
-        Pout<< "hexRef2D::setRefinement :"
+        Pout<< "hexRef2DAxi::setRefinement :"
             << " Create new internal faces for split cells"
             << endl;
     }
@@ -1784,12 +1836,12 @@ Foam::labelListList Foam::hexRef2D::setRefinement
                 maxPointi = max(maxPointi, faceMidPoint[facei]);
             }
         }
-        forAll(edgeMidPoint, edgeI)
+        forAll(edgeMidPoint, edgei)
         {
-            if (edgeMidPoint[edgeI] >= 0)
+            if (edgeMidPoint[edgei] >= 0)
             {
-                minPointi = min(minPointi, edgeMidPoint[edgeI]);
-                maxPointi = max(maxPointi, edgeMidPoint[edgeI]);
+                minPointi = min(minPointi, edgeMidPoint[edgei]);
+                maxPointi = max(maxPointi, edgeMidPoint[edgei]);
             }
         }
 
@@ -1820,7 +1872,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
     {
         if (debug)
         {
-            Pout<< "hexRef2D::setRefinement :"
+            Pout<< "hexRef2DAxi::setRefinement :"
                 << " Updating refinement history to " << cellLevel_.size()
                 << " cells" << endl;
         }
@@ -1854,7 +1906,8 @@ Foam::labelListList Foam::hexRef2D::setRefinement
     return refinedCells;
 }
 
-Foam::labelList Foam::hexRef2D::selectUnrefineElems
+
+Foam::labelList Foam::hexRef2DAxi::selectUnrefineElems
 (
     const scalar unrefineLevel,
     const PackedBoolList& markedCell,
@@ -1923,7 +1976,7 @@ Foam::labelList Foam::hexRef2D::selectUnrefineElems
     return consistentSet;
 }
 
-Foam::labelList Foam::hexRef2D::consistentUnrefinement
+Foam::labelList Foam::hexRef2DAxi::consistentUnrefinement
 (
     const labelList& elemsToUnrefine,
     const bool maxSet
@@ -1931,7 +1984,7 @@ Foam::labelList Foam::hexRef2D::consistentUnrefinement
 {
     if (debug)
     {
-        Pout<< "hexRef2D::consistentUnrefinement :"
+        Pout<< "hexRef2DAxi::consistentUnrefinement :"
             << " Determining 2:1 consistent unrefinement" << endl;
     }
 
@@ -1942,7 +1995,7 @@ Foam::labelList Foam::hexRef2D::consistentUnrefinement
             << abort(FatalError);
     }
 
-    // For hexRef2D, unrefinement is based on edges
+    // For hexRef2DAxi, unrefinement is based on edges
     const labelList& edgesToUnrefine(elemsToUnrefine);
 
     // Loop, modifying edgesToUnrefine, until no more changes to due to 2:1
@@ -2100,7 +2153,7 @@ Foam::labelList Foam::hexRef2D::consistentUnrefinement
 
         if (debug)
         {
-            Pout<< "hexRef2D::consistentUnrefinement :"
+            Pout<< "hexRef2DAxi::consistentUnrefinement :"
                 << " Changed " << nChanged
                 << " refinement levels due to 2:1 conflicts."
                 << endl;
@@ -2160,7 +2213,7 @@ Foam::labelList Foam::hexRef2D::consistentUnrefinement
     return newEdgesToUnrefine;
 }
 
-void Foam::hexRef2D::calcFaceToSplitPoint
+void Foam::hexRef2DAxi::calcFaceToSplitPoint
 (
     const labelList& splitElems,
     Map<label>& faceToSplitPoint
@@ -2169,15 +2222,13 @@ void Foam::hexRef2D::calcFaceToSplitPoint
     // Save information on faces that will be combined
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    // For hexRef2D, the split elems are edges
-    const labelList& splitEdges(splitElems);
-
-    faceToSplitPoint.resize(2*splitEdges.size());
+    // For hexRef2DAxi, the split elems are edges
+    faceToSplitPoint.resize(2*splitElems.size());
 
     {
-        forAll(splitEdges, i)
+        forAll(splitElems, i)
         {
-            label edgei = splitEdges[i];
+            label edgei = splitElems[i];
 
             const edge& e = mesh_.edges()[edgei];
 
@@ -2196,7 +2247,7 @@ void Foam::hexRef2D::calcFaceToSplitPoint
     }
 }
 
-Foam::labelList Foam::hexRef2D::getSplitElems() const
+Foam::labelList Foam::hexRef2DAxi::getSplitElems() const
 {
     if (debug)
     {
@@ -2205,7 +2256,7 @@ Foam::labelList Foam::hexRef2D::getSplitElems() const
 
     if (debug)
     {
-        Pout<< "hexRef2D::getSplitElems :"
+        Pout<< "hexRef2DAxi::getSplitElems :"
             << " Calculating unrefineable mid elements" << endl;
     }
 
@@ -2338,7 +2389,7 @@ Foam::labelList Foam::hexRef2D::getSplitElems() const
     return splitEdges;
 }
 
-void Foam::hexRef2D::setUnrefinement
+void Foam::hexRef2DAxi::setUnrefinement
 (
     const labelList& splitElemLabels,
     polyTopoChange& meshMod
@@ -2351,7 +2402,7 @@ void Foam::hexRef2D::setUnrefinement
             << abort(FatalError);
     }
 
-    // For hexRef2D, unrefinement is based on edges
+    // For hexRef2DAxi, unrefinement is based on edges
     const labelList& splitEdgeLabels(splitElemLabels);
 
 

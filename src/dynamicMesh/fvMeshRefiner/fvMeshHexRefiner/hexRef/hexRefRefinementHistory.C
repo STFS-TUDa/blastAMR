@@ -146,7 +146,7 @@ void Foam::hexRefRefinementHistory::splitCell8::operator=(const splitCell8& s)
     // Check for assignment to self
     if (this == &s)
     {
-        FatalErrorIn("splitCell8::operator=(const Foam::splitCell8&)")
+        FatalErrorInFunction
             << "Attempted assignment to self"
             << abort(FatalError);
     }
@@ -463,7 +463,6 @@ void Foam::hexRefRefinementHistory::add
 
 
     // Unblock all faces inbetween same cluster
-
     label nUnblocked = 0;
 
     forAll(mesh.faceNeighbour(), faceI)
@@ -797,11 +796,8 @@ Foam::hexRefRefinementHistory::hexRefRefinementHistory
      || (io.readOpt() == IOobject::READ_IF_PRESENT && headerOk())
     )
     {
-        WarningIn
-        (
-            "hexRefRefinementHistory::hexRefRefinementHistory(const IOobject&"
-            ", const labelListList&, const PtrList<hexRefRefinementHistory>&)"
-        )   << "read option IOobject::MUST_READ, READ_IF_PRESENT or "
+        WarningInFunction
+            << "read option IOobject::MUST_READ, READ_IF_PRESENT or "
             << "MUST_READ_IF_MODIFIED"
             << " suggests that a read constructor would be more appropriate."
             << endl;

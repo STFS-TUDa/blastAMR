@@ -45,6 +45,7 @@ License
 #include "refinementData.H"
 #include "refinementDistanceData.H"
 #include "degenerateMatcher.H"
+#include "dynMeshTools.H"
 
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -327,7 +328,7 @@ Foam::label Foam::hexRef3D::storeMidPointInfo
                 neiPt = mesh_.points()[anchorPointi];
             }
 
-            checkInternalOrientation
+            meshTools::checkInternalOrientation
             (
                 meshMod,
                 celli,
@@ -338,9 +339,10 @@ Foam::label Foam::hexRef3D::storeMidPointInfo
             );
         }
 
-        return addInternalFace
+        return meshTools::addInternalFace
         (
             meshMod,
+            mesh_,
             facei,
             anchorPointi,
             newFace,
@@ -461,7 +463,8 @@ void Foam::hexRef3D::createInternalFaces
                     ) << "face, "
                 << " nAnchors:" << nAnchors
                 << " facei:" << facei
-                << " location: " << mesh_.faceCentres()[facei]
+                << " location: "
+                << mesh_.faceCentres()[facei]
                 << abort(FatalError);
         }
 
@@ -733,6 +736,10 @@ Foam::labelListList Foam::hexRef3D::setRefinement
     // >=0: label of mid point.
     labelList cellMidPoint(mesh_.nCells(), -1);
 
+    // Add split cells
+    DynamicList<label> splitCells(cellMidPoint.size());
+    labelList newCellPoints(cellMidPoint.size(), -1);
+
     forAll(cellLabels, i)
     {
         label celli = cellLabels[i];
@@ -749,9 +756,12 @@ Foam::labelListList Foam::hexRef3D::setRefinement
                 true                            // supports a cell
             )
         );
+        splitCells.append(celli);
+        newCellPoints[celli] = cellMidPoint[celli];
 
         newPointLevel(cellMidPoint[celli]) = cellLevel_[celli]+1;
     }
+    locationMapper_.addSplitCells(splitCells, newCellPoints);
 
 
     if (debug)
@@ -836,6 +846,9 @@ Foam::labelListList Foam::hexRef3D::setRefinement
         // This needs doing for if people do not write binary and we slowly
         // get differences.
 
+        // Add split edges
+        labelList newEdgePoints(edgeMidPoint.size(), -1);
+
         pointField edgeMids(mesh_.nEdges(), point(-GREAT, -GREAT, -GREAT));
 
         forAll(edgeMidPoint, edgeI)
@@ -856,6 +869,7 @@ Foam::labelListList Foam::hexRef3D::setRefinement
 
 
         // Phase 2: introduce points at the synced locations.
+        DynamicList<label> splitEdges(edgeMidPoint.size());
         forAll(edgeMidPoint, edgeI)
         {
             if (edgeMidPoint[edgeI] >= 0)
@@ -875,6 +889,8 @@ Foam::labelListList Foam::hexRef3D::setRefinement
                         true                        // supports a cell
                     )
                 );
+                splitEdges.append(edgeI);
+                newEdgePoints[edgeI] = edgeMidPoint[edgeI];
 
                 newPointLevel(edgeMidPoint[edgeI]) =
                     max
@@ -885,6 +901,7 @@ Foam::labelListList Foam::hexRef3D::setRefinement
                   + 1;
             }
         }
+        locationMapper_.addSplitEdges(splitEdges, newEdgePoints);
     }
 
     if (debug)
@@ -1019,6 +1036,10 @@ Foam::labelListList Foam::hexRef3D::setRefinement
     {
         // Phase 1: determine mid points and sync. See comment for edgeMids
         // above
+
+        // Add split faces
+        labelList newFacePoints(faceMidPoint.size(), -1);
+
         pointField bFaceMids
         (
             mesh_.nFaces()-mesh_.nInternalFaces(),
@@ -1041,6 +1062,7 @@ Foam::labelListList Foam::hexRef3D::setRefinement
             maxEqOp<vector>()
         );
 
+        DynamicList<label> splitFaces(faceMidPoint.size());
         forAll(faceMidPoint, facei)
         {
             if (faceMidPoint[facei] >= 0)
@@ -1064,12 +1086,15 @@ Foam::labelListList Foam::hexRef3D::setRefinement
                         true                        // supports a cell
                     )
                 );
+                splitFaces.append(facei);
+                newFacePoints[facei] = faceMidPoint[facei];
 
                 // Determine the level of the corner points and midpoint will
                 // be one higher.
                 newPointLevel(faceMidPoint[facei]) = faceAnchorLevel[facei]+1;
             }
         }
+        locationMapper_.addSplitFaces(splitFaces, newFacePoints);
     }
 
     if (debug)
@@ -1372,47 +1397,39 @@ Foam::labelListList Foam::hexRef3D::setRefinement
 
                     if (debug)
                     {
-                        if (mesh_.isInternalFace(facei))
-                        {
-                            label oldOwn = mesh_.faceOwner()[facei];
-                            label oldNei = mesh_.faceNeighbour()[facei];
-
-                            checkInternalOrientation
-                            (
-                                meshMod,
-                                oldOwn,
-                                facei,
-                                mesh_.cellCentres()[oldOwn],
-                                mesh_.cellCentres()[oldNei],
-                                newFace
-                            );
-                        }
-                        else
-                        {
-                            label oldOwn = mesh_.faceOwner()[facei];
-
-                            checkBoundaryOrientation
-                            (
-                                meshMod,
-                                oldOwn,
-                                facei,
-                                mesh_.cellCentres()[oldOwn],
-                                mesh_.faceCentres()[facei],
-                                newFace
-                            );
-                        }
+                        meshTools::checkFaceOrientation
+                        (
+                            meshMod,
+                            mesh_,
+                            facei,
+                            newFace
+                        );
                     }
-
 
                     if (!modifiedFace)
                     {
                         modifiedFace = true;
-
-                        modFace(meshMod, facei, newFace, own, nei);
+                        meshTools::modifyFace
+                        (
+                            meshMod,
+                            mesh_,
+                            facei,
+                            newFace,
+                            own,
+                            nei
+                        );
                     }
                     else
                     {
-                        addFace(meshMod, facei, newFace, own, nei);
+                        meshTools::addFace
+                        (
+                            meshMod,
+                            mesh_,
+                            facei,
+                            newFace,
+                            own,
+                            nei
+                        );
                     }
                 }
             }
@@ -1495,38 +1512,24 @@ Foam::labelListList Foam::hexRef3D::setRefinement
 
                     if (debug)
                     {
-                        if (mesh_.isInternalFace(facei))
-                        {
-                            label oldOwn = mesh_.faceOwner()[facei];
-                            label oldNei = mesh_.faceNeighbour()[facei];
-
-                            checkInternalOrientation
-                            (
-                                meshMod,
-                                oldOwn,
-                                facei,
-                                mesh_.cellCentres()[oldOwn],
-                                mesh_.cellCentres()[oldNei],
-                                newFace
-                            );
-                        }
-                        else
-                        {
-                            label oldOwn = mesh_.faceOwner()[facei];
-
-                            checkBoundaryOrientation
-                            (
-                                meshMod,
-                                oldOwn,
-                                facei,
-                                mesh_.cellCentres()[oldOwn],
-                                mesh_.faceCentres()[facei],
-                                newFace
-                            );
-                        }
+                        meshTools::checkFaceOrientation
+                        (
+                            meshMod,
+                            mesh_,
+                            facei,
+                            newFace
+                        );
                     }
 
-                    modFace(meshMod, facei, newFace, own, nei);
+                    meshTools::modifyFace
+                    (
+                        meshMod,
+                        mesh_,
+                        facei,
+                        newFace,
+                        own,
+                        nei
+                    );
 
                     // Mark face as having been handled
                     affectedFace.unset(facei);
@@ -1568,7 +1571,15 @@ Foam::labelListList Foam::hexRef3D::setRefinement
                 nei
             );
 
-            modFace(meshMod, facei, f, own, nei);
+            meshTools::modifyFace
+            (
+                meshMod,
+                mesh_,
+                facei,
+                f,
+                own,
+                nei
+            );
 
             // Mark face as having been handled
             affectedFace.unset(facei);

@@ -58,6 +58,7 @@ Authors
 #include "autoPtr.H"
 #include "runTimeSelectionTables.H"
 #include "volFields.H"
+#include "locationMapper.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -77,6 +78,19 @@ class mapDistributePolyMesh;
 
 class hexRef
 {
+public:
+    // Public static functions
+
+        //- Reorder according to map.
+        static void reorder
+        (
+            const labelList& map,
+            const label len,
+            const label null,
+            labelList& elems
+        );
+
+
 protected:
     // Protected data
 
@@ -107,58 +121,11 @@ protected:
         //- Cell shapes when seen as split hexes
         mutable autoPtr<cellShapeList> cellShapesPtr_;
 
+        //- Mapper for locations
+        mutable locationMapper locationMapper_;
+
 
     // Protected Member Functions
-
-        //- Reorder according to map.
-        static void reorder
-        (
-            const labelList& map,
-            const label len,
-            const label null,
-            labelList& elems
-        );
-
-        //- Get patch and zone info
-        void getFaceInfo
-        (
-            const label facei,
-            label& patchID,
-            label& zoneID,
-            label& zoneFlip
-        ) const;
-
-        //- Adds a face on top of existing facei. Reverses if necessary.
-        label addFace
-        (
-            polyTopoChange& meshMod,
-            const label facei,
-            const face& newFace,
-            const label own,
-            const label nei
-        ) const;
-
-        //- Adds internal face from point. No checks on reversal.
-        label addInternalFace
-        (
-            polyTopoChange& meshMod,
-            const label meshFacei,
-            const label meshPointi,
-            const face& newFace,
-            const label own,
-            const label nei
-        ) const;
-
-        //- Modifies existing facei for either new owner/neighbour or new face
-        //  points. Reverses if necessary.
-        void modFace
-        (
-            polyTopoChange& meshMod,
-            const label facei,
-            const face& newFace,
-            const label own,
-            const label nei
-        ) const;
 
         scalar getLevel0EdgeLength() const;
 
@@ -206,28 +173,6 @@ protected:
 
         ////- Print levels of list of points.
         //void printLevels(Ostream&, const labelList&) const;
-
-        //- debug:check orientation of added internal face
-        static void checkInternalOrientation
-        (
-            polyTopoChange& meshMod,
-            const label celli,
-            const label facei,
-            const point& ownPt,
-            const point& neiPt,
-            const face& newFace
-        );
-
-        //- debug:check orientation of new boundary face
-        static void checkBoundaryOrientation
-        (
-            polyTopoChange& meshMod,
-            const label celli,
-            const label facei,
-            const point& ownPt,
-            const point& boundaryPt,
-            const face& newFace
-        );
 
         //- If p0 and p1 are existing vertices check if edge is split and insert
         // splitPoint.
@@ -470,17 +415,22 @@ public:
                 return mesh_;
             }
 
-            const labelIOList& cellLevel() const
+            const labelList& cellLevel() const
             {
                 return cellLevel_;
             }
 
-            const labelIOList& pointLevel() const
+            const labelList& pointLevel() const
             {
                 return pointLevel_;
             }
 
             const hexRefRefinementHistory& history() const
+            {
+                return history_;
+            }
+
+            hexRefRefinementHistory& history()
             {
                 return history_;
             }
@@ -586,6 +536,18 @@ public:
                 const labelList& cellMap
             );
 
+            //- Return the location mapper
+            const locationMapper& locMapper() const
+            {
+                return locationMapper_;
+            }
+
+            //- Access the location mapper
+            locationMapper& locMapper()
+            {
+                return locationMapper_;
+            }
+
             //- Update local numbering for mesh redistribution
             void distribute(const mapDistributePolyMesh&);
 
@@ -650,7 +612,6 @@ public:
 
             //- Force writing refinement+history to polyMesh directory.
             bool write() const;
-
 };
 
 
