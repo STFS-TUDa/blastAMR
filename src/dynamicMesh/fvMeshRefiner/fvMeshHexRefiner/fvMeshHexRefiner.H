@@ -28,11 +28,10 @@ License
 
 
 Class
-    Foam::adaptiveBlastFvMesh
+    Foam::fvMeshHexRefiner
 
 SourceFiles
-    adaptiveBlastFvMesh.C
-    adaptiveBlastFvMeshTemplates.C
+    fvMeshHexRefiner.C
 
 Authors
     T.G. Voskuilen ( https://github.com/tgvoskuilen/meshBalancing )
@@ -78,17 +77,12 @@ Description
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef adaptiveBlastFvMesh_H
-#define adaptiveBlastFvMesh_H
+#ifndef fvMeshHexRefiner_H
+#define fvMeshHexRefiner_H
 
-#include "dynamicBlastFvMesh.H"
-#include "errorEstimator.H"
+#include "fvMeshRefiner.H"
 #include "hexRef.H"
 #include "PackedBoolList.H"
-#include "Switch.H"
-#include "decompositionMethod.H"
-#include "fvMeshDistribute.H"
-#include "mapDistributePolyMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -96,28 +90,17 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                     Class adaptiveBlastFvMesh Declaration
+                     Class fvMeshHexRefiner Declaration
 \*---------------------------------------------------------------------------*/
 
-class adaptiveBlastFvMesh
+class fvMeshHexRefiner
 :
-    public dynamicBlastFvMesh
+    public fvMeshRefiner
 {
 protected:
 
-        autoPtr<errorEstimator> error_;
-
         //- Mesh cutting engine
         autoPtr<hexRef> meshCutter_;
-
-        //- Dump cellLevel for postprocessing
-        Switch dumpLevel_;
-
-        //- Fluxes to map
-        HashTable<word> correctFluxes_;
-
-        //- Number of refinement/unrefinement steps done so far.
-        label nRefinementIterations_;
 
         //- Number of protected cells
         label nProtected_;
@@ -125,32 +108,12 @@ protected:
         //- Protected cells (usually since not hexes)
         PackedBoolList protectedCell_;
 
-        //- Does the mesh get balanced
-        bool balance_;
-
-        //- Has the mesh been balanced this step
-        mutable bool balanced_;
-
-        //- Static dictionary for runTime balancing
-        dictionary decompositionDict_;
-
-        //- Decomposition method
-        autoPtr<decompositionMethod> decomposer_;
-
 
     // Protected Member Functions
-
-        label topParentID(const label p) const;
-
-        //- Count set/unset elements in packedlist.
-        static label count(const PackedBoolList&, const unsigned int);
 
         //- Calculate cells that cannot be refined since would trigger
         //  refinement of protectedCell_ (since 2:1 refinement cascade)
         void calculateProtectedCells(PackedBoolList& unrefineableCell) const;
-
-        //- Read the projection parameters from dictionary
-        void readDict();
 
 
         //- Refine cells. Update mesh and fields.
@@ -159,95 +122,57 @@ protected:
         //- Unrefine cells. Gets passed in centre points of cells to combine.
         autoPtr<mapPolyMesh> unrefine(const labelList&);
 
+        //- Subset candidate cells for refinement
+        virtual labelList selectRefineCells
+        (
+            const label maxCells,
+            const labelList& maxRefinement,
+            const PackedBoolList& candidateCell
+        ) const;
 
-        // Selection of cells to un/refine
+        //- Check all cells have 8 anchor points
+        void checkEightAnchorPoints
+        (
+            PackedBoolList& protectedCell,
+            label& nProtected
+        ) const;
 
-            //- Get per cell max of connected point
-            scalarField maxPointField(const scalarField&) const;
-
-            //- Get point max of connected cell
-            scalarField maxCellField(const volScalarField&) const;
-
-            scalarField cellToPoint(const scalarField& vFld) const;
-
-            scalarField error
-            (
-                const scalarField& fld,
-                const scalar minLevel,
-                const scalar maxLevel
-            ) const;
-
-            //- Select candidate cells for refinement
-            virtual void selectRefineCandidates
-            (
-                const scalar lowerRefineLevel,
-                const scalar upperRefineLevel,
-                const scalarField& vFld,
-                PackedBoolList& candidateCell
-            ) const;
-
-            //- Subset candidate cells for refinement
-            virtual labelList selectRefineCells
-            (
-                const label maxCells,
-                const labelList& maxRefinement,
-                const PackedBoolList& candidateCell
-            ) const;
-
-            //- Select points that can be unrefined.
-            virtual labelList selectUnrefinePoints
-            (
-                const scalar unrefineLevel,
-                const PackedBoolList& markedCell,
-                const scalarField& pFld
-            ) const;
-
-            //- Extend markedCell with cell-face-cell.
-            void extendMarkedCells(PackedBoolList& markedCell) const;
-
-            //- Check all cells have 8 anchor points
-            void checkEightAnchorPoints
-            (
-                PackedBoolList& protectedCell,
-                label& nProtected
-            ) const;
-
-            //- Set protected cells
-            void setProtectedCells();
-
-            //- Map non-flux surface<Type>Fields for new internal faces
-            //  (from cell splitting)
-            template <class T>
-            void mapNewInternalFaces(const labelList& faceMap);
-
-            //- Overload update mesh to include other methods
-            virtual void updateMesh(const mapPolyMesh& mpm);
-
+        //- Set protected cells
+        void setProtectedCells();
 
 
 public:
 
     //- Runtime type information
-    TypeName("adaptiveFvMesh");
+    TypeName("hexRefiner");
 
 
     // Constructors
 
-        //- Construct from IOobject
-        explicit adaptiveBlastFvMesh(const IOobject& io);
+        //- Construct from mesh
+        explicit fvMeshHexRefiner
+        (
+            fvMesh& mesh
+        );
+
+        //- Construct from mesh and dictionary
+        explicit fvMeshHexRefiner
+        (
+            fvMesh& mesh,
+            const dictionary& dict,
+            const bool force = false,
+            const bool read = true
+        );
 
         //- Disallow default bitwise copy construction
-        adaptiveBlastFvMesh(const adaptiveBlastFvMesh&) = delete;
+        fvMeshHexRefiner(const fvMeshHexRefiner&) = delete;
 
 
     //- Destructor
-    virtual ~adaptiveBlastFvMesh();
+    virtual ~fvMeshHexRefiner();
 
 
     // Member Functions
-
-        //- Map all fields in time using given map
-        virtual void mapFields(const mapPolyMesh& mpm);
 
         //- Direct access to the refinement engine
         const hexRef& meshCutter() const
@@ -255,37 +180,46 @@ public:
             return meshCutter_();
         }
 
-        //- Cells which should not be refined/unrefined
-        const PackedBoolList& protectedCell() const
+        //- Direct access to the refinement engine
+        hexRef& meshCutter()
         {
-            return protectedCell_;
+            return meshCutter_();
         }
 
-        //- Cells which should not be refined/unrefined
-        PackedBoolList& protectedCell()
+        //- Return the cell level
+        virtual const labelList& cellLevel() const
         {
-            return protectedCell_;
+            return meshCutter_->cellLevel();
         }
 
-        //- Update the mesh for both mesh motion and topology change
-        virtual bool update();
+        //- Return the point level
+        virtual const labelList& pointLevel() const
+        {
+            return meshCutter_->pointLevel();
+        }
+
+        //- Return the location mapper
+        virtual const locationMapper& locMapper() const
+        {
+            return meshCutter_->locMapper();
+        }
+
 
         //- Refine the mesh
-        virtual bool refine(const bool correctError = true);
+        virtual bool refine
+        (
+            const scalarField& error,
+            const labelList& maxCellLevel = labelList(),
+            const scalar lowerRefineLevel = small,
+            const scalar upperRefineLevel = great,
+            const scalar unrefineLevel = -small
+        );
 
-        //- Update error field
-        virtual void updateError();
+        //- Overload update mesh to include other methods
+        virtual void updateMesh(const mapPolyMesh& mpm);
 
-        //- Update error field boundaries
-        virtual void updateErrorBoundaries();
-
-        //- Template to update all volField boundaries
-        template<class GeoField> void correctBoundaries();
-
-        //- Balance the mesh
-        bool balance();
-
-
+        //- Distribute additional information
+        virtual void distribute(const mapDistributePolyMesh& map);
 
 
     // Writing
@@ -303,7 +237,7 @@ public:
     // Member Operators
 
         //- Disallow default bitwise assignment
-        void operator=(const adaptiveBlastFvMesh&) = delete;
+        void operator=(const fvMeshHexRefiner&) = delete;
 };
 
 
@@ -312,11 +246,6 @@ public:
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-
-#ifdef NoRepository
-    #include "adaptiveBlastFvMeshTemplates.C"
-#endif
 
 #endif
 

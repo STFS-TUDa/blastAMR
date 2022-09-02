@@ -26,12 +26,13 @@ License
 #include "volMesh.H"
 #include "fvPatchField.H"
 #include "surfaceFields.H"
+#include "processorPolyPatch.H"
 
 
 template<class GeoField>
-void Foam::adaptiveBlastFvMesh::correctBoundaries()
+void Foam::fvMeshBalance::correctBoundaries()
 {
-    HashTable<GeoField*> flds(this->objectRegistry::lookupClass<GeoField>());
+    HashTable<GeoField*> flds(mesh_.lookupClass<GeoField>());
 
     forAllIter(typename HashTable<GeoField*>, flds, iter)
     {
@@ -49,7 +50,7 @@ void Foam::adaptiveBlastFvMesh::correctBoundaries()
 
             forAll(fld.boundaryField(), patchi)
             {
-                if (fld.boundaryField()[patchi].coupled())
+                if (isA<processorPolyPatch>(mesh_.boundaryMesh()[patchi]))
                 {
                     fld.boundaryFieldRef()[patchi].initEvaluate
                     (
@@ -70,7 +71,7 @@ void Foam::adaptiveBlastFvMesh::correctBoundaries()
 
             forAll(fld.boundaryField(), patchi)
             {
-                if (fld.boundaryField()[patchi].coupled())
+                if (isA<processorPolyPatch>(mesh_.boundaryMesh()[patchi]))
                 {
                     fld.boundaryFieldRef()[patchi].evaluate
                     (
@@ -82,13 +83,70 @@ void Foam::adaptiveBlastFvMesh::correctBoundaries()
         else
         {
             //Scheduled patch updates not supported
-            FatalErrorIn
-            (
-                "dynamicRefineBalancedBlastFvMeshTemplates::correctBoundaries"
-            )   << "Unsuported communications type "
+            FatalErrorInFunction
+                << "Unsuported communications type "
                 << Pstream::commsTypeNames[Pstream::defaultCommsType]
                 << exit(FatalError);
         }
+    }
+}
+
+template<class Type>
+void Foam::fvMeshBalance::pushUntransformedData
+(
+    const polyMesh& mesh,
+    Field<Type>& pointData
+)
+{
+    const globalMeshData& gmd = mesh.globalData();
+//     Field<scalar> nSharedPoints(pointData.size(), 1);
+//     gmd.syncPointData
+//     (
+//         pointData,
+//         plusEqOp<Type>(),
+//         mapDistribute::transform()
+//     );
+//     gmd.syncPointData
+//     (
+//         nSharedPoints,
+//         plusEqOp<scalar>(),
+//         mapDistribute::transform()
+//     );
+//     pointData /= nSharedPoints;
+
+    // Transfer onto coupled patch
+
+    const indirectPrimitivePatch& cpp = gmd.coupledPatch();
+    const labelList& meshPoints = cpp.meshPoints();
+
+    const mapDistribute& slavesMap = gmd.globalCoPointSlavesMap();
+    const labelListList& slaves = gmd.globalCoPointSlaves();
+
+    List<Type> elems(slavesMap.constructSize());
+    forAll(meshPoints, i)
+    {
+        elems[i] = pointData[meshPoints[i]];
+    }
+
+    // Combine master data with slave data
+    forAll(slaves, i)
+    {
+        const labelList& slavePoints = slaves[i];
+
+        // Copy master data to slave slots
+        forAll(slavePoints, j)
+        {
+            elems[slavePoints[j]] = elems[i];
+        }
+    }
+
+    // Push slave-slot data back to slaves
+    slavesMap.reverseDistribute(elems.size(), elems, false);
+
+    // Extract back onto mesh
+    forAll(meshPoints, i)
+    {
+        pointData[meshPoints[i]] = elems[i];
     }
 }
 
