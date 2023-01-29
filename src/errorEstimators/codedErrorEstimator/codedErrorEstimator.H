@@ -36,38 +36,34 @@ Description
        codeOptions | compiler line: added to EXE_INC (Make/options)
        codeLibs    | linker line: added to LIB_LIBS (Make/options)
        localCode   | c++; local static functions
-       code        | c++; return the error values a scalarField
+       code        | c++; code to select cells to be refined
+       codeRead    | c++; read dictionary into class members
     \endplaintable
 
 Usage
     Example:
     \verbatim
-    <patchName>
-    {
-        type            uniformFixedValue;
-        uniformValue
-        {
-            type  coded;
-            name  myExpression;  // Name of generated PatchFunction1
+    errorEstimator coded;      // Model used to estimate error
+    name percentOfMax;
+    
+    code
+    #{
+        Info<< "---->! custom error estimator !<----" << endl;
+        const auto& T = mesh_.lookupObject<volScalarField>("T");
+        error_.interalField() = T.interalField();
+    
+        const scalar min = gMin(T);
+        const scalar max = gMax(T);
+        const scalar range = max - min;
+    
+        lowerRefine_ = min + 0.8*range;
+        upperRefine_ = GREAT;
+        lowerUnrefine_ = min + 0.8*range;
+        upperUnrefine_ =  GREAT;
 
-            code
-            #{
-                const polyPatch& pp = this->patch();
-                Pout<< "** Patch size:" << pp.size() << endl;
-                return tmp<vectorField>::New(pp.size(), vector(1, 0, 0))
-            #};
-
-            //codeInclude
-            //#{
-            //    #include "volFields.H"
-            //#};
-
-            //codeOptions
-            //#{
-            //    -I$(LIB_SRC)/finiteVolume/lnInclude
-            //#};
-        }
-    }
+        if (scale) normalize(error_);
+        Info<< "---->! end    error estimator !<----" << endl;
+    #};
     \endverbatim
 
 Note
