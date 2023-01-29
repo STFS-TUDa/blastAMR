@@ -9,3 +9,7 @@ which are relevant to adaptive mesh refinement while retaining the original comm
 - Make it easy to include this lib in other projects through submodules/subtrees.
 
 `blastFoam` is GPL licensed; see the included [COPYING](COPYING).
+
+## Notes
+
+- Everything compiles to your `$FOAM_USER_LIBBIN` with a recent ESI ([openfoam.com](https://openfoam.com)) version.
