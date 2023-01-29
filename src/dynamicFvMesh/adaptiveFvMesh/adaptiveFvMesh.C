@@ -341,19 +341,8 @@ void Foam::adaptiveFvMesh::mapFields(const mapPolyMesh& mpm)
 
 bool Foam::adaptiveFvMesh::update()
 {
-    Info<< "***** Running update *****" << endl;
     bool changed = refine();
     return refiner_->balance() || changed;
-    //mapPolyMesh map(*this);
-    //updateMesh(map);
-
-    //bool changed = returnReduce(map.nOldCells() != nCells(), orOp<bool>());
-    //if (map.nOldCells())
-    //{
-    //    Info<< "***** Running distribute *****" << endl;
-    //    distribute(map);
-    //}
-    //return false;
 }
 
 

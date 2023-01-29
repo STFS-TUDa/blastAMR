@@ -310,11 +310,9 @@ bool Foam::fvMeshPolyRefiner::refine
     const scalar unrefineLevel
 )
 {
-    Info<< "**** Executing poly-AMR refinement ****"  << endl;
     readDict(this->dict_);
     bool hasChanged = false;
 
-    Info<< "**** preUpdate: " << preUpdate() << endl;
     if (preUpdate())
     {
         // Cells marked for refinement or otherwise protected from unrefinement.
@@ -367,43 +365,6 @@ bool Foam::fvMeshPolyRefiner::refine
                 )
             );
 
-//
-//            volScalarField tmp1
-//            (
-//                IOobject(
-//                    "errrrrrr",
-//                    mesh_.time().constant(),
-//                    mesh_,
-//                    IOobject::NO_READ,
-//                    IOobject::NO_WRITE,
-//                    false
-//                ),
-//                mesh_,
-//                dimensionedScalar("zero",dimless, 0)
-//            );
-//            volScalarField tmp2
-//            (
-//                IOobject(
-//                    "selected",
-//                    mesh_.time().constant(),
-//                    mesh_,
-//                    IOobject::NO_READ,
-//                    IOobject::NO_WRITE,
-//                    false
-//                ),
-//                mesh_,
-//                dimensionedScalar("zero",dimless, 0)
-//            );
-//            //forAll(tmp1, ci) {
-//            //    tmp1[ci] = error[ci];
-//            //}
-//            tmp2 = 0.0;
-//            forAll(cellsToRefine, ci) {
-//                tmp2[cellsToRefine[ci]] = 1.0;
-//            }
-//            tmp1.write();
-//            tmp2.write();
-//            ::exit(200);
             label nCellsToRefine = returnReduce
             (
                 cellsToRefine.size(), sumOp<label>()
@@ -524,7 +485,6 @@ bool Foam::fvMeshPolyRefiner::refine
         }
     }
 
-    Info<< "**** hasChanged: " << hasChanged << endl;
     return hasChanged;
 }
 
