@@ -28,6 +28,8 @@ License
 // public or protected way to do this without using clearOut() which
 // will the pointMesh if it exists, so pointFields become invalid.
 // This is a work around
+#include "IOdictionary.H"
+#include "IOobject.H"
 #define curTimeIndex_ curTimeIndex_; public:
 #include "fvMesh.H"
 #undef curTimeIndex_
@@ -47,7 +49,7 @@ License
 #include "wedgePolyPatch.H"
 #include "hexRef3D.H"
 #include "RefineBalanceMeshObject.H"
-#include "parcelCloud.H"
+//#include "parcelCloud.H"
 #include "extrapolatedCalculatedFvPatchField.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -63,7 +65,7 @@ namespace Foam
 
 Foam::label Foam::fvMeshRefiner::count
 (
-    const PackedBoolList& l,
+    const boolList& l,
     const unsigned int val
 )
 {
@@ -170,14 +172,16 @@ void Foam::fvMeshRefiner::selectRefineCandidates
     const scalar lowerRefineLevel,
     const scalar upperRefineLevel,
     const scalarField& vFld,
-    PackedBoolList& candidateCell
+    boolList& candidateCell
 ) const
 {
     forAll(vFld, cellI)
     {
         if ((vFld[cellI] >= lowerRefineLevel) && (vFld[cellI] <= upperRefineLevel))
         {
-            candidateCell.set(cellI, 1);
+            candidateCell.set(cellI, true);
+        } else {
+            candidateCell.set(cellI, false);
         }
     }
 }
@@ -187,12 +191,12 @@ Foam::labelList Foam::fvMeshRefiner::selectRefineCells
 (
     const label maxCells,
     const labelList& maxRefinement,
-    const PackedBoolList& candidateCell
+    const boolList& candidateCell
 ) const
 {
 
     // Count current selection
-    label nLocalCandidates = count(candidateCell, 1);
+    label nLocalCandidates = count(candidateCell, true);
 
     // Collect all cells
     DynamicList<label> candidates(nLocalCandidates);
@@ -211,7 +215,7 @@ Foam::labelList Foam::fvMeshRefiner::selectRefineCells
 
     candidates.shrink();
 
-    return move(candidates);
+    return candidates;
 }
 
 
@@ -228,7 +232,7 @@ void Foam::fvMeshRefiner::setMaxCellLevel(labelList& maxCellLevel) const
         maxCellLevel.setSize
         (
             mesh_.nCells(),
-            dict_.lookup<label>("maxRefinement")
+            readLabel(dict_.lookup("maxRefinement"))
         );
     }
 
@@ -251,19 +255,19 @@ void Foam::fvMeshRefiner::setMaxCellLevel(labelList& maxCellLevel) const
 
 bool Foam::fvMeshRefiner::preUpdate()
 {
-    if (canRefine() || canUnrefine())
-    {
-        HashTable<parcelCloud*> clouds
-        (
-            mesh_.lookupClass<parcelCloud>()
-        );
-        forAllIter(HashTable<parcelCloud*>, clouds, iter)
-        {
-            iter()->storeGlobalPositions();
-        }
-        return true;
-    }
-    return false;
+    //if (canRefine() || canUnrefine())
+    //{
+    //    HashTable<parcelCloud*> clouds
+    //    (
+    //        mesh_.lookupClass<parcelCloud>()
+    //    );
+    //    forAllIter(HashTable<parcelCloud*>, clouds, iter)
+    //    {
+    //        iter()->storeGlobalPositions();
+    //    }
+    //    return true;
+    //}
+    return canRefine() || canUnrefine();
 }
 
 
@@ -377,15 +381,18 @@ Foam::fvMeshRefiner::fvMeshRefiner(fvMesh& mesh)
 :
     FvMeshRefiner
     (
-        mesh,
-        IOobject
-        (
-            typeName,
-            mesh.facesInstance(),
-            mesh,
-            IOobject::NO_READ,
-            IOobject::AUTO_WRITE
-        )
+        mesh//,
+        //IOdictionary
+        //(
+        //    IOobject
+        //    (
+        //        typeName,
+        //        mesh.facesInstance(),
+        //        mesh,
+        //        IOobject::NO_READ,
+        //        IOobject::AUTO_WRITE
+        //    )
+        //)
     ),
 
     mesh_(mesh),
@@ -409,9 +416,9 @@ Foam::fvMeshRefiner::fvMeshRefiner(fvMesh& mesh)
     beginUnrefine_(0),
     beginBalance_(0),
 
-    endRefine_(great),
-    endUnrefine_(great),
-    endBalance_(great),
+    endRefine_(GREAT),
+    endUnrefine_(GREAT),
+    endBalance_(GREAT),
 
     maxCells_(labelMax),
 
@@ -441,15 +448,18 @@ Foam::fvMeshRefiner::fvMeshRefiner
 :
     FvMeshRefiner
     (
-        mesh,
-        IOobject
-        (
-            typeName,
-            mesh.facesInstance(),
-            mesh,
-            IOobject::NO_READ,
-            IOobject::AUTO_WRITE
-        )
+        mesh//,
+        //IOdictionary
+        //(
+        //    IOobject
+        //    (
+        //        typeName,
+        //        mesh.facesInstance(),
+        //        mesh,
+        //        IOobject::NO_READ,
+        //        IOobject::AUTO_WRITE
+        //    )
+        //)
     ),
 
     mesh_(mesh),
@@ -477,9 +487,9 @@ Foam::fvMeshRefiner::fvMeshRefiner
     beginUnrefine_(0),
     beginBalance_(0),
 
-    endRefine_(great),
-    endUnrefine_(great),
-    endBalance_(great),
+    endRefine_(GREAT),
+    endUnrefine_(GREAT),
+    endBalance_(GREAT),
 
     maxCells_(labelMax),
 
@@ -525,21 +535,21 @@ void Foam::fvMeshRefiner::readDict(const dictionary& dict)
 
     if (dict.found("nRefinementBufferLayers"))
     {
-        nRefinementBufferLayers_ = dict_.lookup<label>("nRefinementBufferLayers");
+        nRefinementBufferLayers_ = readLabel(dict_.lookup("nRefinementBufferLayers"));
     }
     else if (dict.found("nBufferLayers"))
     {
-        nRefinementBufferLayers_ = dict_.lookup<label>("nBufferLayers");
+        nRefinementBufferLayers_ = readLabel(dict_.lookup("nBufferLayers"));
     }
 
     if (dict.found("nUnrefinementBufferLayers"))
     {
         nUnrefinementBufferLayers_ =
-            dict_.lookup<label>("nUnrefinementBufferLayers");
+            readLabel(dict_.lookup("nUnrefinementBufferLayers"));
     }
     else if (dict.found("nBufferLayers"))
     {
-        nUnrefinementBufferLayers_ = dict_.lookup<label>("nBufferLayers");
+        nUnrefinementBufferLayers_ = readLabel(dict_.lookup("nBufferLayers"));
     }
 
     dumpLevel_ = dict_.lookupOrDefault<bool>("dumpLevel", false);
@@ -552,8 +562,8 @@ void Foam::fvMeshRefiner::readDict(const dictionary& dict)
     {
         refineInterval_ = 1;
         unrefineInterval_ = 1;
-        beginUnrefine_ = -great;
-        beginBalance_ = -great;
+        beginUnrefine_ = -GREAT;
+        beginBalance_ = -GREAT;
     }
     else
     {
@@ -590,9 +600,9 @@ void Foam::fvMeshRefiner::readDict(const dictionary& dict)
         beginUnrefine_ = dict_.lookupOrDefault<scalar>("beginUnrefine", 0.0);
         beginBalance_ = dict_.lookupOrDefault<scalar>("beginBalance", 0.0);
 
-        endRefine_ = dict_.lookupOrDefault<scalar>("endRefine", great);
-        endUnrefine_ = dict_.lookupOrDefault<scalar>("endUnrefine", great);
-        endBalance_ = dict_.lookupOrDefault<scalar>("endBalance", great);
+        endRefine_ = dict_.lookupOrDefault<scalar>("endRefine", GREAT);
+        endUnrefine_ = dict_.lookupOrDefault<scalar>("endUnrefine", GREAT);
+        endBalance_ = dict_.lookupOrDefault<scalar>("endBalance", GREAT);
     }
 }
 
@@ -725,7 +735,7 @@ void Foam::fvMeshRefiner::extendMaxCellLevel
 {
     // Mark faces using any marked cell
     boolList markedFace(mesh.nFaces(), false);
-    PackedBoolList markedCell(mesh.nCells(), false);
+    boolList markedCell(mesh.nCells(), false);
 
     forAll(cells, i)
     {
@@ -774,7 +784,7 @@ void Foam::fvMeshRefiner::extendMaxCellLevel
 
 void Foam::fvMeshRefiner::extendMarkedCells
 (
-    PackedBoolList& markedCells,
+    boolList& markedCells,
     const labelList& maxCellLevel,
     const bool isTop,
     const bool force
@@ -846,7 +856,7 @@ void Foam::fvMeshRefiner::extendMarkedCells
 
 void Foam::fvMeshRefiner::extendMarkedCellsAcrossFaces
 (
-    PackedBoolList& markedCells
+    boolList& markedCells
 )
 {
     // Mark all faces for all marked cells
@@ -904,7 +914,7 @@ void Foam::fvMeshRefiner::extendMarkedCellsAcrossFaces
 
 void Foam::fvMeshRefiner::extendMarkedCellsAcrossPoints
 (
-    PackedBoolList& markedCells
+    boolList& markedCells
 )
 {
     // Mark all points for all marked cells

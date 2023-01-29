@@ -700,7 +700,7 @@ void Foam::hexRef::walkFaceFromMid
 Foam::label Foam::hexRef::faceConsistentRefinement
 (
     const bool maxSet,
-    PackedBoolList& refineCell
+    boolList& refineCell
 ) const
 {
     label nChanged = 0;
@@ -789,7 +789,7 @@ void Foam::hexRef::checkWantedRefinementLevels
     const labelList& cellsToRefine
 ) const
 {
-    PackedBoolList refineCell(mesh_.nCells());
+    boolList refineCell(mesh_.nCells());
     forAll(cellsToRefine, i)
     {
         refineCell.set(cellsToRefine[i]);
@@ -1411,7 +1411,7 @@ Foam::labelList Foam::hexRef::consistentRefinement
     // maxSet = true  : select cells to refine
 
     // Go to straight boolList.
-    PackedBoolList refineCell(mesh_.nCells());
+    boolList refineCell(mesh_.nCells());
     forAll(cellsToRefine, i)
     {
         refineCell.set(cellsToRefine[i]);
@@ -2254,7 +2254,7 @@ Foam::labelList Foam::hexRef::consistentSlowRefinement2
     // 2. Extend to 2:1. I don't understand yet why this is not done
     // 2. Extend to 2:1. For non-cube cells the scalar distance does not work
     // so make sure it at least provides 2:1.
-    PackedBoolList refineCell(mesh_.nCells());
+    boolList refineCell(mesh_.nCells());
     forAll(allCellInfo, celli)
     {
         label wanted = allCellInfo[celli].wantedLevel(cc[celli]);
@@ -2333,12 +2333,12 @@ Foam::labelList Foam::hexRef::consistentSlowRefinement2
         }
 
         // Extend to 2:1
-        PackedBoolList refineCell(mesh_.nCells());
+        boolList refineCell(mesh_.nCells());
         forAll(newCellsToRefine, i)
         {
             refineCell.set(newCellsToRefine[i]);
         }
-        const PackedBoolList savedRefineCell(refineCell);
+        const boolList savedRefineCell(refineCell);
 
         label nChanged = faceConsistentRefinement(true, refineCell);
 
@@ -3219,7 +3219,7 @@ const Foam::cellShapeList& Foam::hexRef::cellShapes() const
 
                 if (haveQuads)
                 {
-                    faceList faces(move(quads));
+                    faceList faces(std::move(quads));
                     cellShapesPtr_()[celli] = degenerateMatcher::match(faces);
                     nSplitHex++;
                 }

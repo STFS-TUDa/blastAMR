@@ -82,7 +82,7 @@ Description
 
 #include "fvMeshRefiner.H"
 #include "hexRef.H"
-#include "PackedBoolList.H"
+#include "boolList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -106,14 +106,14 @@ protected:
         label nProtected_;
 
         //- Protected cells (usually since not hexes)
-        PackedBoolList protectedCell_;
+        boolList protectedCell_;
 
 
     // Protected Member Functions
 
         //- Calculate cells that cannot be refined since would trigger
         //  refinement of protectedCell_ (since 2:1 refinement cascade)
-        void calculateProtectedCells(PackedBoolList& unrefineableCell) const;
+        void calculateProtectedCells(boolList& unrefineableCell) const;
 
 
         //- Refine cells. Update mesh and fields.
@@ -127,13 +127,13 @@ protected:
         (
             const label maxCells,
             const labelList& maxRefinement,
-            const PackedBoolList& candidateCell
+            const boolList& candidateCell
         ) const;
 
         //- Check all cells have 8 anchor points
         void checkEightAnchorPoints
         (
-            PackedBoolList& protectedCell,
+            boolList& protectedCell,
             label& nProtected
         ) const;
 
@@ -210,9 +210,9 @@ public:
         (
             const scalarField& error,
             const labelList& maxCellLevel = labelList(),
-            const scalar lowerRefineLevel = small,
-            const scalar upperRefineLevel = great,
-            const scalar unrefineLevel = -small
+            const scalar lowerRefineLevel = SMALL,
+            const scalar upperRefineLevel = GREAT,
+            const scalar unrefineLevel = -SMALL
         );
 
         //- Overload update mesh to include other methods

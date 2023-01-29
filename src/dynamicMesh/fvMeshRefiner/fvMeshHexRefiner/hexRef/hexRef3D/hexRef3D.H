@@ -209,7 +209,7 @@ public:
             labelList selectUnrefineElems
             (
                 const scalar unrefineLevel,
-                const PackedBoolList& markedCell,
+                const boolList& markedCell,
                 const scalarField& vFld
             ) const;
 

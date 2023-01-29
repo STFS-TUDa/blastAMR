@@ -98,7 +98,7 @@ Foam::scalarField Foam::newCellCuts::expand
     const scalarField& weights
 )
 {
-    scalarField result(size, -great);
+    scalarField result(size, -GREAT);
 
     forAll(labels, labelI)
     {
@@ -136,7 +136,7 @@ void Foam::newCellCuts::syncProc()
 
     syncTools::syncPointList(mesh(), pointIsCut_, orEqOp<bool>(), false);
     syncTools::syncEdgeList(mesh(), edgeIsCut_, orEqOp<bool>(), false);
-    syncTools::syncEdgeList(mesh(), edgeWeight_, maxEqOp<scalar>(), -great);
+    syncTools::syncEdgeList(mesh(), edgeWeight_, maxEqOp<scalar>(), -GREAT);
 
     {
         const label nBnd = mesh().nFaces()-mesh().nInternalFaces();
@@ -1357,7 +1357,7 @@ bool Foam::newCellCuts::loopAnchorConsistent
     // Create identity face for ease of calculation of area etc.
     const face f(identity(loopPts.size()));
 
-    const vector a = f.area(loopPts);
+    const vector a = f.areaNormal(loopPts);
     const point ctr = f.centre(loopPts);
 
     // Get average position of anchor points.
@@ -1759,7 +1759,7 @@ Foam::scalarField Foam::newCellCuts::loopWeights(const labelList& loop) const
         }
         else
         {
-            weights[fp] = -great;
+            weights[fp] = -GREAT;
         }
     }
     return weights;
@@ -2192,7 +2192,7 @@ void Foam::newCellCuts::setFromCellLoops()
         if (!edgeIsCut_[edgeI])
         {
             // Weight not used. Set to illegal value to make any use fall over.
-            edgeWeight_[edgeI] = -great;
+            edgeWeight_[edgeI] = -GREAT;
         }
     }
 }
@@ -2646,7 +2646,7 @@ void Foam::newCellCuts::calcLoopsAndAddressing(const labelList& cutCells)
         else
         {
             // Weight not used. Set to illegal value to make any use fall over.
-            edgeWeight_[edgeI] = -great;
+            edgeWeight_[edgeI] = -GREAT;
         }
     }
 
@@ -2835,7 +2835,7 @@ Foam::newCellCuts::newCellCuts
     const scalarField& meshEdgeWeights
 )
 :
-    cellCuts(mesh, {}, {}, {}, {}),
+    cellCuts(mesh, labelList(), labelList(), labelList(), {}),
     pointIsCut_(expand(mesh.nPoints(), meshVerts)),
     edgeIsCut_(expand(mesh.nEdges(), meshEdges)),
     edgeWeight_(expand(mesh.nEdges(), meshEdges, meshEdgeWeights)),
@@ -2877,7 +2877,7 @@ Foam::newCellCuts::newCellCuts
     const scalarField& meshEdgeWeights
 )
 :
-    cellCuts(mesh, {}, {}, {}, {}),
+    cellCuts(mesh, labelList(), labelList(), labelList(), {}),
     pointIsCut_(expand(mesh.nPoints(), meshVerts)),
     edgeIsCut_(expand(mesh.nEdges(), meshEdges)),
     edgeWeight_(expand(mesh.nEdges(), meshEdges, meshEdgeWeights)),
@@ -2924,10 +2924,10 @@ Foam::newCellCuts::newCellCuts
     const List<scalarField>& cellEdgeWeights
 )
 :
-    cellCuts(mesh, {}, {}, {}, {}),
+    cellCuts(mesh, labelList(), labelList(), labelList(), {}),
     pointIsCut_(mesh.nPoints(), false),
     edgeIsCut_(mesh.nEdges(), false),
-    edgeWeight_(mesh.nEdges(), -great),
+    edgeWeight_(mesh.nEdges(), -GREAT),
     faceSplitCut_(cellLabels.size()),
     cellLoops_(mesh.nCells()),
     nLoops_(-1),
@@ -2969,10 +2969,10 @@ Foam::newCellCuts::newCellCuts
     const List<refineCell>& refCells
 )
 :
-    cellCuts(mesh, {}, {}, {}, {}),
+    cellCuts(mesh, labelList(), labelList(), labelList(), {}),
     pointIsCut_(mesh.nPoints(), false),
     edgeIsCut_(mesh.nEdges(), false),
-    edgeWeight_(mesh.nEdges(), -great),
+    edgeWeight_(mesh.nEdges(), -GREAT),
     faceSplitCut_(refCells.size()),
     cellLoops_(mesh.nCells()),
     nLoops_(-1),
@@ -3015,10 +3015,10 @@ Foam::newCellCuts::newCellCuts
     const PtrList<plane>& cutPlanes
 )
 :
-    cellCuts(mesh, {}, {}, {}, {}),
+    cellCuts(mesh, labelList(), labelList(), labelList(), {}),
     pointIsCut_(mesh.nPoints(), false),
     edgeIsCut_(mesh.nEdges(), false),
-    edgeWeight_(mesh.nEdges(), -great),
+    edgeWeight_(mesh.nEdges(), -GREAT),
     faceSplitCut_(cellLabels.size()),
     cellLoops_(mesh.nCells()),
     nLoops_(-1),
@@ -3067,7 +3067,7 @@ Foam::newCellCuts::newCellCuts
     const labelListList& cellAnchorPoints
 )
 :
-    cellCuts(mesh, {}, {}, {}, {}),
+    cellCuts(mesh, labelList(), labelList(), labelList(), {}),
     pointIsCut_(pointIsCut),
     edgeIsCut_(edgeIsCut),
     edgeWeight_(edgeWeight),
@@ -3118,7 +3118,7 @@ Foam::pointField Foam::newCellCuts::loopPoints(const label celli) const
         }
         else
         {
-            loopPts[fp] = coord(cut, -great);
+            loopPts[fp] = coord(cut, -GREAT);
         }
     }
     return loopPts;

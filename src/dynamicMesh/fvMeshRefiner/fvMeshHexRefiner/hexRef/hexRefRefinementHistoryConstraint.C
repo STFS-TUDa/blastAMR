@@ -34,12 +34,12 @@ namespace Foam
 {
     defineTypeName(hexRefRefinementHistoryConstraint);
 
-    addToRunTimeSelectionTable
-    (
-        decompositionConstraint,
-        hexRefRefinementHistoryConstraint,
-        dictionary
-    );
+    //addToRunTimeSelectionTable
+    //(
+    //    decompositionConstraint,
+    //    hexRefRefinementHistoryConstraint,
+    //    dictionary
+    //);
 }
 
 

@@ -37,7 +37,7 @@ Description
 #define fvMeshRefiner_H
 
 #include "hexRef.H"
-#include "PackedBoolList.H"
+#include "boolList.H"
 #include "Switch.H"
 #include "mapDistributePolyMesh.H"
 #include "fvMeshBalance.H"
@@ -173,7 +173,7 @@ protected:
     // Protected Member Functions
 
         //- Count set/unset elements in packedlist.
-        static label count(const PackedBoolList&, const unsigned int);
+        static label count(const boolList&, const unsigned int);
 
         //- Select candidate cells for refinement
         virtual void selectRefineCandidates
@@ -181,7 +181,7 @@ protected:
             const scalar lowerRefineLevel,
             const scalar upperRefineLevel,
             const scalarField& vFld,
-            PackedBoolList& candidateCell
+            boolList& candidateCell
         ) const;
 
         //- Subset candidate cells for refinement
@@ -189,7 +189,7 @@ protected:
         (
             const label maxCells,
             const labelList& maxRefinement,
-            const PackedBoolList& candidateCell
+            const boolList& candidateCell
         ) const;
 
         //- Get per cell max of connected point
@@ -361,9 +361,9 @@ public:
         (
             const scalarField& error,
             const labelList& maxCellLevel = labelList(),
-            const scalar lowerRefineLevel = sqrt(small),
-            const scalar upperRefineLevel = great,
-            const scalar unrefineLevel = -sqrt(small)
+            const scalar lowerRefineLevel = sqrt(SMALL),
+            const scalar upperRefineLevel = GREAT,
+            const scalar unrefineLevel = -sqrt(SMALL)
         ) = 0;
 
         //- Balance the mesh
@@ -391,7 +391,7 @@ public:
 
         void extendMarkedCells
         (
-            PackedBoolList& markedCells,
+            boolList& markedCells,
             const labelList& maxCellLevel,
             const bool isTop,
             const bool force
@@ -401,14 +401,14 @@ public:
         //  cells
         void extendMarkedCellsAcrossFaces
         (
-            PackedBoolList& markedCells
+            boolList& markedCells
         );
 
         //- Extend marked cells across points given a bool list of already
         //  marked cells
         void extendMarkedCellsAcrossPoints
         (
-            PackedBoolList& markedCells
+            boolList& markedCells
         );
 
 

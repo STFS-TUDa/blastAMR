@@ -47,11 +47,10 @@ namespace Foam
 
 Foam::polyRefinementConstraint::polyRefinementConstraint
 (
-    const dictionary& constraintsDict,
-    const word& modelType
+    const dictionary& constraintsDict
 )
 :
-    decompositionConstraint(constraintsDict, typeName)
+    decompositionConstraint(constraintsDict)
 {
     if (decompositionConstraint::debug)
     {
@@ -63,7 +62,7 @@ Foam::polyRefinementConstraint::polyRefinementConstraint
 
 Foam::polyRefinementConstraint::polyRefinementConstraint()
 :
-    decompositionConstraint(dictionary(), typeName)
+    decompositionConstraint(dictionary())
 {
     if (decompositionConstraint::debug)
     {

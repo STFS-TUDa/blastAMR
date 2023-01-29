@@ -72,17 +72,17 @@ protected:
         //- Constraints dictionary
         dictionary* constraintsDict_;
 
-        //- Preserve faceZones dict
-        dictionary* preserveFaceZonesDict_;
+        ////- Preserve faceZones dict
+        //dictionary* preserveFaceZonesDict_;
 
         //- Preserve faceSets dict
-        dictionary* singleProcessorFaceSetsDict_;
+        //dictionary* singleProcessorFaceSetsDict_;
 
-        //- Preserve patches dict
-        dictionary* preservePatchesDict_;
+        ////- Preserve patches dict
+        //dictionary* preservePatchesDict_;
 
-        //- Preserve baffles dict
-        dictionary* preserveBafflesDict_;
+        ////- Preserve baffles dict
+        //dictionary* preserveBafflesDict_;
 
         //- Decomposition method
         mutable autoPtr<decompositionMethod> decomposer_;
@@ -153,20 +153,20 @@ public:
             void addConstraint(const word& dictName, const dictionary& dict);
 
             //- Preserve a faceZone
-            void preserveFaceZone(const wordRe& zoneName);
+            //void preserveFaceZone(const wordRe& zoneName);
 
-            //- Preserve a faceSet on a single processor
-            void singleProcessorFaceSet
-            (
-                const word& setName,
-                const label proc
-            );
+            ////- Preserve a faceSet on a single processor
+            //void singleProcessorFaceSet
+            //(
+            //    const word& setName,
+            //    const label proc
+            //);
 
             //- Preserve a patch
-            void preservePatch(const wordRe& patchName);
+            //void preservePatch(const wordRe& patchName);
 
             //- Preserve baffles
-            void preserveBaffles();
+            //void preserveBaffles();
 
         //- Access the decompositionMethod
         decompositionMethod& decomposer() const;

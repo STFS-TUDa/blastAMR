@@ -38,6 +38,7 @@ License
 #include "mapDistributePolyMesh.H"
 #include "globalIndex.H"
 #include "addToRunTimeSelectionTable.H"
+#include "volFields.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -199,7 +200,7 @@ Foam::label Foam::refinement::countAnchors
 
 Foam::label Foam::refinement::faceConsistentRefinement
 (
-    PackedBoolList& refineCell,
+    boolList& refineCell,
     const bool maxSet
 ) const
 {
@@ -302,7 +303,7 @@ Foam::label Foam::refinement::faceConsistentRefinement
 
 Foam::label Foam::refinement::edgeConsistentRefinement
 (
-    PackedBoolList& refineCell,
+    boolList& refineCell,
     const bool maxSet
 ) const
 {
@@ -387,7 +388,7 @@ Foam::label Foam::refinement::edgeConsistentRefinement
 
 Foam::label Foam::refinement::faceConsistentUnrefinement
 (
-    PackedBoolList& unrefineCell,
+    boolList& unrefineCell,
     const bool maxSet
 ) const
 {
@@ -508,7 +509,7 @@ Foam::label Foam::refinement::faceConsistentUnrefinement
 
 Foam::label Foam::refinement::edgeConsistentUnrefinement
 (
-    PackedBoolList& unrefineCell,
+    boolList& unrefineCell,
     const bool maxSet
 ) const
 {
@@ -751,10 +752,10 @@ Foam::labelList Foam::refinement::consistentRefinement
     }
 
     // Create a mark-up field for cells to refine
-    PackedBoolList refineCell(mesh_.nCells());
+    boolList refineCell(mesh_.nCells(), false);
     forAll(refinementCellCandidates, i)
     {
-        refineCell.set(refinementCellCandidates[i]);
+        refineCell.set(refinementCellCandidates[i], true);
     }
 
     // Make sure that the refinement is face consistent (2:1 consistency) and
@@ -789,7 +790,7 @@ Foam::labelList Foam::refinement::consistentRefinement
     }
 
     // Convert back to labelList.
-    label nRefined = refineCell.count();
+    label nRefined = std::count(refineCell.begin(), refineCell.end(), true);
 
     // Collect all cells to refine in a dynamic list
     labelList newCellsToRefine(nRefined);

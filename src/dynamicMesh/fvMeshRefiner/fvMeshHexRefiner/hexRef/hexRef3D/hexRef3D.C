@@ -1273,7 +1273,7 @@ Foam::labelListList Foam::hexRef3D::setRefinement
     }
 
     // Get all affected faces.
-    PackedBoolList affectedFace(mesh_.nFaces());
+    boolList affectedFace(mesh_.nFaces());
 
     {
         forAll(cellMidPoint, celli)
@@ -1744,7 +1744,7 @@ Foam::labelList Foam::hexRef3D::consistentUnrefinement
     // maxSet = true: select points to refine
 
     // Maintain boolList for pointsToUnrefine and cellsToUnrefine
-    PackedBoolList unrefinePoint(mesh_.nPoints());
+    boolList unrefinePoint(mesh_.nPoints());
 
     forAll(pointsToUnrefine, i)
     {
@@ -1759,7 +1759,7 @@ Foam::labelList Foam::hexRef3D::consistentUnrefinement
         // Construct cells to unrefine
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        PackedBoolList unrefineCell(mesh_.nCells());
+        boolList unrefineCell(mesh_.nCells());
 
         forAll(unrefinePoint, pointi)
         {
@@ -2324,7 +2324,7 @@ Foam::labelList Foam::hexRef3D::getSplitElems() const
 Foam::labelList Foam::hexRef3D::selectUnrefineElems
 (
     const scalar unrefineLevel,
-    const PackedBoolList& markedCell,
+    const boolList& markedCell,
     const scalarField& pFld
 ) const
 {

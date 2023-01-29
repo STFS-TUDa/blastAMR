@@ -65,8 +65,7 @@ public:
         //- Construct with generic dictionary with optional entry for type
         polyRefinementConstraint
         (
-            const dictionary& constraintsDict,
-            const word& type
+            const dictionary& constraintsDict
         );
 
         //- Construct from components

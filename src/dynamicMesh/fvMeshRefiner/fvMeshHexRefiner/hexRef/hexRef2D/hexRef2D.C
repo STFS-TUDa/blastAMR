@@ -1341,7 +1341,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
     }
 
     // Get all affected faces.
-    PackedBoolList affectedFace(mesh_.nFaces());
+    boolList affectedFace(mesh_.nFaces());
 
     {
         forAll(cellMidPoint, celli)
@@ -1860,7 +1860,7 @@ Foam::labelListList Foam::hexRef2D::setRefinement
 Foam::labelList Foam::hexRef2D::selectUnrefineElems
 (
     const scalar unrefineLevel,
-    const PackedBoolList& markedCell,
+    const boolList& markedCell,
     const scalarField& pFld
 ) const
 {
@@ -1954,7 +1954,7 @@ Foam::labelList Foam::hexRef2D::consistentUnrefinement
     // maxSet = true: select edges to refine
 
     // Maintain boolList for edgesToUnrefine and cellsToUnrefine
-    PackedBoolList unrefineEdge(mesh_.nEdges());
+    boolList unrefineEdge(mesh_.nEdges());
 
     forAll(edgesToUnrefine, i)
     {
@@ -1970,7 +1970,7 @@ Foam::labelList Foam::hexRef2D::consistentUnrefinement
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~
         const labelListList& edgeCells = mesh_.edgeCells();
 
-        PackedBoolList unrefineCell(mesh_.nCells());
+        boolList unrefineCell(mesh_.nCells());
 
         forAll(unrefineEdge, edgei)
         {

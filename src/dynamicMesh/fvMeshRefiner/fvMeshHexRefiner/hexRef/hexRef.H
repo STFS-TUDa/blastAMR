@@ -52,7 +52,7 @@ Authors
 #include "primitivePatch.H"
 #include "removeFaces.H"
 #include "hexRefRefinementHistory.H"
-#include "PackedBoolList.H"
+#include "boolList.H"
 #include "uniformDimensionedFields.H"
 #include "cellShapeList.H"
 #include "autoPtr.H"
@@ -260,7 +260,7 @@ protected:
         label faceConsistentRefinement
         (
             const bool maxSet,
-            PackedBoolList& refineCell
+            boolList& refineCell
         ) const;
 
         //- Check wanted refinement for 2:1 consistency
@@ -595,7 +595,7 @@ public:
             virtual labelList selectUnrefineElems
             (
                 const scalar unrefineLevel,
-                const PackedBoolList& markedCell,
+                const boolList& markedCell,
                 const scalarField& vFld
             ) const = 0;
 

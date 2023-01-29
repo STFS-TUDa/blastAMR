@@ -42,7 +42,7 @@ License
 #include "cellSet.H"
 #include "wedgePolyPatch.H"
 #include "hexRef3D.H"
-#include "parcelCloud.H"
+//#include "parcelCloud.H"
 #include "hexRefRefinementHistoryConstraint.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -59,7 +59,7 @@ namespace Foam
 
 void Foam::fvMeshHexRefiner::calculateProtectedCells
 (
-    PackedBoolList& unrefineableCell
+    boolList& unrefineableCell
 ) const
 {
     if (!returnReduce(protectedCell_.size(), sumOp<label>()))
@@ -229,7 +229,7 @@ Foam::fvMeshHexRefiner::refine
     // Update numbering of protectedCell_
     if (protectedCell_.size())
     {
-        PackedBoolList newProtectedCell(mesh_.nCells());
+        boolList newProtectedCell(mesh_.nCells());
 
         forAll(newProtectedCell, celli)
         {
@@ -283,7 +283,7 @@ Foam::fvMeshHexRefiner::unrefine
     // Update numbering of protectedCell_
     if (protectedCell_.size())
     {
-        PackedBoolList newProtectedCell(mesh_.nCells());
+        boolList newProtectedCell(mesh_.nCells());
 
         forAll(newProtectedCell, celli)
         {
@@ -307,7 +307,7 @@ Foam::labelList Foam::fvMeshHexRefiner::selectRefineCells
 (
     const label maxCells,
     const labelList& maxRefinement,
-    const PackedBoolList& candidateCell
+    const boolList& candidateCell
 ) const
 {
     // Every refined cell causes 7 extra cells
@@ -316,7 +316,7 @@ Foam::labelList Foam::fvMeshHexRefiner::selectRefineCells
 
     // Mark cells that cannot be refined since they would trigger refinement
     // of protected cells (since 2:1 cascade)
-    PackedBoolList unrefineableCell;
+    boolList unrefineableCell;
     calculateProtectedCells(unrefineableCell);
 
     // Count current selection
@@ -393,7 +393,7 @@ Foam::labelList Foam::fvMeshHexRefiner::selectRefineCells
 
 void Foam::fvMeshHexRefiner::checkEightAnchorPoints
 (
-    PackedBoolList& protectedCell,
+    boolList& protectedCell,
     label& nProtected
 ) const
 {
@@ -560,7 +560,11 @@ void Foam::fvMeshHexRefiner::distribute
             }
         }
         map.distributeCellData(protectedCell);
-        protectedCell_ = protectedCell;
+
+        //protectedCell_ = protectedCell;
+        forAll(protectedCell_, ci) {
+            protectedCell_[ci] = protectedCell[ci];
+        }
     }
 
 }
@@ -573,8 +577,8 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner(fvMesh& mesh)
 
     meshCutter_(hexRef::New(mesh_)),
 
-    nProtected_(0),
-    protectedCell_(mesh_.nCells(), 0)
+    nProtected_(0.0),
+    protectedCell_(mesh_.nCells(), false)
 {
     // Added refinement history decomposition constraint to keep all
     // cells with the same parent together
@@ -585,7 +589,7 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner(fvMesh& mesh)
             "type",
             hexRefRefinementHistoryConstraint::typeName
         );
-        balancer_.addConstraint("refinementHistory", refinementHistoryDict);
+        //balancer_.addConstraint("refinementHistory", refinementHistoryDict);
     }
 
     nProtected_ = 0;
@@ -753,7 +757,7 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner(fvMesh& mesh)
         }
         else
         {
-            PackedBoolList cellIsAxisPrism(mesh_.nCells(), false);
+            boolList cellIsAxisPrism(mesh_.nCells(), false);
             label nAxisPrims = 0;
 
             // Do not protect prisms on the axis
@@ -809,8 +813,16 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner(fvMesh& mesh)
             checkEightAnchorPoints(protectedCell_, nProtected_);
 
             // Unprotect prism cells on the axis
-            protectedCell_ -= cellIsAxisPrism;
-            nProtected_ -= nAxisPrims;
+            forAll(cellIsAxisPrism, celli)
+            {
+                if (cellIsAxisPrism[celli])
+                {
+                    protectedCell_.set(celli, false);
+                    nProtected_--;
+                }
+            }
+            //protectedCell_ -= cellIsAxisPrism;
+            //nProtected_ -= nAxisPrims;
 
 
 
@@ -1017,7 +1029,7 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner
     ),
 
     nProtected_(0),
-    protectedCell_(mesh_.nCells(), 0)
+    protectedCell_(mesh_.nCells(), false)
 {
     // Added refinement history decomposition constraint to keep all
     // cells with the same parent together
@@ -1028,7 +1040,7 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner
             "type",
             hexRefRefinementHistoryConstraint::typeName
         );
-        balancer_.addConstraint("refinementHistory", refinementHistoryDict);
+        //balancer_.addConstraint("refinementHistory", refinementHistoryDict);
     }
 
     // Read static part of dictionary
@@ -1199,7 +1211,7 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner
         }
         else
         {
-            PackedBoolList cellIsAxisPrism(mesh_.nCells(), false);
+            boolList cellIsAxisPrism(mesh_.nCells(), false);
             label nAxisPrims = 0;
 
             // Do not protect prisms on the axis
@@ -1255,8 +1267,16 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner
             checkEightAnchorPoints(protectedCell_, nProtected_);
 
             // Unprotect prism cells on the axis
-            protectedCell_ -= cellIsAxisPrism;
-            nProtected_ -= nAxisPrims;
+            forAll(cellIsAxisPrism, celli)
+            {
+                if (cellIsAxisPrism[celli])
+                {
+                    protectedCell_.set(celli, false);
+                    nProtected_--;
+                }
+            }
+            //protectedCell_ -= cellIsAxisPrism;
+            //nProtected_ -= nAxisPrims;
 
 
 
@@ -1468,7 +1488,7 @@ bool Foam::fvMeshHexRefiner::refine
     if (preUpdate())
     {
         // Cells marked for refinement or otherwise protected from unrefinement.
-        PackedBoolList refineCell(mesh_.nCells());
+        boolList refineCell(mesh_.nCells());
 
         if (canRefine(true))
         {
@@ -1543,7 +1563,7 @@ bool Foam::fvMeshHexRefiner::refine
                     const labelList& cellMap = map().cellMap();
                     const labelList& reverseCellMap = map().reverseCellMap();
 
-                    PackedBoolList newRefineCell(cellMap.size());
+                    boolList newRefineCell(cellMap.size());
 
                     forAll(cellMap, celli)
                     {

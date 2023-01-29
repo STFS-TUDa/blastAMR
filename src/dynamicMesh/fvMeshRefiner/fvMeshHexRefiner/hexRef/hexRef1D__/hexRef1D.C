@@ -717,7 +717,7 @@ Foam::labelListList Foam::hexRef1D::setRefinement
             {
                 label edgeJ = fEdges[i];
                 const edge& e = mesh_.edges()[edgeJ];
-                if (mag(e.vec(mesh_.points()) & validDir) > small)
+                if (mag(e.vec(mesh_.points()) & validDir) > SMALL)
                 {
                     isDivisibleEdge[edgeJ] = true;
                 }
@@ -792,7 +792,7 @@ Foam::labelListList Foam::hexRef1D::setRefinement
                 const face& f = mesh_.faces()[faceI];
                 if
                 (
-                    mag(f.normal(mesh_.points()) & nDir) > small
+                    mag(f.normal(mesh_.points()) & nDir) > SMALL
                  && isDivisibleFace[faceI]
                 )
                 {
@@ -1056,7 +1056,7 @@ Foam::labelListList Foam::hexRef1D::setRefinement
     }
 
     // Get all affected faces.
-    PackedBoolList affectedFace(mesh_.nFaces());
+    boolList affectedFace(mesh_.nFaces());
 
     {
         forAll(cellMidPoint, celli)
@@ -1477,7 +1477,7 @@ Foam::labelListList Foam::hexRef1D::setRefinement
 Foam::labelList Foam::hexRef1D::selectUnrefineElems
 (
     const scalar unrefineLevel,
-    const PackedBoolList& markedCell,
+    const boolList& markedCell,
     const scalarField& pFld
 ) const
 {
@@ -1571,7 +1571,7 @@ Foam::labelList Foam::hexRef1D::consistentUnrefinement
     // maxSet = true: select edges to refine
 
     // Maintain boolList for edgesToUnrefine and cellsToUnrefine
-    PackedBoolList unrefineEdge(mesh_.nEdges());
+    boolList unrefineEdge(mesh_.nEdges());
 
     forAll(edgesToUnrefine, i)
     {
@@ -1587,7 +1587,7 @@ Foam::labelList Foam::hexRef1D::consistentUnrefinement
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~
         const labelListList& edgeCells = mesh_.edgeCells();
 
-        PackedBoolList unrefineCell(mesh_.nCells());
+        boolList unrefineCell(mesh_.nCells());
 
         forAll(unrefineEdge, edgei)
         {

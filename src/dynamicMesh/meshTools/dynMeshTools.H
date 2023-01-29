@@ -42,7 +42,7 @@ SourceFiles
 #include "transformField.H"
 #include "Map.H"
 #include "EdgeMap.H"
-#include "PackedBoolList.H"
+#include "boolList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -184,7 +184,7 @@ namespace meshTools
             const label zoneID,
             const bool zoneFlip,
 
-            PackedBoolList& modifiedFace
+            boolList& modifiedFace
         );
 
         //- Create baffle faces for fZone faces. Usually newMasterPatches,
@@ -199,7 +199,7 @@ namespace meshTools
             const labelList& newSlavePatches,
 
             polyTopoChange& meshMod,
-            PackedBoolList& modifiedFace
+            boolList& modifiedFace
         );
 
         //- Create patch faces for fZone faces.
@@ -211,7 +211,7 @@ namespace meshTools
             const labelList& newPatches,
 
             polyTopoChange& meshMod,
-            PackedBoolList& modifiedFace
+            boolList& modifiedFace
         );
 
         //- Use the cells passed in to set the remove using remove cells

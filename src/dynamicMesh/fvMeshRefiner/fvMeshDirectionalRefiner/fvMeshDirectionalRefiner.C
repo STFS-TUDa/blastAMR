@@ -29,9 +29,9 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "fvMeshDirectionalRefiner.H"
-#include "RefineBalanceMeshObject.H"
+//#include "RefineBalanceMeshObject.H"
 #include "newRefinementIterator.H"
-#include "parcelCloud.H"
+//#include "parcelCloud.H"
 #include "hexRef.H"
 #include "addToRunTimeSelectionTable.H"
 
@@ -430,7 +430,7 @@ void Foam::fvMeshDirectionalRefiner::readDict(const dictionary& dict)
 
     if (mesh_.nGeometricD() != 1)
     {
-        refinementDirection_ = getDirection(dict_.lookup<word>("direction"));
+        refinementDirection_ = getDirection(word(dict_.lookup("direction")));
     }
 }
 
@@ -449,7 +449,7 @@ bool Foam::fvMeshDirectionalRefiner::refine
     if (preUpdate())
     {
         // Cells marked for refinement or otherwise protected from unrefinement.
-        PackedBoolList refineCell(mesh_.nCells());
+        boolList refineCell(mesh_.nCells());
 
         if (canRefine(true))
         {

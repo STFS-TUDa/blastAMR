@@ -574,7 +574,7 @@ void Foam::prismatic2DRefinement::setRefinement
     // PART 1: Mark cells for refinement
 
     // Bool list that marks cells which will be refined
-    PackedBoolList refineCellsMask(mesh_.nCells(), false);
+    boolList refineCellsMask(mesh_.nCells(), false);
     forAll(cellsToRefine, i)
     {
         // Simply mark the cell as refined, there are no additional points to
@@ -815,16 +815,16 @@ void Foam::prismatic2DRefinement::setRefinement
     // patches in axis-symmetric cases
 
     // Edges directly on the axis
-    PackedBoolList axisEdge(mesh_.nEdges(), false);
+    boolList axisEdge(mesh_.nEdges(), false);
 
     // Points directly on the axis
-    PackedBoolList axisPoint(mesh_.nPoints(), false);
+    boolList axisPoint(mesh_.nPoints(), false);
 
     // Faces with atleast an axis point/edge
-    PackedBoolList axisFace(mesh_.nFaces(), false);
+    boolList axisFace(mesh_.nFaces(), false);
 
     // Cells with an axis face/point/edge
-    PackedBoolList axisCell(mesh_.nCells(), false);
+    boolList axisCell(mesh_.nCells(), false);
     if (mesh_.nSolutionD() == 3)
     {
         const labelListList& edgeFaces = mesh_.edgeFaces();
@@ -1297,7 +1297,7 @@ void Foam::prismatic2DRefinement::setRefinement
         pointCellToAddedCellMap(6*cellsToRefine.size());
 
     // Get mesh data
-    const meshCellZones& cellZones = mesh_.cellZones();
+    const auto& cellZones = mesh_.cellZones();
     const cellList& meshCells = mesh_.cells();
     const faceList& meshFaces = mesh_.faces();
     const labelListList& meshPointEdges = mesh_.pointEdges();
@@ -2018,7 +2018,7 @@ void Foam::prismatic2DRefinement::setRefinement
                     }
 
                     // Create a face from dynamic list by transfer
-                    face newFace(move(newFaceVerts));
+                    face newFace(std::move(newFaceVerts));
 
                     // The point with the lowest level should be an anchor
                     // point of the neighbouring cells.
@@ -2742,7 +2742,7 @@ Foam::labelList Foam::prismatic2DRefinement::consistentUnrefinement
     const label nPoints = mesh_.nPoints();
 
     // PART 1: Mark all split points in the mesh (points that can be unrefined)
-    PackedBoolList splitPointsMarkup(nPoints, false);
+    boolList splitPointsMarkup(nPoints, false);
 
     // Algorithm: split point is uniquely defined as a point that:
     // 1. Has pointLevel_ > 0 (obviously),
@@ -2859,7 +2859,7 @@ Foam::labelList Foam::prismatic2DRefinement::consistentUnrefinement
     // Create markup field of split points to unrefine
     // True: this is a split point which should be unrefined
     // False: this is either not a split point or it shouldn't be unrefined
-    PackedBoolList splitPointsToUnrefine(nPoints, false);
+    boolList splitPointsToUnrefine(nPoints, false);
 
     // Loop through all unrefinement candidates
     forAll (unrefinementPointCandidates, i)
@@ -2889,7 +2889,7 @@ Foam::labelList Foam::prismatic2DRefinement::consistentUnrefinement
     while (true)
     {
         // First, create cells to unrefine (all cells sharing point to unrefine)
-        PackedBoolList cellsToUnrefine(nCells, false);
+        boolList cellsToUnrefine(nCells, false);
 
         // Loop through all split points to unrefine
         forAll (splitPointsToUnrefine, pointI)
@@ -2956,7 +2956,7 @@ Foam::labelList Foam::prismatic2DRefinement::consistentUnrefinement
     }
 
     // Convert back to labelList.
-    label nSet = splitPointsToUnrefine.count();
+    label nSet = std::count(splitPointsToUnrefine.begin(), splitPointsToUnrefine.end(), true);
     labelList newPointsToUnrefine(nSet);
     nSet = 0;
 

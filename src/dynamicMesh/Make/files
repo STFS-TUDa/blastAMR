@@ -7,18 +7,15 @@ fvMeshBalance/fvMeshBalance.C
 fvMeshRefiner/fvMeshRefiner.C
 fvMeshRefiner/fvMeshRefinerNew.C
 
-# Directional refinement
 fvMeshRefiner/fvMeshDirectionalRefiner/fvMeshDirectionalRefiner.C
 
 
-# Hex refinement
 fvMeshRefiner/fvMeshHexRefiner/fvMeshHexRefiner.C
 hexRef = fvMeshRefiner/fvMeshHexRefiner/hexRef
 
 $(hexRef)/hexRefRefinementHistory.C
 $(hexRef)/hexRefRefinementHistoryConstraint.C
 $(hexRef)/hexRefData.C
-
 $(hexRef)/hexRef.C
 $(hexRef)/hexRefNew.C
 $(hexRef)/hexRef3D/hexRef3D.C
@@ -26,7 +23,6 @@ $(hexRef)/hexRef2D/hexRef2D.C
 $(hexRef)/hexRef2DAxi/hexRef2DAxi.C
 
 
-# Polyhedral refinement
 fvMeshRefiner/fvMeshPolyRefiner/fvMeshPolyRefiner.C
 
 fvMeshRefiner/fvMeshPolyRefiner/polyhedralRefinement/polyhedralRefinement.C
@@ -36,4 +32,4 @@ fvMeshRefiner/fvMeshPolyRefiner/polyRefinementConstraint.C
 
 meshTools/dynMeshTools.C
 
-LIB = $(BLAST_LIBBIN)/libblastDynamicMesh
+LIB = $(FOAM_USER_LIBBIN)/libamrDynamicMesh

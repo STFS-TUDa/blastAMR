@@ -70,18 +70,23 @@ public:
 template<class Mesh>
 class DistributeableMeshObject
 :
-    public PatchMeshObject<Mesh>
+    public MeshObject
+    <
+        Mesh,
+        UpdateableMeshObject,
+        blastMeshObject
+    >
 {
 public:
 
     DistributeableMeshObject(const word& typeName, const objectRegistry& obr)
     :
-        PatchMeshObject<Mesh>(typeName, obr)
+        MeshObject<Mesh, UpdateableMeshObject, blastMeshObject>(typeName, obr)
     {}
 
     DistributeableMeshObject(const word& typeName, const IOobject& io)
     :
-        PatchMeshObject<Mesh>(typeName, io)
+        MeshObject<Mesh, UpdateableMeshObject, blastMeshObject>(typeName, io)
     {}
 
     virtual void preDistribute()

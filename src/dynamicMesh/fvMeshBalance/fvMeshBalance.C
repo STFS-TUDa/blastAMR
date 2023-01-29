@@ -27,7 +27,7 @@ License
 #include "decompositionMethod.H"
 #include "addToRunTimeSelectionTable.H"
 #include "RefineBalanceMeshObject.H"
-#include "parcelCloud.H"
+//#include "parcelCloud.H"
 #include "preserveFaceZonesConstraint.H"
 #include "singleProcessorFaceSetsConstraint.H"
 #include "preservePatchesConstraint.H"
@@ -86,11 +86,11 @@ Foam::fvMeshBalance::fvMeshBalance(fvMesh& mesh)
     ),
     modified_(false),
     constraintsDict_(decompositionDict_.subDictPtr("constraints")),
-    preserveFaceZonesDict_(nullptr),
-    singleProcessorFaceSetsDict_(nullptr),
-    preservePatchesDict_(nullptr),
-    preserveBafflesDict_(nullptr),
-    distributor_(mesh_),
+    //preserveFaceZonesDict_(nullptr),
+    //singleProcessorFaceSetsDict_(nullptr),
+    //preservePatchesDict_(nullptr),
+    //preserveBafflesDict_(nullptr),
+    distributor_(mesh_, 1e-4),
     balance_(true),
     allowableImbalance_(0.2)
 {
@@ -109,25 +109,25 @@ Foam::fvMeshBalance::fvMeshBalance(fvMesh& mesh)
                 dictionary& dict(decompositionDict_.subDict(toc[i]));
                 word type(dict.lookupOrDefault<word>("type", "none"));
 
-                if (type == preserveFaceZonesConstraint::typeName)
-                {
-                    preserveFaceZonesDict_ = &dict;
-                }
-                else if
-                (
-                    type == singleProcessorFaceSetsConstraint::typeName
-                )
-                {
-                    singleProcessorFaceSetsDict_ = &dict;
-                }
-                else if (type == preservePatchesConstraint::typeName)
-                {
-                    preservePatchesDict_ = &dict;
-                }
-                else if (type == preserveBafflesConstraint::typeName)
-                {
-                    preserveBafflesDict_ = &dict;
-                }
+                //if (type == preserveFaceZonesConstraint::typeName)
+                //{
+                //    preserveFaceZonesDict_ = &dict;
+                //}
+                //else if
+                //(
+                //    type == singleProcessorFaceSetsConstraint::typeName
+                //)
+                //{
+                //    singleProcessorFaceSetsDict_ = &dict;
+                //}
+                //else if (type == preservePatchesConstraint::typeName)
+                //{
+                //    preservePatchesDict_ = &dict;
+                //}
+                //else if (type == preserveBafflesConstraint::typeName)
+                //{
+                //    preserveBafflesDict_ = &dict;
+                //}
             }
         }
     }
@@ -157,11 +157,11 @@ Foam::fvMeshBalance::fvMeshBalance
     ),
     modified_(false),
     constraintsDict_(decompositionDict_.subDictPtr("constraints")),
-    preserveFaceZonesDict_(nullptr),
-    singleProcessorFaceSetsDict_(nullptr),
-    preservePatchesDict_(nullptr),
-    preserveBafflesDict_(nullptr),
-    distributor_(mesh_),
+    //preserveFaceZonesDict_(nullptr),
+    //singleProcessorFaceSetsDict_(nullptr),
+    //preservePatchesDict_(nullptr),
+    //preserveBafflesDict_(nullptr),
+    distributor_(mesh_, 1e-4),
     balance_(false),
     allowableImbalance_(0.2)
 {
@@ -180,25 +180,25 @@ Foam::fvMeshBalance::fvMeshBalance
                 dictionary& dict(decompositionDict_.subDict(toc[i]));
                 word type(dict.lookupOrDefault<word>("type", "none"));
 
-                if (type == preserveFaceZonesConstraint::typeName)
-                {
-                    preserveFaceZonesDict_ = &dict;
-                }
-                else if
-                (
-                    type == singleProcessorFaceSetsConstraint::typeName
-                )
-                {
-                    singleProcessorFaceSetsDict_ = &dict;
-                }
-                else if (type == preservePatchesConstraint::typeName)
-                {
-                    preservePatchesDict_ = &dict;
-                }
-                else if (type == preserveBafflesConstraint::typeName)
-                {
-                    preserveBafflesDict_ = &dict;
-                }
+                //if (type == preserveFaceZonesConstraint::typeName)
+                //{
+                //    preserveFaceZonesDict_ = &dict;
+                //}
+                //else if
+                //(
+                //    type == singleProcessorFaceSetsConstraint::typeName
+                //)
+                //{
+                //    singleProcessorFaceSetsDict_ = &dict;
+                //}
+                //else if (type == preservePatchesConstraint::typeName)
+                //{
+                //    preservePatchesDict_ = &dict;
+                //}
+                //else if (type == preserveBafflesConstraint::typeName)
+                //{
+                //    preserveBafflesDict_ = &dict;
+                //}
             }
         }
     }
@@ -232,11 +232,11 @@ void Foam::fvMeshBalance::read(const dictionary& balanceDict)
     // Change decomposition method if entry is present
     if (balanceDict.found("method"))// || balanceDict.found("decomposer"))
     {
-        word method = balanceDict.lookupBackwardsCompatible
-            (
-                {"method"}
+        word method(balanceDict.lookup("method"));
+    //        (
+    //            {"method"}
     //             {"decomposer", "method"},
-            );
+    //        );
         decompositionDict_.set("method", method);
 
         // Remove optional coeffs dictionary since it would override entries and
@@ -271,153 +271,153 @@ void Foam::fvMeshBalance::addConstraint(const word& dictName, const dictionary& 
 }
 
 
-void Foam::fvMeshBalance::preserveFaceZone(const wordRe& zoneName)
-{
-    if (!preserveFaceZonesDict_)
-    {
-        constraintsDict_->add("faceZones", dictionary());
-        preserveFaceZonesDict_ = constraintsDict_->subDictPtr("faceZones");
-        preserveFaceZonesDict_->set
-        (
-            "type",
-            preserveFaceZonesConstraint::typeName
-        );
-    }
-    wordReList zones
-    (
-        preserveFaceZonesDict_->lookupOrDefault("zones", wordReList())
-    );
-
-    bool exists = false;
-    forAll(zones, i)
-    {
-        if (zones[i].match(zoneName))
-        {
-            exists = true;
-            break;
-        }
-    }
-    if (!exists)
-    {
-        modified_ = true;
-        zones.append(zoneName);
-        preserveFaceZonesDict_->set("zones", zones);
-
-        if (decomposer_.valid())
-        {
-            decomposer_.clear();
-        }
-    }
-}
-
-
-void Foam::fvMeshBalance::singleProcessorFaceSet
-(
-    const word& setName,
-    const label proc
-)
-{
-    if (!preserveFaceZonesDict_)
-    {
-        constraintsDict_->add("singleProcessorFaceSets", dictionary());
-        singleProcessorFaceSetsDict_ =
-            constraintsDict_->subDictPtr("singleProcessorFaceSets");
-        singleProcessorFaceSetsDict_->set
-        (
-            "type",
-            singleProcessorFaceSetsConstraint::typeName
-        );
-    }
-    List<Tuple2<word, label>> setNameAndProcs
-    (
-        singleProcessorFaceSetsDict_->lookupOrDefault
-        (
-            "singleProcessorFaceSets",
-            List<Tuple2<word, label>>()
-        )
-    );
-
-    bool exists = false;
-    forAll(setNameAndProcs, i)
-    {
-        if (setName == setNameAndProcs[i].first())
-        {
-            exists = true;
-            break;
-        }
-    }
-    if (!exists)
-    {
-        modified_ = true;
-        setNameAndProcs.append(Tuple2<word, label>(setName, proc));
-        singleProcessorFaceSetsDict_->set
-        (
-            "setNameAndProcs",
-            setNameAndProcs
-        );
-
-        if (decomposer_.valid())
-        {
-            decomposer_.clear();
-        }
-    }
-}
+//void Foam::fvMeshBalance::preserveFaceZone(const wordRe& zoneName)
+//{
+//    if (!preserveFaceZonesDict_)
+//    {
+//        constraintsDict_->add("faceZones", dictionary());
+//        preserveFaceZonesDict_ = constraintsDict_->subDictPtr("faceZones");
+//        preserveFaceZonesDict_->set
+//        (
+//            "type",
+//            preserveFaceZonesConstraint::typeName
+//        );
+//    }
+//    wordReList zones
+//    (
+//        preserveFaceZonesDict_->lookupOrDefault("zones", wordReList())
+//    );
+//
+//    bool exists = false;
+//    forAll(zones, i)
+//    {
+//        if (zones[i].match(zoneName))
+//        {
+//            exists = true;
+//            break;
+//        }
+//    }
+//    if (!exists)
+//    {
+//        modified_ = true;
+//        zones.append(zoneName);
+//        preserveFaceZonesDict_->set("zones", zones);
+//
+//        if (decomposer_.valid())
+//        {
+//            decomposer_.clear();
+//        }
+//    }
+//}
 
 
-void Foam::fvMeshBalance::preservePatch(const wordRe& patchName)
-{
-    if (!preservePatchesDict_)
-    {
-        constraintsDict_->add("patches", dictionary());
-        preservePatchesDict_ = constraintsDict_->subDictPtr("patches");
-        preservePatchesDict_->set
-        (
-            "type",
-            preservePatchesConstraint::typeName
-        );
-    }
-    wordReList patches
-    (
-        preservePatchesDict_->lookupOrDefault("patches", wordReList())
-    );
+//void Foam::fvMeshBalance::singleProcessorFaceSet
+//(
+//    const word& setName,
+//    const label proc
+//)
+//{
+//    //if (!preserveFaceZonesDict_)
+//    //{
+//    //    constraintsDict_->add("singleProcessorFaceSets", dictionary());
+//    //    singleProcessorFaceSetsDict_ =
+//    //        constraintsDict_->subDictPtr("singleProcessorFaceSets");
+//    //    singleProcessorFaceSetsDict_->set
+//    //    (
+//    //        "type",
+//    //        singleProcessorFaceSetsConstraint::typeName
+//    //    );
+//    //}
+//    List<Tuple2<word, label>> setNameAndProcs
+//    (
+//        singleProcessorFaceSetsDict_->lookupOrDefault
+//        (
+//            "singleProcessorFaceSets",
+//            List<Tuple2<word, label>>()
+//        )
+//    );
+//
+//    bool exists = false;
+//    forAll(setNameAndProcs, i)
+//    {
+//        if (setName == setNameAndProcs[i].first())
+//        {
+//            exists = true;
+//            break;
+//        }
+//    }
+//    if (!exists)
+//    {
+//        modified_ = true;
+//        setNameAndProcs.append(Tuple2<word, label>(setName, proc));
+//        singleProcessorFaceSetsDict_->set
+//        (
+//            "setNameAndProcs",
+//            setNameAndProcs
+//        );
+//
+//        if (decomposer_.valid())
+//        {
+//            decomposer_.clear();
+//        }
+//    }
+//}
 
-    bool exists = false;
-    forAll(patches, i)
-    {
-        if (patches[i].match(patchName))
-        {
-            exists = true;
-            break;
-        }
-    }
-    if (!exists)
-    {
-        modified_ = true;
-        patches.append(patchName);
-        preservePatchesDict_->set("patches", patches);
 
-        if (decomposer_.valid())
-        {
-            decomposer_.clear();
-        }
-    }
-}
+//void Foam::fvMeshBalance::preservePatch(const wordRe& patchName)
+//{
+//    if (!preservePatchesDict_)
+//    {
+//        constraintsDict_->add("patches", dictionary());
+//        preservePatchesDict_ = constraintsDict_->subDictPtr("patches");
+//        preservePatchesDict_->set
+//        (
+//            "type",
+//            preservePatchesConstraint::typeName
+//        );
+//    }
+//    wordReList patches
+//    (
+//        preservePatchesDict_->lookupOrDefault("patches", wordReList())
+//    );
+//
+//    bool exists = false;
+//    forAll(patches, i)
+//    {
+//        if (patches[i].match(patchName))
+//        {
+//            exists = true;
+//            break;
+//        }
+//    }
+//    if (!exists)
+//    {
+//        modified_ = true;
+//        patches.append(patchName);
+//        preservePatchesDict_->set("patches", patches);
+//
+//        if (decomposer_.valid())
+//        {
+//            decomposer_.clear();
+//        }
+//    }
+//}
 
 
-void Foam::fvMeshBalance::preserveBaffles()
-{
-    if (!preserveBafflesDict_)
-    {
-        modified_ = true;
-        constraintsDict_->add("baffles", dictionary());
-        preserveBafflesDict_ = constraintsDict_->subDictPtr("baffles");
-        preserveBafflesDict_->set
-        (
-            "type",
-            preserveBafflesConstraint::typeName
-        );
-    }
-}
+//void Foam::fvMeshBalance::preserveBaffles()
+//{
+//    if (!preserveBafflesDict_)
+//    {
+//        modified_ = true;
+//        constraintsDict_->add("baffles", dictionary());
+//        preserveBafflesDict_ = constraintsDict_->subDictPtr("baffles");
+//        preserveBafflesDict_->set
+//        (
+//            "type",
+//            preserveBafflesConstraint::typeName
+//        );
+//    }
+//}
 
 
 void Foam::fvMeshBalance::makeDecomposer() const

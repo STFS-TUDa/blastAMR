@@ -492,14 +492,18 @@ Foam::label Foam::meshTools::addPatch
 
 
         // Add patch, create calculated everywhere
-        mesh.addPatch
-        (
-            pbm.size(),
-            pp,
-            dictionary(),   // do not set specialised patchFields
-            calculatedFvPatchField<scalar>::typeName,
-            true            // parallel sync'ed addition
-        );
+        PtrList<polyPatch> newPatches;
+        newPatches.set(0, &pp);
+        mesh.addPatches(newPatches);
+
+        //mesh.addPatch
+        //(
+        //    pbm.size(),
+        //    pp,
+        //    dictionary(),   // do not set specialised patchFields
+        //    calculatedFvPatchField<scalar>::typeName,
+        //    true            // parallel sync'ed addition
+        //);
     }
     else
     {
@@ -535,7 +539,7 @@ void Foam::meshTools::modifyOrAddFace
     const label zoneID,
     const bool zoneFlip,
 
-    PackedBoolList& modifiedFace
+    boolList& modifiedFace
 )
 {
     if (!modifiedFace.get(facei))
@@ -589,7 +593,7 @@ Foam::label Foam::meshTools::createBaffleFaces
     const labelList& newMasterPatches,
     const labelList& newSlavePatches,
     polyTopoChange& meshMod,
-    PackedBoolList& modifiedFace
+    boolList& modifiedFace
 )
 {
     label nModified = 0;
@@ -783,7 +787,7 @@ Foam::label Foam::meshTools::createPatchFaces
     const faceZone& fZone,
     const labelList& newPatches,
     polyTopoChange& meshMod,
-    PackedBoolList& modifiedFace
+    boolList& modifiedFace
 )
 {
     label nModified = 0;
@@ -1001,9 +1005,10 @@ void Foam::meshTools::filterPatches
         }
         Info<< decrIndent;
 
-        mesh.reorderPatches(oldToNew, true);
+        Info<< "This needs patch reordering functionality..." << endl;
+        NotImplemented;
+        //TODO: THIS IS PROBABLY IMPORTANT; bring it back
+        //mesh.reorderPatches(oldToNew, true);
         Info<< endl;
     }
 }
-
-// ************************************************************************* //

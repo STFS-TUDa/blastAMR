@@ -50,7 +50,7 @@ Foam::autoPtr<Foam::fvMeshRefiner> Foam::fvMeshRefiner::New
     word refinerType = fvMeshHexRefiner::typeName;
     if (dynamicMeshDict.found("refiner") || mesh.nSolutionD() < 2)
     {
-        refinerType = dynamicMeshDict.lookup<word>("refiner");
+        refinerType = word(dynamicMeshDict.lookup("refiner"));
     }
 
     Info<< "Selecting fvMeshRefiner: " << refinerType << endl;
@@ -83,7 +83,7 @@ Foam::autoPtr<Foam::fvMeshRefiner> Foam::fvMeshRefiner::New
     word refinerType = fvMeshHexRefiner::typeName;
     if (dict.found("refiner") || mesh.nSolutionD() < 2)
     {
-        refinerType = dict.lookup<word>("refiner");
+        refinerType = word(dict.lookup("refiner"));
     }
 
     Info<< "Selecting fvMeshRefiner " << refinerType << endl;

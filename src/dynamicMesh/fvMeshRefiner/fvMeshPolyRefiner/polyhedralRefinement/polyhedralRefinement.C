@@ -1305,7 +1305,7 @@ void Foam::polyhedralRefinement::setRefinement
     labelListList cellAddedCells(mesh_.nCells());
 
     // Get cell zone mesh
-    const meshCellZones& cellZones = mesh_.cellZones();
+    const auto& cellZones = mesh_.cellZones();
 
     forAll(cellAnchorPoints, cellI)
     {
@@ -2174,7 +2174,7 @@ Foam::labelList Foam::polyhedralRefinement::consistentUnrefinement
     // Create markup field of split points to unrefine
     // True: this is a split point which should be unrefined
     // False: this is either not a split point or it shouldn't be unrefined
-    PackedBoolList splitPointsToUnrefine(nPoints);
+    boolList splitPointsToUnrefine(nPoints);
 
     // Loop through all unrefinement candidates
     forAll (unrefinementPointCandidates, i)
@@ -2204,7 +2204,7 @@ Foam::labelList Foam::polyhedralRefinement::consistentUnrefinement
     while (true)
     {
         // First, create cells to unrefine (all cells sharing point to unrefine)
-        PackedBoolList cellsToUnrefine(nCells, false);
+        boolList cellsToUnrefine(nCells, false);
 
         // Loop through all split points to unrefine
         forAll (splitPointsToUnrefine, pointI)
@@ -2275,7 +2275,7 @@ Foam::labelList Foam::polyhedralRefinement::consistentUnrefinement
     }
 
     // Convert back to labelList.
-    label nSet = splitPointsToUnrefine.count();
+    label nSet = std::count(splitPointsToUnrefine.begin(), splitPointsToUnrefine.end(), true);
 
     labelList newPointsToUnrefine(nSet);
     nSet = 0;

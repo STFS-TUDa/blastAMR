@@ -23,9 +23,11 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "IOobject.H"
+#include "dimensionedScalarFwd.H"
 #include "fvMeshPolyRefiner.H"
 #include "polyTopoChange.H"
-#include "parcelCloud.H"
+//#include "parcelCloud.H"
 #include "prismatic2DRefinement.H"
 #include "polyhedralRefinement.H"
 #include "polyRefinementConstraint.H"
@@ -46,7 +48,7 @@ namespace Foam
 Foam::labelList Foam::fvMeshPolyRefiner::selectUnrefinePoints
 (
     const scalar unrefineLevel,
-    const PackedBoolList& markedCell,
+    const boolList& markedCell,
     const scalarField& pFld
 ) const
 {
@@ -62,7 +64,7 @@ Foam::labelList Foam::fvMeshPolyRefiner::selectUnrefinePoints
 
             forAll(pCells, pCelli)
             {
-                if (markedCell.get(pCells[pCelli]))
+                if (markedCell[pCells[pCelli]])
                 {
                     hasMarked = true;
                     break;
@@ -308,13 +310,15 @@ bool Foam::fvMeshPolyRefiner::refine
     const scalar unrefineLevel
 )
 {
+    Info<< "**** Executing poly-AMR refinement ****"  << endl;
     readDict(this->dict_);
     bool hasChanged = false;
 
+    Info<< "**** preUpdate: " << preUpdate() << endl;
     if (preUpdate())
     {
         // Cells marked for refinement or otherwise protected from unrefinement.
-        PackedBoolList refineCell(mesh_.nCells());
+        boolList refineCell(mesh_.nCells());
 
         if (canRefine(true))
         {
@@ -363,6 +367,43 @@ bool Foam::fvMeshPolyRefiner::refine
                 )
             );
 
+//
+//            volScalarField tmp1
+//            (
+//                IOobject(
+//                    "errrrrrr",
+//                    mesh_.time().constant(),
+//                    mesh_,
+//                    IOobject::NO_READ,
+//                    IOobject::NO_WRITE,
+//                    false
+//                ),
+//                mesh_,
+//                dimensionedScalar("zero",dimless, 0)
+//            );
+//            volScalarField tmp2
+//            (
+//                IOobject(
+//                    "selected",
+//                    mesh_.time().constant(),
+//                    mesh_,
+//                    IOobject::NO_READ,
+//                    IOobject::NO_WRITE,
+//                    false
+//                ),
+//                mesh_,
+//                dimensionedScalar("zero",dimless, 0)
+//            );
+//            //forAll(tmp1, ci) {
+//            //    tmp1[ci] = error[ci];
+//            //}
+//            tmp2 = 0.0;
+//            forAll(cellsToRefine, ci) {
+//                tmp2[cellsToRefine[ci]] = 1.0;
+//            }
+//            tmp1.write();
+//            tmp2.write();
+//            ::exit(200);
             label nCellsToRefine = returnReduce
             (
                 cellsToRefine.size(), sumOp<label>()
@@ -390,7 +431,7 @@ bool Foam::fvMeshPolyRefiner::refine
                     const labelList& reverseCellMap = map().reverseCellMap();
 
                     // Create new refineCell
-                    PackedBoolList newRefineCell(cellMap.size());
+                    boolList newRefineCell(cellMap.size());
 
                     forAll(cellMap, celli)
                     {
@@ -398,11 +439,11 @@ bool Foam::fvMeshPolyRefiner::refine
 
                         if (oldCelli < 0)
                         {
-                            newRefineCell.set(celli, 1);
+                            newRefineCell.set(celli, true);
                         }
                         else if (reverseCellMap[oldCelli] != celli)
                         {
-                            newRefineCell.set(celli, 1);
+                            newRefineCell.set(celli, true);
                         }
                         else
                         {
@@ -456,11 +497,11 @@ bool Foam::fvMeshPolyRefiner::refine
             if (nSplitPoints > 0)
             {
                 isUnrefining_ = true;
-                hasChanged = hasChanged || refiner_->unrefine
+                hasChanged = refiner_->unrefine
                 (
                     mesh_,
                     pointsToUnrefine
-                );
+                ) || hasChanged;
 
                 isUnrefining_ = false;
             }
@@ -483,6 +524,7 @@ bool Foam::fvMeshPolyRefiner::refine
         }
     }
 
+    Info<< "**** hasChanged: " << hasChanged << endl;
     return hasChanged;
 }
 

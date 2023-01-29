@@ -173,7 +173,7 @@ protected:
             //  is obtained. Returns local number of cells changed
             label faceConsistentRefinement
             (
-                PackedBoolList& refineCell,
+                boolList& refineCell,
                 const bool maxSet
             ) const;
 
@@ -181,7 +181,7 @@ protected:
             //  refinement is obtained. Returns local number of cells changed
             label edgeConsistentRefinement
             (
-                PackedBoolList& refineCell,
+                boolList& refineCell,
                 const bool maxSet
             ) const;
 
@@ -189,7 +189,7 @@ protected:
             //  unrefinement is obtained. Returns local number of cells changed
             label faceConsistentUnrefinement
             (
-                PackedBoolList& refineCell,
+                boolList& refineCell,
                 const bool maxSet
             ) const;
 
@@ -197,7 +197,7 @@ protected:
             //  unrefinement is obtained. Returns local number of cells changed
             label edgeConsistentUnrefinement
             (
-                PackedBoolList& refineCell,
+                boolList& refineCell,
                 const bool maxSet
             ) const;
 

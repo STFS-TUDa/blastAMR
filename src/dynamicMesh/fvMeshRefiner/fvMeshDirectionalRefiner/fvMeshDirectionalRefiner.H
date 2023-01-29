@@ -189,9 +189,9 @@ public:
         (
             const scalarField& error,
             const labelList& maxCellLevel = labelList(),
-            const scalar lowerRefineLevel = small,
-            const scalar upperRefineLevel = great,
-            const scalar unrefineLevel = -small
+            const scalar lowerRefineLevel = SMALL,
+            const scalar upperRefineLevel = GREAT,
+            const scalar unrefineLevel = -SMALL
         );
 
         //- Overload update mesh to include other methods
