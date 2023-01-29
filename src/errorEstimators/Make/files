@@ -1,3 +1,5 @@
+meshSizeObject/meshSizeObject.C
+
 errorEstimator/errorEstimator.C
 errorEstimator/errorEstimatorNew.C
 
@@ -9,6 +11,8 @@ scaledDelta/scaledDelta.C
 Lohner/Lohner.C
 multicomponentError/multicomponent.C
 
+codedErrorEstimator/codedErrorEstimator.C
+
 fvPatchFields/derived/coupledMaxError/coupledMaxErrorFvPatchScalarField.C
 
-LIB = $(BLAST_LIBBIN)/liberrorEstimate
+LIB = $(FOAM_USER_LIBBIN)/libamrIndicators

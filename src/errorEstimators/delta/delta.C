@@ -26,6 +26,7 @@ License
 #include "delta.H"
 #include "fvc.H"
 #include "addToRunTimeSelectionTable.H"
+#include "volFieldsFwd.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -51,7 +52,7 @@ Foam::errorEstimators::delta::delta
     errorEstimator(mesh, dict, name),
     fieldName_
     (
-        dict.lookupBackwardsCompatible({"deltaField", "field"})
+        dict.lookup("deltaField")
     )
 {
     this->read(dict);
@@ -73,18 +74,21 @@ void Foam::errorEstimators::delta::update(const bool scale)
         return;
     }
 
-    volScalarField x
-    (
-        IOobject
-        (
-            "mag(" + fieldName_ + ")",
-            mesh_.time().timeName(),
-            mesh_
-        ),
-        mesh_,
-        0.0
-    );
-    this->getFieldValue(fieldName_, x);
+    volScalarField& x = mesh_.lookupObjectRef<volScalarField>(fieldName_);
+    //(
+    //    IOobject
+    //    (
+    //        fieldName_,
+    //        mesh_.time().timeName(),
+    //        mesh_,
+    //        IOobject::NO_READ,
+    //        IOobject::NO_WRITE,
+    //        false
+    //    ),
+    //    mesh_,
+    //    0.0
+    //);
+    //this->getFieldValue(fieldName_, x);
 
     const labelUList& owner = mesh_.owner();
     const labelUList& neighbour = mesh_.neighbour();
@@ -96,7 +100,7 @@ void Foam::errorEstimators::delta::update(const bool scale)
         label own = owner[facei];
         label nei = neighbour[facei];
 
-        scalar eT = mag(x[own] - x[nei]);
+        scalar eT = min(mag(x[own] - x[nei]), 0.5);
 
         error_[own] = max(error_[own], eT);
         error_[nei] = max(error_[nei], eT);

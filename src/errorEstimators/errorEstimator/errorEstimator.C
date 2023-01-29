@@ -23,12 +23,13 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "error.H"
 #include "errorEstimator.H"
 #include "coupledMaxErrorFvPatchScalarField.H"
 #include "mappedPatchBase.H"
 #include "timeControlFunctionObject.H"
 #include "probes.H"
-#include "blastProbes.H"
+//#include "blastProbes.H"
 #include "meshSizeObject.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -152,19 +153,19 @@ Foam::errorEstimator::~errorEstimator()
 
 void Foam::errorEstimator::read(const dictionary& dict)
 {
-    lowerRefine_ = dict.lookup<scalar>("lowerRefineLevel");
-    lowerUnrefine_ = dict.lookup<scalar>("unrefineLevel");
-    upperRefine_ = dict.lookupOrDefault("upperRefineLevel", great);
-    upperUnrefine_ = dict.lookupOrDefault("upperUnrefineLevel", great);
+    lowerRefine_ = readScalar(dict.lookup("lowerRefineLevel"));
+    lowerUnrefine_ = readScalar(dict.lookup("unrefineLevel"));
+    upperRefine_ = dict.lookupOrDefault("upperRefineLevel", GREAT);
+    upperUnrefine_ = dict.lookupOrDefault("upperUnrefineLevel", GREAT);
 
     if (dict.found("maxRefinement"))
     {
-        maxLevel_ = dict.lookup<label>("maxRefinement");
+        maxLevel_ = readLabel(dict.lookup("maxRefinement"));
         minDx_ = -1;
     }
     else if (dict.found("minDx"))
     {
-        minDx_ = dict.lookup<scalar>("minDx");
+        minDx_ = readScalar(dict.lookup("minDx"));
         maxLevel_ = -1;
     }
     else
@@ -228,11 +229,11 @@ void Foam::errorEstimator::normalize(volScalarField& error)
             pts = p;
 
         }
-        if (isA<blastProbes>(funcs[i]))
-        {
-            const blastProbes& p(refCast<const blastProbes>(funcs[i]));
-            pts = p;
-        }
+        //if (isA<blastProbes>(funcs[i]))
+        //{
+        //    const blastProbes& p(refCast<const blastProbes>(funcs[i]));
+        //    pts = p;
+        //}
         forAll(pts, j)
         {
             label celli = mesh_.findCell(pts[j], polyMesh::FACE_PLANES);
@@ -261,7 +262,7 @@ Foam::labelList Foam::errorEstimator::maxRefinement() const
     {
         if (validD[cmpti] < 0)
         {
-            validD[cmpti] = great;
+            validD[cmpti] = GREAT;
         }
     }
     const scalarField& dx(meshSizeObject::New(mesh_).dx());

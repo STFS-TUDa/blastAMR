@@ -51,9 +51,9 @@ Foam::errorEstimators::scaledDelta::scaledDelta
     errorEstimator(mesh, dict, name),
     fieldName_
     (
-        dict.lookupBackwardsCompatible({"scaledDeltaField", "field"})
+        dict.lookup("scaledDeltaField")
     ),
-    minVal_(dict.lookupOrDefault<scalar>("minValue", small)),
+    minVal_(dict.lookupOrDefault<scalar>("minValue", SMALL)),
     offset_(dict.lookupOrDefault<scalar>("offset", 0.0))
 {
     this->read(dict);
@@ -87,7 +87,7 @@ void Foam::errorEstimators::scaledDelta::update(const bool scale)
         0.0
     );
     this->getFieldValue(fieldName_, x);
-    if (mag(offset_) > small)
+    if (mag(offset_) > SMALL)
     {
         x -= offset_;
     }

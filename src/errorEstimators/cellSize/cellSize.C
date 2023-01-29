@@ -214,19 +214,19 @@ void Foam::errorEstimators::cellSize::read(const dictionary& dict)
     if (sizeType_ == CMPT)
     {
         cmpts_ = readCmpts(dict.lookup("cmpts"));
-        minDX_ = dict.lookup<vector>("minDX");
-        maxDX_ = dict.lookup<vector>("maxDX");
+        minDX_ = vector(dict.lookup("minDX"));
+        maxDX_ = vector(dict.lookup("maxDX"));
         Info<<cmpts_<<endl;
     }
     else if (sizeType_ == VOLUME)
     {
-        lowerUnrefine_ = dict.lookup<scalar>("minVolume");
-        lowerRefine_ = dict.lookup<scalar>("maxVolume");
+        lowerUnrefine_ = readScalar(dict.lookup("minVolume"));
+        lowerRefine_ = readScalar(dict.lookup("maxVolume"));
     }
     else
     {
-        lowerUnrefine_ = dict.lookup<scalar>("minDx");
-        lowerRefine_ = dict.lookup<scalar>("maxDx");
+        lowerUnrefine_ = readScalar(dict.lookup("minDx"));
+        lowerRefine_ = readScalar(dict.lookup("maxDx"));
     }
 
     maxLevel_ = dict.lookupOrDefault<label>("maxRefinement", 10);

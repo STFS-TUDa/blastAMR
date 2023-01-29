@@ -88,7 +88,7 @@ void Foam::meshSizeObject::calcDx() const
         }
 
         const vectorField& Sf = mesh_.faceAreas();
-        const scalarField& magSf = mesh_.magFaceAreas();
+        const scalarField& magSf = mag(mesh_.faceAreas());
         const labelList& own = mesh_.faceOwner();
         const labelList& nei = mesh_.faceNeighbour();
         labelList nFaces(dxPtr_->size(), 0);
