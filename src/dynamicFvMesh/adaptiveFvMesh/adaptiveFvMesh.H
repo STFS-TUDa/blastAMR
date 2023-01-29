@@ -80,7 +80,7 @@ Description
 #ifndef adaptiveFvMesh_H
 #define adaptiveFvMesh_H
 
-#include "dynamicBlastFvMesh.H"
+#include "dynamicFvMesh.H"
 #include "errorEstimator.H"
 #include "fvMeshRefiner.H"
 
@@ -95,8 +95,14 @@ namespace Foam
 
 class adaptiveFvMesh
 :
-    public dynamicBlastFvMesh
+    public dynamicFvMesh
 {
+        //- The dynamicMeshDict
+        IOdictionary dynamicMeshDict_;
+
+        //- Return the dynamicMeshDict IOobject
+        static IOobject dynamicMeshDictIOobject(const IOobject& io);
+
 protected:
 
         autoPtr<errorEstimator> error_;
@@ -147,6 +153,12 @@ public:
 
     // Member Functions
 
+        //- Return the dynamicMeshDict
+        const dictionary& dynamicMeshDict() const
+        {
+            return dynamicMeshDict_;
+        }
+
         //- Map all fields in time using given map
         virtual void mapFields(const mapPolyMesh& mpm);
 
@@ -160,7 +172,7 @@ public:
         virtual bool update();
 
         //- Refine the mesh
-        virtual bool refine();
+        bool refine();
 
 
     // Writing
@@ -168,10 +180,8 @@ public:
         //- Write using given format, version and compression
         virtual bool writeObject
         (
-            IOstream::streamFormat fmt,
-            IOstream::versionNumber ver,
-            IOstream::compressionType cmp,
-            const bool write = true
+            IOstreamOption streamOpt,
+            const bool valid
         ) const;
 
 

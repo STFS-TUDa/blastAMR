@@ -30,6 +30,7 @@ License
 
 #include "adaptiveFvMesh.H"
 #include "addToRunTimeSelectionTable.H"
+#include "dimensionSets.H"
 #include "surfaceInterpolate.H"
 #include "volFields.H"
 #include "surfaceFields.H"
@@ -42,11 +43,48 @@ namespace Foam
     defineTypeNameAndDebug(adaptiveFvMesh, 0);
     addToRunTimeSelectionTable
     (
-        dynamicBlastFvMesh,
+        dynamicFvMesh,
         adaptiveFvMesh,
         IOobject
     );
 }
+
+// * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * * //
+
+Foam::IOobject Foam::adaptiveFvMesh::dynamicMeshDictIOobject
+(
+    const IOobject& io
+)
+{
+    IOobject dictHeader
+    (
+        "dynamicMeshDict",
+        io.time().constant(),
+        (io.name() == polyMesh::defaultRegion ? "" : io.name()),
+        io.db(),
+        IOobject::READ_IF_PRESENT,
+        IOobject::NO_WRITE,
+        false
+    );
+
+    // defaultRegion (region0) gets loaded from constant, other ones get loaded
+    // from constant/<regionname>. Normally we'd use polyMesh::dbDir() but we
+    // haven't got a polyMesh yet ...
+    return IOobject
+    (
+        "dynamicMeshDict",
+        io.time().constant(),
+        (io.name() == polyMesh::defaultRegion ? "" : io.name()),
+        io.db(),
+        (
+            dictHeader.typeHeaderOk<IOdictionary>(true)
+          ? IOobject::MUST_READ_IF_MODIFIED
+          : IOobject::NO_READ
+        ),
+        IOobject::NO_WRITE
+    );
+}
+
 
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
@@ -115,12 +153,20 @@ void Foam::adaptiveFvMesh::updateMesh(const mapPolyMesh& map)
             Pout<< "Found " << masterFaces.size() << " split faces " << endl;
         }
 
+        // Check if it's a flux field through dims
+        auto isFlux = [&](const surfaceScalarField& df)
+        {
+            return
+                df.dimensions() == dimArea*dimVelocity
+             || df.dimensions() == dimArea*dimVelocity*dimDensity;
+        };
         HashTable<surfaceScalarField*> fluxes
         (
             lookupClass<surfaceScalarField>()
         );
         forAllIter(HashTable<surfaceScalarField*>, fluxes, iter)
         {
+
             if (!isFlux(*iter()))
             {
                 continue;
@@ -262,7 +308,8 @@ void Foam::adaptiveFvMesh::distribute
 Foam::adaptiveFvMesh::adaptiveFvMesh(const IOobject& io)
 :
     dynamicFvMesh(io),
-    dynamicBlastFvMesh(io),
+    dynamicMeshDict_(dynamicMeshDictIOobject(io)),
+    //dynamicBlastFvMesh(io),
     error_(errorEstimator::New(*this, dynamicMeshDict())),
     refiner_(fvMeshRefiner::New(*this, dynamicMeshDict()))
 {
@@ -281,7 +328,7 @@ Foam::adaptiveFvMesh::~adaptiveFvMesh()
 
 void Foam::adaptiveFvMesh::mapFields(const mapPolyMesh& mpm)
 {
-    dynamicBlastFvMesh::mapFields(mpm);
+    dynamicFvMesh::mapFields(mpm);
 
     // Correct surface fields on introduced internal faces. These get
     // created out-of-nothing so get an interpolated value.
@@ -294,7 +341,19 @@ void Foam::adaptiveFvMesh::mapFields(const mapPolyMesh& mpm)
 
 bool Foam::adaptiveFvMesh::update()
 {
-    return false;
+    Info<< "***** Running update *****" << endl;
+    bool changed = refine();
+    return refiner_->balance() || changed;
+    //mapPolyMesh map(*this);
+    //updateMesh(map);
+
+    //bool changed = returnReduce(map.nOldCells() != nCells(), orOp<bool>());
+    //if (map.nOldCells())
+    //{
+    //    Info<< "***** Running distribute *****" << endl;
+    //    distribute(map);
+    //}
+    //return false;
 }
 
 
@@ -314,14 +373,12 @@ bool Foam::adaptiveFvMesh::refine()
 
 bool Foam::adaptiveFvMesh::writeObject
 (
-    IOstream::streamFormat fmt,
-    IOstream::versionNumber ver,
-    IOstream::compressionType cmp,
-    const bool write
+    IOstreamOption streamOpt,
+    const bool valid
 ) const
 {
     return
-        dynamicBlastFvMesh::writeObject(fmt, ver, cmp, write)
+        dynamicFvMesh::writeObject(streamOpt, valid)
      && refiner_->write();
 }
 
