@@ -342,7 +342,7 @@ void Foam::adaptiveFvMesh::mapFields(const mapPolyMesh& mpm)
 bool Foam::adaptiveFvMesh::update()
 {
     bool changed = refine();
-    return refiner_->balance() || changed;
+    return changed || refiner_->balance();
 }
 
 

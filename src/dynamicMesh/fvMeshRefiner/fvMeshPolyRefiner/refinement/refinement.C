@@ -39,6 +39,7 @@ License
 #include "globalIndex.H"
 #include "addToRunTimeSelectionTable.H"
 #include "volFields.H"
+#include "volFieldsFwd.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -342,9 +343,9 @@ Foam::label Foam::refinement::edgeConsistentRefinement
                 // Note: refineCell flag for both cellI and cellJ might
                 // change, this is why we need to recalculate cellI level here
                 const label cellILevel =
-                    cellLevel_[cellI] + refineCell.get(cellI);
+                    cellLevel_[cellI] + int(refineCell.get(cellI));
                 const label cellJLevel =
-                    cellLevel_[cellJ] + refineCell.get(cellJ);
+                    cellLevel_[cellJ] + int(refineCell.get(cellJ));
 
                 if (cellILevel > (cellJLevel + 1))
                 {

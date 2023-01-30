@@ -455,6 +455,7 @@ bool Foam::fvMeshPolyRefiner::refine
                 sumOp<label>()
             );
 
+            reduce(hasChanged, orOp<bool>());
             if (nSplitPoints > 0)
             {
                 isUnrefining_ = true;
@@ -463,7 +464,6 @@ bool Foam::fvMeshPolyRefiner::refine
                     mesh_,
                     pointsToUnrefine
                 ) || hasChanged;
-
                 isUnrefining_ = false;
             }
         }
