@@ -311,7 +311,8 @@ Foam::adaptiveFvMesh::adaptiveFvMesh(const IOobject& io)
     dynamicMeshDict_(dynamicMeshDictIOobject(io)),
     //dynamicBlastFvMesh(io),
     error_(errorEstimator::New(*this, dynamicMeshDict())),
-    refiner_(fvMeshRefiner::New(*this, dynamicMeshDict()))
+    refiner_(fvMeshRefiner::New(*this, dynamicMeshDict())),
+    currentTimeIndex_(-1)
 {
     // Read static part of dictionary
     readDict();
@@ -339,10 +340,22 @@ void Foam::adaptiveFvMesh::mapFields(const mapPolyMesh& mpm)
     mapNewInternalFaces<tensor>(mpm.faceMap());
 }
 
+bool Foam::adaptiveFvMesh::firstUpdate()
+{
+    if (currentTimeIndex_ >= time().timeIndex())
+    {
+        return false;
+    }
+    currentTimeIndex_ = time().timeIndex();
+    return true;
+}
+
 bool Foam::adaptiveFvMesh::update()
 {
-    bool changed = refine();
-    return changed || refiner_->balance();
+    if (!firstUpdate()) return false;
+
+    return refine();
+    //return changed || refiner_->balance();
 }
 
 

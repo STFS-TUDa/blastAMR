@@ -113,6 +113,8 @@ protected:
         //- Fluxes to map
         HashTable<word> correctFluxes_;
 
+        //- Do mesh updates onlyonce per timestep
+        label currentTimeIndex_;
 
         // Protected member functions
 
@@ -131,6 +133,7 @@ protected:
             void mapNewInternalFaces(const labelList& faceMap)
             {}
 
+            bool firstUpdate();
 
 public:
 
