@@ -61,8 +61,8 @@ typedef MeshObject
 \*---------------------------------------------------------------------------*/
 
 class fvMeshRefiner
-:
-    public FvMeshRefiner
+//:
+//    public FvMeshRefiner
 {
 protected:
 

@@ -35,6 +35,8 @@ License
 #include "volFields.H"
 #include "surfaceFields.H"
 #include "sigFpe.H"
+#include "fvMeshPolyRefiner.H"
+#include "fvMeshHexRefiner.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -290,7 +292,21 @@ void Foam::adaptiveFvMesh::updateMesh(const mapPolyMesh& map)
 
     fvMesh::updateMesh(map);
 
-    // Refiner is not updated because it is an UpdatableMeshObject
+    // Bugfix: update refiner object manually.
+    if (refiner_.valid())
+    {
+        //fvMeshPolyRefiner* polyRefiner = dynamic_cast<fvMeshPolyRefiner*>(refiner_.get());
+        //fvMeshHexRefiner* hexRefiner = dynamic_cast<fvMeshHexRefiner*>(refiner_.get());
+        //if(polyRefiner != nullptr){
+        //    polyRefiner->fvMeshPolyRefiner::updateMesh(map);
+        //} else if (hexRefiner != nullptr){
+        //    hexRefiner->fvMeshHexRefiner::updateMesh(map);
+        //} else {
+        //    FatalErrorInFunction
+        //        << "fvMeshRefiner type " << refiner_->type() << " is not supported." << endl;
+        //}
+        refiner_->updateMesh(map);
+    }
 }
 
 
@@ -380,8 +396,8 @@ bool Foam::adaptiveFvMesh::writeObject
 ) const
 {
     return
-        dynamicFvMesh::writeObject(streamOpt, valid)
-     && refiner_->write();
+        dynamicFvMesh::writeObject(streamOpt, valid);
+     //&& refiner_->write();
 }
 
 

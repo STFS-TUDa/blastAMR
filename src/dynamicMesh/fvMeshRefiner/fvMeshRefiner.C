@@ -379,21 +379,21 @@ bool Foam::fvMeshRefiner::canBalance(const bool incr) const
 
 Foam::fvMeshRefiner::fvMeshRefiner(fvMesh& mesh)
 :
-    FvMeshRefiner
-    (
-        mesh//,
-        //IOdictionary
-        //(
-        //    IOobject
-        //    (
-        //        typeName,
-        //        mesh.facesInstance(),
-        //        mesh,
-        //        IOobject::NO_READ,
-        //        IOobject::AUTO_WRITE
-        //    )
-        //)
-    ),
+    //FvMeshRefiner
+    //(
+    //    mesh//,
+    //    //IOdictionary
+    //    //(
+    //    //    IOobject
+    //    //    (
+    //    //        typeName,
+    //    //        mesh.facesInstance(),
+    //    //        mesh,
+    //    //        IOobject::NO_READ,
+    //    //        IOobject::AUTO_WRITE
+    //    //    )
+    //    //)
+    //),
 
     mesh_(mesh),
     dict_(),
@@ -446,21 +446,21 @@ Foam::fvMeshRefiner::fvMeshRefiner
     const bool read
 )
 :
-    FvMeshRefiner
-    (
-        mesh//,
-        //IOdictionary
-        //(
-        //    IOobject
-        //    (
-        //        typeName,
-        //        mesh.facesInstance(),
-        //        mesh,
-        //        IOobject::NO_READ,
-        //        IOobject::AUTO_WRITE
-        //    )
-        //)
-    ),
+    //FvMeshRefiner
+    //(
+    //    mesh//,
+    //    //IOdictionary
+    //    //(
+    //    //    IOobject
+    //    //    (
+    //    //        typeName,
+    //    //        mesh.facesInstance(),
+    //    //        mesh,
+    //    //        IOobject::NO_READ,
+    //    //        IOobject::AUTO_WRITE
+    //    //    )
+    //    //)
+    //),
 
     mesh_(mesh),
     dict_(dict),
