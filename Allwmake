@@ -8,4 +8,6 @@ wmake src/errorEstimators
 wmake src/dynamicMesh
 wmake src/dynamicFvMesh
 
+wmake applications/utilities/updateMesh
+
 # -----------------------------------------------------------------------------
