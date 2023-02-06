@@ -31,7 +31,7 @@ v2006:
     - v2006
   script: 
     - echo "Compiling the libs..."
-    - source /usr/lib/openfoam/openfoam2012/etc/bashrc && mkdir -p /home/openfoam/OpenFOAM/openfoam-v2006/platforms/linux64GccDPInt32Opt/lib && ./Allwmake
+    - source /usr/lib/openfoam/openfoam2006/etc/bashrc && mkdir -p /home/openfoam/OpenFOAM/openfoam-v2006/platforms/linux64GccDPInt32Opt/lib && ./Allwmake
     - echo "Running unit tests... "
     - cd tests
     - git clone https://github.com/FoamScience/foamUT
@@ -53,7 +53,7 @@ v2212:
     - v2212
   script: 
     - echo "Compiling the libs..."
-    - source /usr/lib/openfoam/openfoam2012/etc/bashrc && mkdir -p /home/openfoam/OpenFOAM/openfoam-v2212/platforms/linux64GccDPInt32Opt/lib && ./Allwmake
+    - source /usr/lib/openfoam/openfoam2212/etc/bashrc && mkdir -p /home/openfoam/OpenFOAM/openfoam-v2212/platforms/linux64GccDPInt32Opt/lib && ./Allwmake
     - echo "Running unit tests... "
     - cd tests
     - git clone https://github.com/FoamScience/foamUT
