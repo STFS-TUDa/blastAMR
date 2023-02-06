@@ -30,5 +30,4 @@ unit-test-job:
     - ln -s $CI_PROJECT_DIR/tests/adaptiveFvMeshTests $CI_PROJECT_DIR/tests/foamUT/tests/adaptiveFvMeshTests
     - cp -r testCases foamUT/cases
     - cd foamUT
-    - source /usr/lib/openfoam/openfoam2012/etc/bashrc
-    - ./Alltest
+    - source /usr/lib/openfoam/openfoam2012/etc/bashrc && ./Alltest
