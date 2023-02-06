@@ -47,7 +47,7 @@ namespace errorEstimators
 Foam::dlLibraryTable&
 Foam::errorEstimators::codedErrorEstimator::libs() const
 {
-    return this->time().libs();
+    return const_cast<Time&>(this->time()).libs();
 }
 
 
