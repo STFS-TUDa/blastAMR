@@ -55,10 +55,9 @@ Foam::autoPtr<Foam::fvMeshRefiner> Foam::fvMeshRefiner::New
 
     Info<< "Selecting fvMeshRefiner: " << refinerType << endl;
 
-    fvMeshConstructorTable::iterator cstrIter =
-        fvMeshConstructorTablePtr_->find(refinerType);
+    auto* ctorPtr = fvMeshConstructorTable(refinerType);
 
-    if (cstrIter == fvMeshConstructorTablePtr_->end())
+    if (ctorPtr == nullptr)
     {
         FatalErrorInFunction
             << "Unknown fvMeshRefiner type "
@@ -68,7 +67,7 @@ Foam::autoPtr<Foam::fvMeshRefiner> Foam::fvMeshRefiner::New
             << exit(FatalError);
     }
 
-    return autoPtr<fvMeshRefiner>(cstrIter()(mesh));
+    return autoPtr<fvMeshRefiner>(ctorPtr(mesh));
 }
 
 
@@ -88,10 +87,9 @@ Foam::autoPtr<Foam::fvMeshRefiner> Foam::fvMeshRefiner::New
 
     Info<< "Selecting fvMeshRefiner " << refinerType << endl;
 
-    dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(refinerType);
+    auto* ctorPtr = dictionaryConstructorTable(refinerType);
 
-    if (cstrIter == dictionaryConstructorTablePtr_->end())
+    if (ctorPtr == nullptr)
     {
         FatalErrorInFunction
             << "Unknown fvMeshRefiner type "
@@ -101,7 +99,7 @@ Foam::autoPtr<Foam::fvMeshRefiner> Foam::fvMeshRefiner::New
             << exit(FatalError);
     }
 
-    return autoPtr<fvMeshRefiner>(cstrIter()(mesh, dict, force, read));
+    return autoPtr<fvMeshRefiner>(ctorPtr(mesh, dict, force, read));
 }
 
 

@@ -90,7 +90,7 @@ Foam::fvMeshBalance::fvMeshBalance(fvMesh& mesh)
     //singleProcessorFaceSetsDict_(nullptr),
     //preservePatchesDict_(nullptr),
     //preserveBafflesDict_(nullptr),
-    distributor_(mesh_, 1e-4),
+    distributor_(mesh_),
     balance_(true),
     allowableImbalance_(0.2)
 {
@@ -161,7 +161,7 @@ Foam::fvMeshBalance::fvMeshBalance
     //singleProcessorFaceSetsDict_(nullptr),
     //preservePatchesDict_(nullptr),
     //preserveBafflesDict_(nullptr),
-    distributor_(mesh_, 1e-4),
+    distributor_(mesh_),
     balance_(false),
     allowableImbalance_(0.2)
 {

@@ -37,10 +37,9 @@ Foam::autoPtr<Foam::errorEstimator> Foam::errorEstimator::New
 
     Info<< "Selecting errorEstimator: " << errorEstimatorType << endl;
 
-    dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(errorEstimatorType);
+    auto* ctorPtr = dictionaryConstructorTable(errorEstimatorType);
 
-    if (cstrIter == dictionaryConstructorTablePtr_->end())
+    if (ctorPtr == nullptr)
     {
         FatalErrorInFunction
             << "Unknown errorEstimator type "
@@ -50,7 +49,7 @@ Foam::autoPtr<Foam::errorEstimator> Foam::errorEstimator::New
             << exit(FatalError);
     }
 
-    return cstrIter()(mesh, dict, name);
+    return ctorPtr(mesh, dict, name);
 }
 
 
