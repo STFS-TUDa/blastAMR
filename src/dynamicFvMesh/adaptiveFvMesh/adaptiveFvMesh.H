@@ -95,7 +95,7 @@ namespace Foam
 
 class adaptiveFvMesh
 :
-    public dynamicFvMesh
+    virtual public dynamicFvMesh
 {
         //- The dynamicMeshDict
         IOdictionary dynamicMeshDict_;
