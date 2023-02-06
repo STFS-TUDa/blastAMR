@@ -1,10 +1,8 @@
-default:
-  image: ghcr.io/foamscience/jammy-openfoam:v2012
-
-stages: # a single stage/job so we don't repeat stuff
+stages: # a single stage/job per openfoam version so we don't repeat stuff
   - build-and-test
 
-build-job:
+v2012:
+  image: ghcr.io/foamscience/jammy-openfoam:v2012
   stage: build-and-test
   tags:
     - local
@@ -12,6 +10,28 @@ build-job:
   script: 
     - echo "Compiling the libs..."
     - source /usr/lib/openfoam/openfoam2012/etc/bashrc && mkdir -p /home/openfoam/OpenFOAM/openfoam-v2012/platforms/linux64GccDPInt32Opt/lib && ./Allwmake
+    - echo "Running unit tests... "
+    - cd tests
+    - git clone https://github.com/FoamScience/foamUT
+    - rm -rf foamUT/tests/exampleTests
+    - echo $CI_PROJECT_DIR
+    - ln -s $CI_PROJECT_DIR/tests/adaptiveFvMeshTests $CI_PROJECT_DIR/tests/foamUT/tests/adaptiveFvMeshTests
+    - rm -r foamUT/cases
+    - cp -r testCases foamUT/cases
+    - cd foamUT
+    - sed -i 's_/dev/shm_/home/openfoam/data_g' Alltest
+    - export AMR_PROJECT=$CI_PROJECT_DIR && export CATCH_TIMEOUT=180 && source /usr/lib/openfoam/openfoam2012/etc/bashrc && ./Alltest; cat /builds/elwardi.fadeli/blastamr/tests/foamUT/tests/adaptiveFvMeshTests/log.wmake
+    - echo "Done."
+
+v2006:
+  image: ghcr.io/foamscience/jammy-openfoam:v2006
+  stage: build-and-test
+  tags:
+    - local
+    - v2006
+  script: 
+    - echo "Compiling the libs..."
+    - source /usr/lib/openfoam/openfoam2012/etc/bashrc && mkdir -p /home/openfoam/OpenFOAM/openfoam-v2006/platforms/linux64GccDPInt32Opt/lib && ./Allwmake
     - echo "Running unit tests... "
     - cd tests
     - git clone https://github.com/FoamScience/foamUT
