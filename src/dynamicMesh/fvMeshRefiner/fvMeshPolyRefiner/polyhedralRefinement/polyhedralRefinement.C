@@ -1857,6 +1857,19 @@ void Foam::polyhedralRefinement::setUnrefinement
     const labelList& splitPointsToUnrefine
 ) const
 {
+    // Don't attempt unrefinement if no refinement was ever done
+    bool refinementWasDone = false;
+    forAll(cellLevel_, cellI)
+    {
+        if (cellLevel_[cellI] > 0)
+        {
+            refinementWasDone = true;
+            break;
+        }
+    }
+    reduce(refinementWasDone, orOp<bool>());
+    if (!refinementWasDone) return;
+
     // Get point cells necessary for debug and face removal
     const labelListList& meshPointCells = mesh_.pointCells();
 
@@ -2069,11 +2082,13 @@ Foam::labelList Foam::polyhedralRefinement::consistentUnrefinement
 {
     if (debug)
     {
-        InfoInFunction<< "Setting split points to unrefine." << endl;
+        Info<< __PRETTY_FUNCTION__ << nl
+            << "Setting split points to unrefine." << endl;
     }
 
     // Get necessary mesh data
     const label nPoints = mesh_.nPoints();
+    const labelListList& meshCellPoints = mesh_.cellPoints();
 
     // PART 1: Mark all split points in the mesh (points that can be unrefined)
     boolList splitPointsMarkup(nPoints, false);
@@ -2174,7 +2189,7 @@ Foam::labelList Foam::polyhedralRefinement::consistentUnrefinement
     // Create markup field of split points to unrefine
     // True: this is a split point which should be unrefined
     // False: this is either not a split point or it shouldn't be unrefined
-    boolList splitPointsToUnrefine(nPoints);
+    boolList splitPointsToUnrefine(nPoints, false);
 
     // Loop through all unrefinement candidates
     forAll (unrefinementPointCandidates, i)
@@ -2185,12 +2200,50 @@ Foam::labelList Foam::polyhedralRefinement::consistentUnrefinement
         if (splitPointsMarkup[pointI])
         {
             // This is a split point, mark it for unrefinement
-            splitPointsToUnrefine.set(pointI);
+            splitPointsToUnrefine[pointI] = true;
         }
     }
 
 
-    // PART 3: Ensure face consistent (2:1 constraint) and possibly point
+    // PART 3: Make sure that we skip unrefining around split points that
+    // possibly have cells around that will be refined
+
+    // Mark cells that need to be protected (will be refined in this iteration)
+    boolList protectedCell(mesh_.nCells(), false);
+
+    //// Loop through cells to refine and mark them
+    //forAll (cellsToRefine_, i)
+    //{
+    //    protectedCell[cellsToRefine_[i]] = true;
+    //}
+
+    //// Extend protected cells across points using a specified number of
+    //// unrefinement buffer layers
+    //for (label i = 0; i < nUnrefinementBufferLayers_; ++i)
+    //{
+    //    meshTools::extendMarkedCellsAcrossPoints(mesh_, protectedCell);
+    //}
+
+    // Loop through all cells and if the cell should be protected, protect all
+    // of its points from unrefinement
+    forAll (protectedCell, cellI)
+    {
+        if (protectedCell[cellI])
+        {
+            // Get list of cell points for this protected cell
+            const labelList& cPoints = meshCellPoints[cellI];
+
+            // Loop through cell points and make sure that they are not marked
+            // for unrefinement
+            forAll (cPoints, j)
+            {
+                splitPointsToUnrefine[cPoints[j]] = false;
+            }
+        }
+    }
+
+
+    // PART 4: Ensure face consistent (2:1 constraint) and possibly point
     // consistent (4:1 constraint) unrefinement
 
     // Get necessary mesh data
@@ -2288,7 +2341,24 @@ Foam::labelList Foam::polyhedralRefinement::consistentUnrefinement
         }
     }
 
-    return newPointsToUnrefine;
+    // Collect all split points to unrefine in a dynamic list
+    DynamicList<label> splitPointsToUnrefineDynamic(nPoints);
+
+    forAll (splitPointsToUnrefine, pointI)
+    {
+        if (splitPointsToUnrefine[pointI])
+        {
+            // Split point marked for unrefinement, append it
+            splitPointsToUnrefineDynamic.append(pointI);
+        }
+    }
+
+    // Transfer the contents into the data member (ordinary list)
+
+    Info<< "Selected "
+        << returnReduce(splitPointsToUnrefineDynamic.size(), sumOp<label>())
+        << " split points to unrefine." << endl;
+    return splitPointsToUnrefineDynamic;
 }
 
 

@@ -134,7 +134,7 @@ public:
             const labelList& maxCellLevel = labelList(),
             const scalar lowerRefineLevel = SMALL,
             const scalar upperRefineLevel = GREAT,
-            const scalar unrefineLevel = -SMALL
+            const scalar unrefineLevel = 0
         );
 
         //- Overload update mesh to include other methods

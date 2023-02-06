@@ -273,19 +273,24 @@ bool Foam::fvMeshRefiner::preUpdate()
 
 bool Foam::fvMeshRefiner::canRefine(const bool incr) const
 {
+    const Time& t = mesh_.time();
     if (!refine_)
     {
         return false;
     }
 
-    const Time& t = mesh_.time();
+    // force refinement on first timestep
+    if (t.timeIndex() <= 0)
+    {
+        return true;
+    }
+
     if (force_)
     {}
     else if
     (
-        t.timeIndex() <= 0
-     || t.value() < beginRefine_
-     || t.value() > endRefine_
+        t.value() < beginRefine_
+        || t.value() > endRefine_
     )
     {
         return false;
@@ -305,12 +310,13 @@ bool Foam::fvMeshRefiner::canRefine(const bool incr) const
 
 bool Foam::fvMeshRefiner::canUnrefine(const bool incr) const
 {
-    if (!unrefine_)
+    const Time& t = mesh_.time();
+    // Bugfix: avoid unrefinement on first timestep since no refinement is done yet
+    if (!unrefine_ || t.timeIndex() <= 0)
     {
         return false;
     }
 
-    const Time& t = mesh_.time();
     if (force_)
     {}
     else if
