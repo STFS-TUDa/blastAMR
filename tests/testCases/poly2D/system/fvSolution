@@ -1,0 +1,86 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.1                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    rho
+    {}
+    pcorr
+    {
+        solver          PCG;
+        preconditioner      
+        {
+            preconditioner  GAMG;
+            nVcycles        4;
+            tolerance       1e-07;
+            relTol          0;       
+            smoother        DICGaussSeidel;
+            nSmoothingSteps 4; 
+            nPreSweeps      2;
+            nPostSweeps     1;                                    
+            nFinestSweeps   1;                                  
+            cacheAgglomeration false;                              
+            nCellsInCoarsestLevel 10;
+            agglomerator    algebraicPair;                        
+            mergeLevels     1;                                    
+        }
+        tolerance       1e-10;
+        relTol          0;
+        minIter         2;   
+        maxIter         200;  
+    }
+
+    pd
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-07;
+        relTol          0.05;
+    }
+
+    pdFinal
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-07;
+        relTol          0;
+    }
+
+    U
+    {
+        solver          BiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-06;
+        relTol          0;
+    }
+}
+PISO
+{
+    cAlpha          1;
+}
+PIMPLE
+{
+    momentumPredictor yes;
+    nOuterCorrectors 1;
+    nCorrectors     4;
+    nNonOrthogonalCorrectors 0;
+    nAlphaCorr      1;
+    nAlphaSubCycles 2;
+}
+
+
+// ************************************************************************* //
