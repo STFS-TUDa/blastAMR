@@ -5,7 +5,15 @@ cd "${0%/*}" || exit                                # Run from this directory
 
 restore0Dir
 runApplication blockMesh
+
+maxRef=$(foamDictionary -entry maxRefinement -value constant/dynamicMeshDict)
 runApplication setFields
-runApplication $(getApplication)
+for i in $(seq 1 $maxRef); do
+    runApplication -a updateMesh -overwrite
+    runApplication -a setFields
+done
+cp -rT 0/polyMesh constant/polyMesh
+runApplication decomposePar -constant
+#mpirun -np 8 --output-filename log interFoam -parallel
 
 #------------------------------------------------------------------------------
