@@ -1,0 +1,5 @@
+$(FOAM_FOAMUT)/tests/testDriver.C
+
+adaptiveFvMeshTest.C
+
+EXE = ./testDriver

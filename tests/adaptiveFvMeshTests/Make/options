@@ -1,0 +1,18 @@
+EXE_INC = -std=c++14 \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/lnInclude \
+    -I$(LIB_SRC)/dynamicFvMesh/lnInclude \
+    -I$(LIB_SRC)/Pstream/lnInclude \
+    -I$(FOAM_USER_LIBBIN)/catch2/include \
+    -I$(AMR_PROJECT)/src/dynamicMesh/lnInclude \
+    -I$(AMR_PROJECT)/src/errorEstimators/lnInclude \
+    -I$(AMR_PROJECT)/src/dynamicFvMesh/lnInclude \
+    
+EXE_LIBS = \
+    -lfiniteVolume \
+    -lmeshTools \
+    -L$(FOAM_USER_LIBBIN) -L$(FOAM_LIBBIN)/$(FOAM_MPI) \
+    -L$(FOAM_USER_LIBBIN)/catch2/lib -l:libCatch2.a \
+    -ldynamicFvMesh -lPstream -lamrDynamicMesh \
+    -lamrDynamicFvMesh -lamrIndicators
