@@ -1,0 +1,69 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2012                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      extrudeMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// What to extrude:
+//      patch   : from patch of another case ('sourceCase')
+//      mesh    : as above but with original case included
+//      surface : from externally read surface
+
+//constructFrom mesh;
+constructFrom patch;
+//constructFrom surface;
+
+// If construct from patch/mesh:
+sourceCase    ".";
+sourcePatches (front);
+
+// If construct from patch: patch to use for back (can be same as sourcePatch)
+exposedPatchName back;
+
+// Flip surface normals before usage. Valid only for extrude from surface or
+// patch.
+flipNormals false;
+
+//- Linear extrusion in point-normal direction
+extrudeModel        linearNormal;
+
+//- Extrudes into sphere around (0 0 0)
+//extrudeModel        linearRadial;
+
+//- Extrudes into sphere around (0 0 0) with specified radii
+//extrudeModel        radial;
+
+//- Extrudes into sphere with grading according to pressure (atmospherics)
+//extrudeModel        sigmaRadial;
+
+//- Extrudes by interpolating along path inbetween two (topologically identical)
+//  surfaces (e.g. one is an offsetted version of the other)
+//extrudeModel        offsetSurface;
+
+nLayers             1;
+
+expansionRatio      1.0;
+
+linearNormalCoeffs
+{
+    thickness       0.01;
+}
+
+// Do front and back need to be merged? Usually only makes sense for 360
+// degree wedges.
+mergeFaces false;
+
+// Merge small edges. Fraction of bounding box.
+mergeTol 0;
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

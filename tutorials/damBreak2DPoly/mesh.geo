@@ -1,0 +1,30 @@
+Point(1) = {0, 0, 0, 0.01};
+Point(2) = {0.292, 0, 0, 0.01};
+Point(3) = {0.292, 0.048, 0, 0.01};
+Point(4) = {0.316, 0.048, 0, 0.01};
+Point(5) = {0.316, 0, 0, 0.01};
+Point(6) = {0.584, 0, 0, 0.01};
+Point(7) = {0.584, 0.584, 0, 0.01};
+Point(8) = {0, 0.584, 0, 0.01};
+Line(1) = {1, 2};
+Line(2) = {2, 3};
+Line(3) = {3, 4};
+Line(4) = {4, 5};
+Line(5) = {5, 6};
+Line(6) = {6, 7};
+Line(7) = {7, 8};
+Line(8) = {8, 1};
+Line Loop(9) = {8, 1, 2, 3, 4, 5, 6, 7};
+Plane Surface(9) = {9};
+Physical Volume("internal") = {1};
+Extrude {0, 0, 0.0146} {
+ Surface{9};
+ Layers{1};
+ Recombine;
+}
+Physical Surface("atmosphere", 52) = {50};
+Physical Surface("leftWall", 54) = {22};
+Physical Surface("rightWall", 55) = {46};
+Physical Surface("lowerWall", 56) = {26, 30, 34, 38, 42};
+Physical Surface("back", 57) = {9};
+Physical Surface("front", 58) = {51};

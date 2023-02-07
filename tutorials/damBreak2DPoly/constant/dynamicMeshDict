@@ -1,0 +1,51 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2012                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+FoamFile
+{
+    version         2;
+    format          ascii;
+    class           dictionary;
+    object          dynamicMeshDict;
+}
+
+dynamicFvMesh   adaptiveFvMesh;
+
+refiner         polyRefiner;
+
+errorEstimator  delta;
+
+deltaField      alpha.water;
+
+balance         yes;
+
+refineInterval  1;
+
+unrefineInterval 1;
+
+maxRefinement   2;
+
+nBufferLayers   3;
+
+nRefinementBufferLayers 3;
+
+nUnrefinementBufferLayers 6;
+
+lowerRefineLevel 0.01;
+
+upperRefineLevel 0.99;
+
+unrefineLevel   0.01;
+
+upperUnrefineLevel 0.99;
+
+dumpLevel       yes;
+
+refineProbes    no;
+
+// ************************************************************************* //

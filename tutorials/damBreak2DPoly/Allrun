@@ -1,0 +1,25 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+# Generate mesh.msh file with `gmsh -3 --format=msh2 mesh.geo`
+runApplication gmshToFoam mesh.msh
+
+runApplication polyDualMesh 60 -concaveMultiCells -overwrite
+runApplication extrudeMesh
+runApplication createPatch -overwrite
+
+restore0Dir
+runApplication setFields
+
+maxRef=$(foamDictionary -entry maxRefinement -value constant/dynamicMeshDict)
+for i in $(seq 1 "$maxRef"); do
+    runApplication -a updateMesh -overwrite
+    runApplication -a setFields
+done
+cp -rT 0/polyMesh constant/polyMesh
+runApplication decomposePar -constant
+#mpirun -np 8 --output-filename log interFoam -parallel
+
+#------------------------------------------------------------------------------
