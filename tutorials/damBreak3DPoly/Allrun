@@ -1,0 +1,29 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+restore0Dir
+runApplication surfaceFeatureEdges meshSurface.stl meshSurfaceEdges.stl
+if ! runApplication pMesh; then
+    echo "Couldn't generate mesh with pMesh, cfMesh not installed?"
+    exit 1
+fi
+runApplication topoSet
+runApplication subsetMesh -overwrite c0 -patch walls
+maxRef=$(foamDictionary -entry maxRefinement -value constant/dynamicMeshDict)
+refineInterval=$(foamDictionary -entry refineInterval -value constant/dynamicMeshDict)
+unrefineInterval=$(foamDictionary -entry unrefineInterval -value constant/dynamicMeshDict)
+foamDictionary -entry refineInterval -set 1 constant/dynamicMeshDict
+foamDictionary -entry unrefineInterval -set 1 constant/dynamicMeshDict
+runApplication setFields
+for i in $(seq 1 $maxRef); do
+    runApplication -a updateMesh -overwrite
+    runApplication -a setFields
+done
+foamDictionary -entry refineInterval -set $refineInterval constant/dynamicMeshDict
+foamDictionary -entry unrefineInterval -set $unrefineInterval constant/dynamicMeshDict
+cp -rT 0/polyMesh constant/polyMesh
+runApplication decomposePar -constant
+
+#------------------------------------------------------------------------------
