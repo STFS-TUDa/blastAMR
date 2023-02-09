@@ -90,12 +90,13 @@ diagram:
     - v2006
   script: 
     - sudo apt update
-    - sudo add-apt-repository --no-install-recommends -y ppa:bkryza/clang-uml
-    - sudo apt install -y bear clang-uml plantuml lualatex
+    - sudo apt install -y gpg-agent
+    - sudo add-apt-repository --yes ppa:bkryza/clang-uml
+    - DEBIAN_FRONTEND=noninteractive sudo apt install --no-install-recommends  -y bear clang-uml plantuml texlive-latex-extra graphviz
     - echo "Compiling the libs..."
     - source /usr/lib/openfoam/openfoam2006/etc/bashrc && mkdir -p /home/openfoam/OpenFOAM/openfoam-v2006/platforms/linux64GccDPInt32Opt/lib && bear -- ./Allwmake
     - echo "Generating the diagram..."
-    - cd puml; plantuml -Slinetype=ortho -tlatex adaptiveFvMesh.puml; lualatex adaptiveFvMesh.tex
+    - clang-uml; cd puml; plantuml -Slinetype=ortho -tpdf adaptiveFvMesh.puml
     - echo "Done."
   artifacts:
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
