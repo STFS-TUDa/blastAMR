@@ -75,3 +75,31 @@ v2212:
     - sed -i 's_/dev/shm_/home/openfoam/data_g' Alltest
     - export AMR_PROJECT=$CI_PROJECT_DIR && export CATCH_TIMEOUT=180 && source /usr/lib/openfoam/openfoam2212/etc/bashrc && ./Alltest; cat /builds/elwardi.fadeli/blastamr/tests/foamUT/tests/adaptiveFvMeshTests/log.wmake
     - echo "Done."
+
+diagram:
+  image: ghcr.io/foamscience/jammy-openfoam:v2006
+  stage: build-and-test
+  needs:
+    - v2006
+  only:
+    refs:
+      - master
+  when: manual
+  tags:
+    - local
+    - v2006
+  script: 
+    - sudo apt update
+    - sudo add-apt-repository --no-install-recommends -y ppa:bkryza/clang-uml
+    - sudo apt install -y bear clang-uml plantuml lualatex
+    - echo "Compiling the libs..."
+    - source /usr/lib/openfoam/openfoam2006/etc/bashrc && mkdir -p /home/openfoam/OpenFOAM/openfoam-v2006/platforms/linux64GccDPInt32Opt/lib && bear -- ./Allwmake
+    - echo "Generating the diagram..."
+    - cd puml; plantuml -Slinetype=ortho -tlatex adaptiveFvMesh.puml; lualatex adaptiveFvMesh.tex
+    - echo "Done."
+  artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
+    when: on_success
+    expire_in: "30 days"
+    paths:
+      - puml/adaptiveFvMesh.pdf
