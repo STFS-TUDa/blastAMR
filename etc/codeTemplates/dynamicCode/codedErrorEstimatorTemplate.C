@@ -129,6 +129,11 @@ void ${typeName}ErrorEstimator::update(const bool scale)
         printMessage("update ${typeName}");
     }
 
+    if (updateCurTimeIndex(!scale))
+    {
+        return;
+    }
+
 //{{{ begin code
     ${code}
 //}}} end code

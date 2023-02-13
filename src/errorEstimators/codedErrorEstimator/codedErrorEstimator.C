@@ -141,7 +141,6 @@ void Foam::errorEstimators::codedErrorEstimator::prepare
         "    -lOpenFOAM \\\n"
         "    -lfiniteVolume \\\n"
         "    -lmeshTools \\\n"
-        "    -L$(FOAM_USER_LIBBIN) -lerrorEstimate \\\n"
       + context.libs()
     );
 }
@@ -197,7 +196,8 @@ void Foam::errorEstimators::codedErrorEstimator::update(const bool scale)
 {
     // Ensure library containing user-defined code is up-to-date
     updateLibrary(redirectName_);
-    return redirectErrorEstimator().update(scale);
+    redirectErrorEstimator().update(scale);
+    error_ = redirectErrorEstimator().error();
 }
 
 

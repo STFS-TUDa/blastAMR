@@ -1,11 +1,12 @@
 #!/bin/sh
 cd "${0%/*}" || exit                                # Run from this directory
-. "${WM_PROJECT_DIR:?}"/wmake/scripts/AllwmakeParseArguments
 
 #------------------------------------------------------------------------------
 
 wclean src/errorEstimators
 wclean src/dynamicMesh
 wclean src/dynamicFvMesh
+
+wclean applications/utilities/updateMesh
 
 # -----------------------------------------------------------------------------

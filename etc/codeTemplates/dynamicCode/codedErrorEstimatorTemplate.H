@@ -78,12 +78,6 @@ class ${typeName}ErrorEstimator
         //- Cast reference of objectRegistry to fvMesh
         const fvMesh& mesh() const;
 
-        //- No copy construct
-        ${typeName}ErrorEstimator(const ${typeName}ErrorEstimator&) = delete;
-
-        //- No copy assignment
-        void operator=(const ${typeName}ErrorEstimator&) = delete;
-
 public:
 
     //- SHA1 representation of the code content
