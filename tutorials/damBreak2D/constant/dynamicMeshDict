@@ -18,8 +18,8 @@ dynamicFvMesh   adaptiveFvMesh;
 
 refiner         polyRefiner;
 
-// !IMPORTANT! FOAM_CODE_TEMPLATES needs to point to etc/dynamicCode from
-// this repository
+// !IMPORTANT! FOAM_CODE_TEMPLATES needs to point to etc/codeTemplates/dynamicCode
+// from this repository
 // so the run time can find templates to generate the error estimator class
 errorEstimator  coded;
 name emulateDelta;
