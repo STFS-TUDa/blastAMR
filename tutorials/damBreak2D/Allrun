@@ -6,6 +6,7 @@ cd "${0%/*}" || exit                                # Run from this directory
 restore0Dir
 runApplication blockMesh
 
+export FOAM_CODE_TEMPLATES=../../etc/codeTemplates/dynamicCode
 maxRef=$(foamDictionary -entry maxRefinement -value constant/dynamicMeshDict)
 runApplication setFields
 for i in $(seq 1 $maxRef); do
