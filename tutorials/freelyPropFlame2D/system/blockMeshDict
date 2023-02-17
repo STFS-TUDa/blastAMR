@@ -1,0 +1,102 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  dev
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+scale 0.001; // mm in following geometry
+
+L        65; 	// ~100*ft
+W	 35; 	// ~50*ft
+Lcells   130;	// 2 cells/ft in x
+Wcells	 70; 	// 2 cells/ft in y
+
+z1U             1;
+z1D             -1;
+
+vertices
+(
+        ( 0    0    0)    // vertex number 0
+        ( $L   0    0)    // vertex number 1
+        ( $L   $W   0)    // vertex number 2
+        ( 0    $W   0)    // vertex number 3
+        ( 0    0    1)    // vertex number 4
+        ( $L   0    1)    // vertex number 5
+        ( $L   $W   1)    // vertex number 6
+        ( 0    $W   1)    // vertex number 7
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) ($Lcells $Wcells  1) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    side_1
+    {
+        type patch;
+        faces
+        (
+            (0 1 5 4)
+        );
+    }
+
+    side_2
+    {
+        type patch;
+        faces
+        (
+            (3 7 6 2)
+        );
+    }
+    inlet
+    {
+        type patch;
+        faces
+        (
+            (0 4 7 3)
+        );
+    }
+    outlet
+    {
+        type patch;
+        faces
+        (
+            (1 2 6 5)
+        );
+    }
+    
+    frontAndBack
+    {
+        type empty;
+        faces
+        (
+            (4 5 6 7)
+            (0 3 2 1)
+        );
+    }
+);
+
+mergePatchPairs
+(
+);
+
+// merge type needed to get high quality mesh at rotation axis
+mergeType points;
+
+// ************************************************************************* //
