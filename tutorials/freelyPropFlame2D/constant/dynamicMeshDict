@@ -18,9 +18,48 @@ dynamicFvMesh   adaptiveFvMesh;
 
 refiner         polyRefiner;
 
-errorEstimator  delta;
+errorEstimator  coded;
+name emulateDelta;
 
-deltaField      T;
+code
+#{
+    Info<< "---->! custom error estimator !<----" << endl;
+    error_ = 0.0;
+    /*
+        End result must be (error_ is a volScalarField):
+        - error_ == 1  if the cell needs to be refined
+        - error_ == 0  if the cell is to be left alone
+        - error_ == -1 if the vertices of the cell are to be unrefined
+    */
+
+    const auto& alpha = mesh_.lookupObject<volScalarField>("T");
+    const auto& owner = mesh_.owner();
+    const auto& neighbour = mesh_.neighbour();
+    const label nInternalFaces = mesh_.nInternalFaces();
+    // Loop through interal faces and store difference between owner and neighbour
+    for (label facei = 0; facei < nInternalFaces; facei++)
+    {
+        label own = owner[facei];
+        label nei = neighbour[facei];
+
+        scalar eT = mag(alpha[own] - alpha[nei]);
+
+        error_[own] = max(error_[own], eT);
+        error_[nei] = max(error_[nei], eT);
+    }
+
+    // Settings for "refining everything where delta > 0.1, unrefine otherwise"
+    lowerRefine_ = 0.01;
+    upperRefine_ =  GREAT;
+    lowerUnrefine_ = lowerRefine_;
+    upperUnrefine_ =  GREAT;
+    // This converts error_ to the right values (-1, 0, 1) based on the
+    // settings lowerRefine_ ... etc
+    if (scale) normalize(error_);
+    // error_.correctBoundaryConditions() is called after this code in case you
+    // need to manipulate boundary values
+    Info<< "---->! end    error estimator !<----" << endl;
+#};
 
 balance         yes;
 
@@ -28,7 +67,7 @@ refineInterval  1;
 
 unrefineInterval 1;
 
-maxRefinement   5;
+maxRefinement   3;
 
 nBufferLayers   3;
 

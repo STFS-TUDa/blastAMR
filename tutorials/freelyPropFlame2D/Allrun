@@ -14,7 +14,7 @@ for i in $(seq 1 "$maxRef"); do
     runApplication -a updateMesh -overwrite
     runApplication -a setFields
 done
-runApplication decomposePar -constant
+runApplication decomposePar
 mpirun -np 8 --output-filename log reactingDyMFoam -parallel
 
 #------------------------------------------------------------------------------

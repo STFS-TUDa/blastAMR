@@ -102,11 +102,11 @@ int main(int argc, char *argv[])
 
             Info<< "Time = " << runTime.timeName() << nl << endl;
 
-            // Store momentum to set rhoUf for introduced faces.
-            volVectorField rhoU("rhoU", rho*U);
-
             // Do any mesh changes
             mesh.update();
+
+            // Store momentum to set rhoUf for introduced faces.
+            volVectorField rhoU("rhoU", rho*U);
 
             if (mesh.changing() && correctPhi)
             {

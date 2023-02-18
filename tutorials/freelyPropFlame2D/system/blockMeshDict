@@ -18,8 +18,8 @@ scale 0.001; // mm in following geometry
 
 L        65; 	// ~100*ft
 W	 35; 	// ~50*ft
-Lcells   130;	// 2 cells/ft in x
-Wcells	 70; 	// 2 cells/ft in y
+Lcells   70;	// 2 cells/ft in x
+Wcells	 50; 	// 2 cells/ft in y
 
 z1U             1;
 z1D             -1;
