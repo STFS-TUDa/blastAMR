@@ -369,9 +369,10 @@ bool Foam::adaptiveFvMesh::firstUpdate()
 bool Foam::adaptiveFvMesh::update()
 {
     if (!firstUpdate()) return false;
+    bool changed = (refiner_->canRefine(true) || refiner_->canUnrefine(true)) && refine();
+    reduce(changed, orOp<bool>());
 
-    return refine();
-    //return changed || refiner_->balance();
+    return changed;
 }
 
 

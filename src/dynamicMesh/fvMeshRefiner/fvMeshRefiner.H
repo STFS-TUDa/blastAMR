@@ -213,15 +213,6 @@ protected:
         //- Set the maximum cell level
         void setMaxCellLevel(labelList& maxCellLevel) const;
 
-        //- Check if refinement should happen
-        virtual bool canRefine(const bool incr = false) const;
-
-        //- Check if unrefinement should happen
-        virtual bool canUnrefine(const bool incr = false) const;
-
-        //- Check if balancing should happen
-        virtual bool canBalance(const bool incr = false) const;
-
 
 public:
 
@@ -351,6 +342,15 @@ public:
             {
                 return balancer_;
             }
+
+        //- Check if refinement should happen
+        virtual bool canRefine(const bool incr = false) const;
+
+        //- Check if unrefinement should happen
+        virtual bool canUnrefine(const bool incr = false) const;
+
+        //- Check if balancing should happen
+        virtual bool canBalance(const bool incr = false) const;
 
 
         //- Read the projection parameters from dictionary

@@ -274,15 +274,15 @@ bool Foam::fvMeshRefiner::preUpdate()
 bool Foam::fvMeshRefiner::canRefine(const bool incr) const
 {
     const Time& t = mesh_.time();
+    // force refinement on first timestep
+    if (t.timeIndex() <= 1)
+    {
+        return true;
+    }
+
     if (!refine_)
     {
         return false;
-    }
-
-    // force refinement on first timestep
-    if (t.timeIndex() <= 0)
-    {
-        return true;
     }
 
     if (force_)
@@ -350,27 +350,27 @@ bool Foam::fvMeshRefiner::canBalance(const bool incr) const
 
     const Time& t = mesh_.time();
 
-    if (force_)
-    {}
-    else if
-    (
-        nRefinementIterations_ <= 0
-     || t.value() < beginBalance_
-     || t.value() > endBalance_
-    )
-    {
-        return false;
-    }
-    else if
-    (
-        (
-            max(nRefinementIterations_, nUnrefinementIterations_)
-          % balanceInterval_
-        ) > 0
-    )
-    {
-        return false;
-    }
+    //if (force_)
+    //{}
+    //else if
+    //(
+    //    nRefinementIterations_ <= 0
+    // || t.value() < beginBalance_
+    // || t.value() > endBalance_
+    //)
+    //{
+    //    return false;
+    //}
+    //else if
+    //(
+    //    (
+    //        max(nRefinementIterations_, nUnrefinementIterations_)
+    //      % balanceInterval_
+    //    ) > 0
+    //)
+    //{
+    //    return false;
+    //}
 
     // only check if the mesh is unbalanced if everything else is ok
     if (incr)
@@ -615,10 +615,13 @@ void Foam::fvMeshRefiner::readDict(const dictionary& dict)
 
 bool Foam::fvMeshRefiner::balance()
 {
+    if (!Pstream::parRun()) return false;
+
     //Part 1 - Reread the balance dictionary
     const dictionary& balanceDict(dict_.optionalSubDict("loadBalance"));
     balancer_.read(balanceDict);
 
+    Info<< "canBalance(): " << canBalance() << endl;
     // Part 2 - Load Balancing
     if (canBalance(true))
     {
