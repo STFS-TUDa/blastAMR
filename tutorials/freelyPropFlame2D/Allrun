@@ -3,6 +3,8 @@ cd "${0%/*}" || exit                                # Run from this directory
 . ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
 #------------------------------------------------------------------------------
 
+export FOAM_CODE_TEMPLATES=../../etc/codeTemplates/dynamicCode/
+set -e
 # Generate mesh with blockMesh`
 runApplication blockMesh
 
@@ -15,6 +17,6 @@ for i in $(seq 1 "$maxRef"); do
     runApplication -a setFields
 done
 runApplication decomposePar
-mpirun -np 8 --output-filename log reactingDyMFoam -parallel
+time mpirun -np 16 --output-filename log reactingDyMFoam -parallel
 
 #------------------------------------------------------------------------------

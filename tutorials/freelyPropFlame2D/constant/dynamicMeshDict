@@ -19,10 +19,10 @@ dynamicFvMesh   adaptiveFvMesh;
 refiner         polyRefiner;
 
 errorEstimator  coded;
-name emulateDelta;
 
-code
-#{
+name            gradientRange;
+
+code            #{
     Info<< "---->! custom error estimator !<----" << endl;
     error_ = 0.0;
     /*
@@ -32,26 +32,23 @@ code
         - error_ == -1 if the vertices of the cell are to be unrefined
     */
 
-    const auto& alpha = mesh_.lookupObject<volScalarField>("T");
-    const auto& owner = mesh_.owner();
-    const auto& neighbour = mesh_.neighbour();
-    const label nInternalFaces = mesh_.nInternalFaces();
-    // Loop through interal faces and store difference between owner and neighbour
-    for (label facei = 0; facei < nInternalFaces; facei++)
-    {
-        label own = owner[facei];
-        label nei = neighbour[facei];
+    const auto& T = mesh_.lookupObject<volScalarField>("T");
+    error_ == mag(fvc::grad(T)) / dimensionedScalar("one",dimTemperature/dimLength,1.0);
 
-        scalar eT = mag(alpha[own] - alpha[nei]);
+    /*
+        Here is the deal:
+        - T Gradient is not recomputed if already available - !!
+        - T will form a diffusive interface, 50% and up of the maxGrad are refined
+          40%-50% are left alone, and less than 40% are unrefined
+        - Not well tested, so play with the values.
+    */
 
-        error_[own] = max(error_[own], eT);
-        error_[nei] = max(error_[nei], eT);
-    }
+    scalar maxGradT = gMax(error_);
+    scalar minGradT = gMin(error_);
 
-    // Settings for "refining everything where delta > 0.1, unrefine otherwise"
-    lowerRefine_ = 0.01;
+    lowerRefine_ = minGradT + 0.5*(maxGradT-minGradT);
     upperRefine_ =  GREAT;
-    lowerUnrefine_ = lowerRefine_;
+    lowerUnrefine_ = minGradT + 0.4*(maxGradT-minGradT);
     upperUnrefine_ =  GREAT;
     // This converts error_ to the right values (-1, 0, 1) based on the
     // settings lowerRefine_ ... etc
@@ -63,11 +60,13 @@ code
 
 balance         yes;
 
-refineInterval  1;
+allowableBalance 0.1;
 
-unrefineInterval 1;
+refineInterval  100;
 
-maxRefinement   3;
+unrefineInterval 300;
+
+maxRefinement   2;
 
 nBufferLayers   3;
 
@@ -83,8 +82,11 @@ unrefineLevel   300;
 
 upperUnrefineLevel 1410;
 
-dumpLevel       yes;
+dumpLevel       no;
 
 refineProbes    no;
+
+correctFluxes   ( ( phi_0_0 none ) ( phi_0 none ) ( phi none ) );
+
 
 // ************************************************************************* //
