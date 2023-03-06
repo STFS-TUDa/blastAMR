@@ -135,7 +135,7 @@ void Foam::errorEstimators::codedErrorEstimator::prepare
         "EXE_INC = \\\n"
         "-I$(LIB_SRC)/meshTools/lnInclude \\\n"
         "-I$(LIB_SRC)/finiteVolume/lnInclude \\\n"
-        "-I/tmp/blastfoam/src/errorEstimators/lnInclude \\\n"
+        "-I$(AMRLB_PROJECT)/src/errorEstimators/lnInclude \\\n"
       + context.options()
       + "\n\nLIB_LIBS = \\\n"
         "    -lOpenFOAM \\\n"

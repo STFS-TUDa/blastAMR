@@ -4,6 +4,7 @@ cd "${0%/*}" || exit                                # Run from this directory
 #------------------------------------------------------------------------------
 
 export FOAM_CODE_TEMPLATES=../../etc/codeTemplates/dynamicCode/
+export AMRLB_PROJECT=$PWD/../..
 set -e
 # Generate mesh with blockMesh`
 runApplication blockMesh
