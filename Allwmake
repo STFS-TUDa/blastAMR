@@ -9,5 +9,8 @@ wmake src/dynamicMesh
 wmake src/dynamicFvMesh
 
 wmake applications/utilities/updateMesh
+wmakeLnInclude applications/utilities/reconstructParMesh
+wmake applications/utilities/reconstructParMesh
+
 wmake applications/solvers/combustion/reactingDyMFoam
 # -----------------------------------------------------------------------------

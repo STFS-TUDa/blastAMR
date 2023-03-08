@@ -916,7 +916,7 @@ void Foam::polyMeshAdder::mergePointZones
             else if (pointToZone[allPointi] != zoneI)
             {
                 labelList& pZones = addPointToZones[allPointi];
-                pZones.appendUniq(zoneI);
+                if (!pZones.found(zoneI)) pZones.append(zoneI);
             }
         }
     }
@@ -939,7 +939,7 @@ void Foam::polyMeshAdder::mergePointZones
             else if (pointToZone[allPointi] != allZoneI)
             {
                 labelList& pZones = addPointToZones[allPointi];
-                pZones.appendUniq(allZoneI);
+                if (!pZones.found(allZoneI)) pZones.append(allZoneI);
             }
         }
     }
@@ -1068,8 +1068,9 @@ void Foam::polyMeshAdder::mergeFaceZones
                     labelList& fZones = addFaceToZones[allFacei];
                     boolList& flipZones = addFaceToFlips[allFacei];
 
-                    if (fZones.appendUniq(zoneI))
-                    {
+                    if (!fZones.found(zoneI)) {
+                        fZones.append(zoneI);
+                    } else {
                         flipZones.append(flip0);
                     }
                 }
@@ -1110,8 +1111,9 @@ void Foam::polyMeshAdder::mergeFaceZones
                     labelList& fZones = addFaceToZones[allFacei];
                     boolList& flipZones = addFaceToFlips[allFacei];
 
-                    if (fZones.appendUniq(allZoneI))
-                    {
+                    if (!fZones.found(allZoneI)) {
+                        fZones.append(allZoneI);
+                    } else {
                         flipZones.append(flip1);
                     }
                 }
@@ -1231,7 +1233,7 @@ void Foam::polyMeshAdder::mergeCellZones
             else if (cellToZone[cell0] != zoneI)
             {
                 labelList& cZones = addCellToZones[cell0];
-                cZones.appendUniq(zoneI);
+                if (!cZones.found(zoneI)) cZones.append(zoneI);
             }
         }
     }
@@ -1253,7 +1255,7 @@ void Foam::polyMeshAdder::mergeCellZones
             else if (cellToZone[allCelli] != allZoneI)
             {
                 labelList& cZones = addCellToZones[allCelli];
-                cZones.appendUniq(allZoneI);
+                if (!cZones.found(allZoneI)) cZones.append(allZoneI);
             }
         }
     }

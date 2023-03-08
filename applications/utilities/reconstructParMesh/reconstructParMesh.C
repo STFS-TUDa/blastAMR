@@ -396,7 +396,7 @@ void writeDistribution
     cellDecomposition.write();
 
     Info<< nl << "Wrote decomposition to "
-        << cellDecomposition.objectRelPath()
+        << cellDecomposition.objectPath()
         << " for use in manual decomposition." << endl;
 
     // Write as volScalarField for postprocessing. Change time to 0
@@ -434,7 +434,7 @@ void writeDistribution
         cellDist.write();
 
         Info<< nl << "Wrote decomposition to "
-            << cellDist.objectRelPath()
+            << cellDist.objectPath()
             << " (volScalarField) for visualization."
             << endl;
 
@@ -642,7 +642,7 @@ int main(int argc, char *argv[])
         "decomposition method or as a volScalarField for post-processing."
     );
 
-    #include "addAllRegionOptions.H"
+    #include "addRegionOption.H"
 
     #include "setRootCase.H"
     #include "createTime.H"
@@ -696,7 +696,64 @@ int main(int argc, char *argv[])
     }
 
     // Get region names
-    #include "getAllRegionOptions.H"
+    //#include "getAllRegionOptions.H"
+    wordList regionNames;
+    {
+        wordRes selectByName;
+        if (args.readListIfPresent<wordRe>("regions", selectByName))
+        {
+            if
+            (
+                selectByName.size() == 1
+             && selectByName.first().isLiteral()
+            )
+            {
+                // Identical to -region NAME
+                regionNames.resize(1);
+                regionNames.first() = selectByName.first();
+            }
+            else if (selectByName.size())
+            {
+                regionNames =
+                    regionProperties(runTime, IOobject::READ_IF_PRESENT).names();
+
+                if (regionNames.empty())
+                {
+                    Info<< "Warning: No regionProperties, assume default region"
+                        << nl << endl;
+                }
+                else
+                {
+                    const labelList matching = selectByName.matching(regionNames);
+
+                    if (matching.empty())
+                    {
+                        InfoErr
+                            << "No match in regions: "
+                            << flatOutput(regionNames) << nl
+                            << "... stopping" << nl << endl;
+                        return 1;
+                    }
+
+                    regionNames = wordList(regionNames, matching);
+
+                    Info<< "Using regions: " << flatOutput(regionNames) << nl;
+                }
+            }
+        }
+        else if (args.found("region"))
+        {
+            regionNames.resize(1);
+            regionNames.first() = args.get<word>("region");
+        }
+
+        // Fallback to defaultRegion
+        if (regionNames.empty())
+        {
+            regionNames.resize(1);
+            regionNames.first() = polyMesh::defaultRegion;
+        }
+    }
 
     // Determine the processor count
     label nProcs{0};
@@ -1242,7 +1299,7 @@ int main(int argc, char *argv[])
 
                     const word oldCaseName = masterTime.caseName();
                     masterTime.caseName() = runTime.caseName();
-                    const bool oldProcCase(masterTime.processorCase(false));
+                    //const bool oldProcCase(masterTime.processorCase());
 
                     // Write reconstructed mesh
                     writeMesh(masterMesh, cellProcAddressing);
@@ -1256,7 +1313,7 @@ int main(int argc, char *argv[])
                         );
                     }
                     masterTime.caseName() = oldCaseName;
-                    masterTime.processorCase(oldProcCase);
+                    masterTime.processorCase();
                 }
             }
 
