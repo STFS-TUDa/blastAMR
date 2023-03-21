@@ -1,0 +1,82 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2006                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      constLewisProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+/* Prandtl number of mixture */
+Prandtl     0.62;
+
+/* Species Lewis numbers */
+H
+{
+    Lewis   0.2;
+}
+
+H2
+{
+    Lewis   0.32;
+}
+
+O
+{
+    Lewis   0.73;
+}
+
+O2
+{
+    Lewis   1.17;
+}
+
+OH
+{
+    Lewis   0.74;
+}
+
+H2O
+{
+    Lewis   0.91;
+}
+
+N2
+{
+    Lewis   0.58;
+}
+
+HO2
+{
+    Lewis   0.37;
+}
+
+H2O2
+{
+    Lewis   1.11;
+}
+
+AR
+{
+    Lewis   1.0;
+}
+
+HE
+{
+    Lewis   0.4;
+}
+
+OHEX
+{
+    Lewis   0.747;
+}
+
+// ************************************************************************* //
