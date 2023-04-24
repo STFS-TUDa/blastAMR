@@ -10,6 +10,8 @@ EXE_INC = \
     -I$(LIB_SRC)/thermophysicalModels/basic/lnInclude \
     -I$(LIB_SRC)/thermophysicalModels/chemistryModel/lnInclude \
     -I$(LIB_SRC)/ODE/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/lnInclude \
+    -I$(LIB_SRC)/dynamicFvMesh/lnInclude \
     -I$(LIB_SRC)/combustionModels/lnInclude
 
 EXE_LIBS = \
@@ -25,4 +27,7 @@ EXE_LIBS = \
     -lfluidThermophysicalModels \
     -lchemistryModel \
     -lODE \
+    -ldynamicMesh \
+    -ldynamicFvMesh \
+    -ltopoChangerFvMesh \
     -lcombustionModels

@@ -35,11 +35,13 @@ Description
 \*---------------------------------------------------------------------------*/
 
 #include "fvCFD.H"
+#include "dynamicFvMesh.H"
 #include "turbulentFluidThermoModel.H"
 #include "psiReactionThermo.H"
 #include "CombustionModel.H"
 #include "multivariateScheme.H"
 #include "pimpleControl.H"
+#include "CorrectPhi.H"
 #include "pressureControl.H"
 #include "fvOptions.H"
 #include "localEulerDdtScheme.H"
@@ -59,12 +61,13 @@ int main(int argc, char *argv[])
     #include "addCheckCaseOptions.H"
     #include "setRootCaseLists.H"
     #include "createTime.H"
-    #include "createMesh.H"
+    #include "createDynamicFvMesh.H"
     #include "createControl.H"
-    #include "createTimeControls.H"
-    #include "initContinuityErrs.H"
     #include "createFields.H"
     #include "createFieldRefs.H"
+    #include "initContinuityErrs.H"
+    #include "createRhoUf.H"
+    #include "createControls.H"
 
     turbulence->validate();
 
@@ -82,19 +85,40 @@ int main(int argc, char *argv[])
     {
         #include "readTimeControls.H"
 
-        if (LTS)
         {
-            #include "setRDeltaT.H"
-        }
-        else
-        {
+            // Store divrhoU from the previous mesh so that it can be mapped
+            // and used in correctPhi to ensure the corrected phi has the
+            // same divergence
+            volScalarField divrhoU
+            (
+                "divrhoU",
+                fvc::div(fvc::absolute(phi, rho, U))
+            );
+
             #include "compressibleCourantNo.H"
             #include "setDeltaT.H"
+
+            ++runTime;
+
+            Info<< "Time = " << runTime.timeName() << nl << endl;
+
+            // Store momentum to set rhoUf for introduced faces.
+            volVectorField rhoU("rhoU", rho*U);
+
+            // Do any mesh changes
+            mesh.update();
+
+            if (mesh.changing() && correctPhi)
+            {
+                // Calculate absolute flux from the mapped surface velocity
+                phi = mesh.Sf() & rhoUf;
+
+                #include "correctPhi.H"
+
+                // Make the fluxes relative to the mesh-motion
+                fvc::makeRelative(phi, rho, U);
+            }
         }
-
-        ++runTime;
-
-        Info<< "Time = " << runTime.timeName() << nl << endl;
 
         #include "rhoEqn.H"
 

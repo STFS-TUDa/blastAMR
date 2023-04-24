@@ -24,6 +24,7 @@ if (pimple.transonic())
         )
     );
 
+    fvc::makeRelative(phid, psi, U);
     MRF.makeRelative(fvc::interpolate(psi), phid);
 
     while (pimple.correctNonOrthogonal())
@@ -56,7 +57,8 @@ else
         )
     );
 
-    MRF.makeRelative(fvc::interpolate(rho), phiHbyA);
+    fvc::makeRelative(phiHbyA, rho, U);
+    MRF.makeRelative(phiHbyA);
 
     // Update the pressure BCs to ensure flux consistency
     constrainPressure(p, rho, U, phiHbyA, rhorAUf, MRF);
