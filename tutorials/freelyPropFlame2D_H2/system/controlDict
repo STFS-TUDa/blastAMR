@@ -21,7 +21,7 @@ startFrom       startTime;
 startTime       0;
 
 stopAt          endTime;
-endTime         5e-2;
+endTime         1e-2;
 
 deltaT          1e-7;
 
@@ -31,7 +31,7 @@ writeInterval   1e-3;
 purgeWrite      0;
 
 writeFormat     ascii;
-writePrecision  6;
+writePrecision  12;
 writeCompression off;
 
 timeFormat      general;
@@ -42,7 +42,13 @@ runTimeModifiable true;
 adjustTimeStep  yes; 
 maxCo           0.1;
 
-libs();
+libs
+(
+    libamrDynamicFvMesh.so
+    libamrIndicators.so
+    libamrDynamicMesh.so
+);
+
 
 functions
 {

@@ -15,26 +15,32 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-numberOfSubdomains  80;
+numberOfSubdomains  32;
 
-method              simple;
+method              scotch;
 
 simpleCoeffs
 {
-    n               (10 8 1);
+    n               (4 8 1);
     delta           0.001;
 }
 
 hierarchicalCoeffs
 {
-    n               (20 1 1 );
+    n               (4 8 1 );
     delta           0.001;
     order           xyz;
 }
 
 metisCoeffs
 {
-    processorWeights ( 1 1 1 1 );
+    processorWeights
+    (
+        1 1 1 1 1 1 1 1
+        1 1 1 1 1 1 1 1
+        1 1 1 1 1 1 1 1
+        1 1 1 1 1 1 1 1
+    );
 }
 
 manualCoeffs

@@ -37,7 +37,7 @@ solvers
         relTol           0.0;
     }
 
-    pFinal
+    "(pFinal|pcorrFinal)"
     {
         $p;
         tolerance        1e-08;
@@ -66,12 +66,13 @@ solvers
         tolerance       1e-08;
         relTol          0;
         nSweeps         2;
-
     }
 }
+
 relaxationFactors
 {
 }
+
 PIMPLE
 {
     momentumPredictor yes;
