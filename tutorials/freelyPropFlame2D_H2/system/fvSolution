@@ -80,6 +80,7 @@ PIMPLE
     nCorrectors     4;
     nNonOrthogonalCorrectors 0;
     pRef  101325; 
+    correctPhi no;
 }
 
 

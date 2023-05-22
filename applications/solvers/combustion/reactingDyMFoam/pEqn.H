@@ -58,7 +58,8 @@ else
     );
 
     fvc::makeRelative(phiHbyA, rho, U);
-    MRF.makeRelative(phiHbyA);
+    MRF.makeRelative(fvc::interpolate(rho), phiHbyA);
+    //MRF.makeRelative(phiHbyA);
 
     // Update the pressure BCs to ensure flux consistency
     constrainPressure(p, rho, U, phiHbyA, rhorAUf, MRF);

@@ -23,7 +23,7 @@ for proc in processor*; do
     ln -s $PWD/constant $PWD/$proc/constant
 done
 
-runParallel reactingConstLewisFoam
+#runParallel reactingConstLewisFoam
 
 
 #------------------------------------------------------------------------------

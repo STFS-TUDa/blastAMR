@@ -21,7 +21,7 @@ startFrom       startTime;
 startTime       0;
 
 stopAt          endTime;
-endTime         1e-2;
+endTime         5e-2;
 
 deltaT          1e-7;
 
