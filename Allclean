@@ -8,5 +8,6 @@ wclean src/dynamicMesh
 wclean src/dynamicFvMesh
 
 wclean applications/utilities/updateMesh
-
+wclean applications/solvers/combustion/reactingDyMFoam
+wclean applications/solvers/combustion/reactingConstLewisFoam
 # -----------------------------------------------------------------------------

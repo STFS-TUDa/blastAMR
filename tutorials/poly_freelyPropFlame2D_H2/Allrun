@@ -1,0 +1,34 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+export FOAM_CODE_TEMPLATES=../../etc/codeTemplates/dynamicCode/
+export AMRLB_PROJECT=$PWD/../..
+set -e
+# Generate mesh with blockMesh`
+runApplication gmsh -3 --format msh mesh.geo
+runApplication gmshToFoam mesh.msh
+
+runApplication polyDualMesh 60 -concaveMultiCells -overwrite
+runApplication extrudeMesh
+runApplication createPatch -overwrite
+
+restore0Dir
+runApplication setFields
+
+maxRef=$(foamDictionary -entry maxRefinement -value constant/dynamicMeshDict)
+for i in $(seq 1 "$maxRef"); do
+    runApplication -a updateMesh -overwrite
+    runApplication -a setFields
+done
+runApplication decomposePar -cellDist
+
+for proc in processor*; do
+    ln -s $PWD/constant $PWD/$proc/constant
+done
+
+#runParallel reactingConstLewisFoam
+
+
+#------------------------------------------------------------------------------

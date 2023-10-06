@@ -1,7 +1,7 @@
 rho = thermo.rho();
 
 volScalarField rAU(1.0/UEqn.A());
-surfaceScalarField rhorAUf("rhorAUf", fvc::interpolate(rho*rAU));
+volScalarField rAtU(1.0/(1.0/rAU - UEqn.H1()));
 volVectorField HbyA(constrainHbyA(rAU*UEqn.H(), U, p));
 
 if (pimple.nCorrPISO() <= 1)
@@ -19,13 +19,23 @@ if (pimple.transonic())
             fvc::flux(HbyA)
           + MRF.zeroFilter
             (
-                rhorAUf*fvc::ddtCorr(rho, U, phi)/fvc::interpolate(rho)
+                fvc::interpolate(rho*rAU)*fvc::ddtCorr(rho, U, phi)
+               /fvc::interpolate(rho)
             )
         )
     );
 
-    fvc::makeRelative(phid, psi, U);
     MRF.makeRelative(fvc::interpolate(psi), phid);
+
+    surfaceScalarField phic
+    (
+        "phic",
+        fvc::interpolate(rho*(rAtU - rAU))*fvc::snGrad(p)*mesh.magSf()
+    );
+
+    HbyA -= (rAU - rAtU)*fvc::grad(p);
+
+    volScalarField rhorAtU("rhorAtU", rho*rAtU);
 
     while (pimple.correctNonOrthogonal())
     {
@@ -33,7 +43,8 @@ if (pimple.transonic())
         (
             fvm::ddt(psi, p)
           + fvm::div(phid, p)
-          - fvm::laplacian(rhorAUf, p)
+          + fvc::div(phic)
+          - fvm::laplacian(rhorAtU, p)
          ==
             fvOptions(psi, p, rho.name())
         );
@@ -42,7 +53,7 @@ if (pimple.transonic())
 
         if (pimple.finalNonOrthogonalIter())
         {
-            phi == pEqn.flux();
+            phi == phic + pEqn.flux();
         }
     }
 }
@@ -53,16 +64,19 @@ else
         "phiHbyA",
         (
             fvc::flux(rho*HbyA)
-          + MRF.zeroFilter(rhorAUf*fvc::ddtCorr(rho, U, phi))
+          + MRF.zeroFilter(fvc::interpolate(rho*rAU)*fvc::ddtCorr(rho, U, phi))
         )
     );
 
-    fvc::makeRelative(phiHbyA, rho, U);
     MRF.makeRelative(fvc::interpolate(rho), phiHbyA);
-    //MRF.makeRelative(phiHbyA);
+
+    phiHbyA += fvc::interpolate(rho*(rAtU - rAU))*fvc::snGrad(p)*mesh.magSf();
+    HbyA -= (rAU - rAtU)*fvc::grad(p);
+
+    volScalarField rhorAtU("rhorAtU", rho*rAtU);
 
     // Update the pressure BCs to ensure flux consistency
-    constrainPressure(p, rho, U, phiHbyA, rhorAUf, MRF);
+    constrainPressure(p, rho, U, phiHbyA, rhorAtU, MRF);
 
     while (pimple.correctNonOrthogonal())
     {
@@ -70,7 +84,7 @@ else
         (
             fvm::ddt(psi, p)
           + fvc::div(phiHbyA)
-          - fvm::laplacian(rhorAUf, p)
+          - fvm::laplacian(rhorAtU, p)
          ==
             fvOptions(psi, p, rho.name())
         );
@@ -90,7 +104,7 @@ else
 // Explicitly relax pressure for momentum corrector
 p.relax();
 
-U = HbyA - rAU*fvc::grad(p);
+U = HbyA - rAtU*fvc::grad(p);
 U.correctBoundaryConditions();
 fvOptions.correct(U);
 K = 0.5*magSqr(U);
@@ -98,9 +112,8 @@ K = 0.5*magSqr(U);
 if (pressureControl.limit(p))
 {
     p.correctBoundaryConditions();
+    rho = thermo.rho();
 }
-
-rho = thermo.rho();
 
 if (thermo.dpdt())
 {

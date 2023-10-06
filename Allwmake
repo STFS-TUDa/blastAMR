@@ -13,4 +13,5 @@ wmakeLnInclude applications/utilities/reconstructParMesh
 wmake applications/utilities/reconstructParMesh
 
 wmake applications/solvers/combustion/reactingDyMFoam
+wmake applications/solvers/combustion/reactingConstLewisFoam
 # -----------------------------------------------------------------------------

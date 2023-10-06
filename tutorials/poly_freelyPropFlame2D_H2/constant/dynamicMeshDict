@@ -1,0 +1,103 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2012                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+FoamFile
+{
+    version         2;
+    format          ascii;
+    class           dictionary;
+    object          dynamicMeshDict;
+}
+
+dynamicFvMesh   adaptiveFvMesh;
+
+refiner         polyRefiner;
+
+errorEstimator  coded;
+
+name            gradientRange;
+
+code            #{
+    Info<< "---->! custom error estimator !<----" << endl;
+    error_ = 0.0;
+    /*
+        End result must be (error_ is a volScalarField):
+        - error_ == 1  if the cell needs to be refined
+        - error_ == 0  if the cell is to be left alone
+        - error_ == -1 if the vertices of the cell are to be unrefined
+    */
+
+    const auto& T = mesh_.lookupObject<volScalarField>("T");
+    error_ == mag(fvc::grad(T)) / dimensionedScalar("one",dimTemperature/dimLength,1.0);
+    scalar tV = returnReduce(sum(mesh_.V()).value(), sumOp<scalar>());
+    forAll(error_, ei) {
+        error_[ei] *= mesh_.V()[ei]/tV;
+    }
+
+    /*
+        Here is the deal:
+        - T Gradient is not recomputed if already available - !!
+        - T will form a diffusive interface, 50% and up of the maxGrad are refined
+          40%-50% are left alone, and less than 40% are unrefined
+        - Not well tested, so play with the values.
+    */
+
+    scalar maxGradT = gMax(error_);
+    scalar minGradT = gMin(error_);
+    //error_.write();
+    //FatalErrorInFunction << "Oops" << abort(FatalError);
+
+    lowerRefine_ = minGradT + 0.3*(maxGradT-minGradT);
+    upperRefine_ =  GREAT;
+    lowerUnrefine_ = minGradT + 0.06*(maxGradT-minGradT);
+    upperUnrefine_ =  GREAT;
+    // This converts error_ to the right values (-1, 0, 1) based on the
+    // settings lowerRefine_ ... etc
+    if (scale) normalize(error_);
+    // error_.correctBoundaryConditions() is called after this code in case you
+    // need to manipulate boundary values
+    Info<< "---->! end    error estimator !<----" << endl;
+#};
+
+balance         yes;
+
+allowableBalance 0.1;
+
+refineInterval  70;
+
+unrefineInterval 350;
+
+maxRefinement   4;
+
+nBufferLayers   5;
+
+nRefinementBufferLayers 3;
+
+nUnrefinementBufferLayers 7;
+
+lowerRefineLevel 310;
+
+upperRefineLevel 1110;
+
+unrefineLevel   300;
+
+upperUnrefineLevel 1410;
+
+dumpLevel       no;
+
+refineProbes    no;
+
+correctFluxes
+( 
+    ( phi_0_0 none ) ( phi_0 none ) ( phi none ) (phi_corr none ) 
+    // Not sure if this necessary
+    // ( J_H2 none ) ( J_N2 none )
+);
+
+
+// ************************************************************************* //

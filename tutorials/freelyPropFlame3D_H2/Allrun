@@ -1,0 +1,19 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Modified tutorial run functions
+#------------------------------------------------------------------------------
+
+# prepare case
+runApplication blockMesh
+
+restore0Dir
+
+runApplication setFields
+
+# runApplication decomposePar
+
+## run application
+## commented out because script needs to be adapted anyway
+# mpirun -np xx --output-filename log reactingConstLewisFoam -parallel
+
+#------------------------------------------------------------------------------
