@@ -1,5 +1,7 @@
 # The AMR library from blastFoam
 
+[![OF2006](https://github.com/STFS-TUDa/blastAMR/actions/workflows/of2006.yml/badge.svg)](https://github.com/STFS-TUDa/blastAMR/actions/workflows/of2006.yml)
+
 This repository extracts library parts from [blastFoam](https://github.com/synthetik-technologies/blastfoam)
 which are relevant to adaptive mesh refinement while retaining the original commit history.
 

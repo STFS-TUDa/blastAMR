@@ -7,6 +7,13 @@ on:
     branches:
       - master
       - 'releases/**'
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Tmate debugging session'
+        required: false
+        default: false
 
 jobs:
   build:
@@ -22,18 +29,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
+        with:
+          detached: true
+
       - name: Compile and Test
         run: |
           source /usr/lib/openfoam/openfoam2006/etc/bashrc
           mkdir -p $FOAM_USER_LIBBIN
           export FOAM_FOAMUT=/tmp/foamut
           export AMR_PROJECT="$PWD"
+          ./Allwmake
           git clone https://github.com/FoamScience/foamUT $FOAM_FOAMUT
           sed -i 's/mpirun/mpirun --oversubscribe/g' $FOAM_FOAMUT/Alltest
-          ln -s "$PWD"/tests/adaptiveFvMeshTests "$FOAM_FOAMUT/tests/adaptiveFvMeshTests"
+          ln -s "$PWD/tests/adaptiveFvMeshTests" "$FOAM_FOAMUT/tests/adaptiveFvMeshTests"
           rm -rf "$FOAM_FOAMUT/cases"
           cp -r tests/testCases "$FOAM_FOAMUT/cases"
           cd $FOAM_FOAMUT || exit 1
           rm -rf tests/exampleTests
           ./Alltest --no-parallel "$@"
-          if [ -f $FOAM_FOAMUT/tests/adaptiveFvMeshTests/log.wmake ]; then cat $FOAM_FOAMUT/tests/adaptiveFvMeshTests/log.wmake; fi 
+          if [ -f $FOAM_FOAMUT/tests/adaptiveFvMeshTests/log.wmake ]; then cat $FOAM_FOAMUT/tests/adaptiveFvMeshTests/log.wmake; exit 1; fi 
