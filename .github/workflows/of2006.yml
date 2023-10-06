@@ -1,0 +1,39 @@
+name: OF2006
+defaults:
+  run:
+    shell: bash -o pipefail -i {0}
+on:
+  push:
+    branches:
+      - master
+      - 'releases/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    container:
+      image: ghcr.io/foamscience/jammy-openfoam:v2006
+      options: --user openfoam
+      env:
+        CATCH_TIMEOUT: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Compile and Test
+        run: |
+          source /usr/lib/openfoam/openfoam2006/etc/bashrc
+          mkdir -p $FOAM_USER_LIBBIN
+          export FOAM_FOAMUT=/tmp/foamut
+          export AMR_PROJECT="$PWD"
+          git clone https://github.com/FoamScience/foamUT $FOAM_FOAMUT
+          sed -i 's/mpirun/mpirun --oversubscribe/g' $FOAM_FOAMUT/Alltest
+          ln -s "$PWD"/tests/adaptiveFvMeshTests "$FOAM_FOAMUT/tests/adaptiveFvMeshTests"
+          rm -rf "$FOAM_FOAMUT/cases"
+          cp -r tests/testCases "$FOAM_FOAMUT/cases"
+          cd $FOAM_FOAMUT || exit 1
+          rm -rf tests/exampleTests
+          ./Alltest --no-parallel "$@"
+          if [ -f $FOAM_FOAMUT/tests/adaptiveFvMeshTests/log.wmake ]; then cat $FOAM_FOAMUT/tests/adaptiveFvMeshTests/log.wmake; fi 
