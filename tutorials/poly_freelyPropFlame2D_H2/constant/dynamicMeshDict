@@ -52,9 +52,9 @@ code            #{
     //error_.write();
     //FatalErrorInFunction << "Oops" << abort(FatalError);
 
-    lowerRefine_ = minGradT + 0.2*(maxGradT-minGradT);
+    lowerRefine_ = minGradT + 0.3*(maxGradT-minGradT);
     upperRefine_ =  GREAT;
-    lowerUnrefine_ = minGradT + 0.1*(maxGradT-minGradT);
+    lowerUnrefine_ = minGradT + 0.06*(maxGradT-minGradT);
     upperUnrefine_ =  GREAT;
     // This converts error_ to the right values (-1, 0, 1) based on the
     // settings lowerRefine_ ... etc
@@ -68,13 +68,13 @@ balance         yes;
 
 allowableBalance 0.1;
 
-refineInterval  50;
+refineInterval  70;
 
-unrefineInterval 250;
+unrefineInterval 350;
 
 maxRefinement   4;
 
-nBufferLayers   4;
+nBufferLayers   5;
 
 nRefinementBufferLayers 3;
 

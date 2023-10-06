@@ -235,6 +235,6 @@ const scalar Pr_mix(readScalar(constLewisProperties.lookup("Prandtl")));
 // Species Lewis numbers
 scalarList Le_k(Y.size());
 forAll(Y, i){
-    Le_k = readScalar(constLewisProperties.subDict(Y[i].name()).lookup("Lewis"));
+    Le_k[i] = readScalar(constLewisProperties.subDict(Y[i].name()).lookup("Lewis"));
 }
 
