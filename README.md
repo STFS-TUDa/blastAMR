@@ -1,19 +1,20 @@
 # The AMR library from blastFoam
 
-[![OF2006](https://github.com/STFS-TUDa/blastAMR/actions/workflows/of2006.yml/badge.svg)](https://github.com/STFS-TUDa/blastAMR/actions/workflows/of2006.yml)
+[![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2FSTFS-TUDa%2FblastAMR%2Fbadge%3Fref%3Dmaster%26&style=for-the-badge&label=OF2006%28master%29)](https://actions-badge.atrox.dev/STFS-TUDa/blastAMR/goto?ref=master) [![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2FSTFS-TUDa%2FblastAMR%2Fbadge%3Fref%3Dv2212%26&style=for-the-badge&label=OF2212%28v2212%29)](https://actions-badge.atrox.dev/STFS-TUDa/blastAMR/goto?ref=v2212) [![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2FSTFS-TUDa%2FblastAMR%2Fbadge%3Fref%3Dv2212%26&style=for-the-badge&label=OF2206%28v2212%2CGCC13%29)](https://actions-badge.atrox.dev/STFS-TUDa/blastAMR/goto?ref=v2212) ![Testing framework](https://img.shields.io/badge/tested_with_foamUT-00000?style=for-the-badge) ![GitHub contributors](https://img.shields.io/github/contributors/STFS-TUDa/blastAMR?style=for-the-badge)
 
-This repository extracts library parts from [blastFoam](https://github.com/synthetik-technologies/blastfoam)
-which are relevant to adaptive mesh refinement while retaining the original commit history.
+This repository extracts library parts from [blastFoam](https://github.com/synthetik-technologies/blastfoam) which are relevant to load-balanced adaptive mesh refinement for polyhedral meshes while retaining the original commit history; this is not intended as a full port! Only **tested features** are to be trusted. **!!WIP!!**
 
-To get started, you can visit the one and only [wiki page](https://git.rwth-aachen.de/elwardi.fadeli/blastamr/-/wikis/home).
+To get started, you can visit the one and only [wiki page](https://github.com/STFS-TUDa/blastAMR/wiki).
 
 ## Objectives
+
 - Have a reasonable Load-balanced AMR for 2D/3D OpenFOAM meshes in the **ESI fork**.
-- Support load balancing of Lagrangian particle clouds.
+- Support load balancing of Lagrangian particle clouds (not yet implemented).
 - Make it easy to include this lib in other projects through submodules/subtrees.
 
-`blastFoam` is GPL licensed; see the included [COPYING](COPYING).
+`blastFoam` is GPL licensed; see the included (original) [COPYING](COPYING).
 
-## Notes
+## Quick Notes
 
 - Everything compiles to your `$FOAM_USER_LIBBIN` with a recent ESI ([openfoam.com](https://openfoam.com)) version.
+- Our favorite refinement cell selector is the [`coded`](https://github.com/STFS-TUDa/blastAMR/blob/0e70469d718ee53a5ce892e0e24a4f940bfba369/tutorials/poly_freelyPropFlame2D_H2/constant/dynamicMeshDict#L25). Although a wide range of selectors is provided, they are not well tested. So, use the coded refinement whenever possible.
