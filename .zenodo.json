@@ -1,0 +1,46 @@
+{
+    "language": "eng", 
+    "license": "other-open", 
+    "title": "STFS-TUDa/blastAMR: Load-balanced AMR library release", 
+    "related_identifiers": [
+        {
+            "scheme": "url", 
+            "identifier": "https://github.com/STFS-TUDa/blastAMR/tree/v0.1-alpha", 
+            "relation": "isSupplementTo"
+        }, 
+        {
+            "scheme": "doi", 
+            "identifier": "10.5281/zenodo.8427733", 
+            "relation": "isVersionOf"
+        }
+    ], 
+    "version": "v0.1-alpha", 
+    "upload_type": "software", 
+    "keywords": [
+        "openfoam", 
+        "CFD", 
+        "load-balancing", 
+        "adaptive mesh refinement"
+    ], 
+    "publication_date": "2023-10-10", 
+    "creators": [
+        {
+            "affiliation": "TU Darmstadt", 
+            "name": "Mohammed Elwardi Fadeli"
+        }, 
+        {
+            "affiliation": "Synthetik Applied Technologies", 
+            "name": "Jeff Heylmun"
+        }, 
+        {
+            "affiliation": "OpenCFD Ltd.", 
+            "name": "Graham Macpherson"
+        }, 
+        {
+            "affiliation": "@synthetik-technologies", 
+            "name": "Jacob Hoehler"
+        }, 
+    ], 
+    "access_right": "open", 
+    "description": "<p>Initial release with basic functionality in place. Main dev is `Mohammed Elwardi Fadeli`, other collaborators are from the original code in blastFoam...</p>\n\n<p><strong>Full Changelog</strong>: <a href=\"https://github.com/STFS-TUDa/blastAMR/commits/v0.1-alpha\">https://github.com/STFS-TUDa/blastAMR/commits/v0.1-alpha</a></p>"
+}
