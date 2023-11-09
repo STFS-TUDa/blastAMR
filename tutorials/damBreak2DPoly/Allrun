@@ -3,6 +3,9 @@ cd "${0%/*}" || exit                                # Run from this directory
 . ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
 #------------------------------------------------------------------------------
 
+export AMRLB_PROJECT=$(git rev-parse --show-toplevel)
+export FOAM_CODE_TEMPLATES=$AMRLB_PROJECT/etc/codeTemplates/dynamicCode
+
 # Generate mesh.msh file with `gmsh -3 --format=msh2 mesh.geo`
 runApplication gmshToFoam mesh.msh
 

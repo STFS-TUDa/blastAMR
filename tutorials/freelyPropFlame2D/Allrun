@@ -3,8 +3,8 @@ cd "${0%/*}" || exit                                # Run from this directory
 . ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
 #------------------------------------------------------------------------------
 
-export FOAM_CODE_TEMPLATES=../../etc/codeTemplates/dynamicCode/
-export AMRLB_PROJECT=$PWD/../..
+export AMRLB_PROJECT=$(git rev-parse --show-toplevel)
+export FOAM_CODE_TEMPLATES=$AMRLB_PROJECT/etc/codeTemplates/dynamicCode
 set -e
 # Generate mesh with blockMesh`
 runApplication blockMesh
