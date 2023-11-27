@@ -92,6 +92,17 @@ protected:
         bool force_;
         mutable label curTimeIndex_;
 
+        //- List of boundary patches to protect
+        wordList protectedPatches_;
+
+        //- Number of cell layers to protect on boundary patches
+        label nPatchesBuffers_;
+
+        //- Number of buffer cells in refinement
+        const label nBufferCells_;
+
+        //- Max requested refinement level
+        const label maxRefinementLevel_;
 
         //- Create or lookup error field
         //  Useful when multiple error estimators are used
@@ -172,6 +183,15 @@ public:
         //- Update
         virtual void update(const bool scale = true) = 0;
 
+        //- protect requested patches
+        label protectPatches();
+
+        //- Extend a list of marked cells through faces
+        void extendMarkedCellsAcrossFaces
+        (
+            boolList& markedCell
+        ) const;
+
         //- Return constant reference to error field
         const volScalarField& error() const
         {
@@ -189,7 +209,7 @@ public:
             return maxLevel_;
         }
 
-        //- Return non constant reference to error field
+        //- Return max refinement level for cells
         virtual labelList maxRefinement() const;
 
         //- Read level values

@@ -31,6 +31,7 @@ License
 #include "probes.H"
 //#include "blastProbes.H"
 #include "meshSizeObject.H"
+#include "syncTools.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -139,7 +140,18 @@ Foam::errorEstimator::errorEstimator
     minDx_(-1),
     refineProbes_(dict.lookupOrDefault("refineProbes", true)),
     force_(false),
-    curTimeIndex_(-1)
+    curTimeIndex_(-1),
+    protectedPatches_(dict.lookupOrDefault("protectedPatches", wordList{})),
+    nPatchesBuffers_(dict.lookupOrDefault("nPatchesBuffers", 1)),
+    nBufferCells_
+    (
+        max
+        (
+            dict.lookupOrDefault("nBufferLayers", 1),
+            dict.lookupOrDefault("nRefinementBufferLayers", 1)
+        )
+    ),
+    maxRefinementLevel_(dict.lookupOrDefault("maxRefinement", 1))
 {}
 
 
@@ -310,6 +322,103 @@ bool Foam::errorEstimator::writeData(Ostream&) const
         return error_.write();
     }
     return true;
+}
+
+Foam::label Foam::errorEstimator::protectPatches()
+{
+    if (protectedPatches_.size() == 0)
+    {
+        return 0;
+    }
+    boolList protectedCells(mesh_.nCells(), false);
+    // Get cells at the patch
+    for(label i=mesh_.nInternalFaces(); i<mesh_.nFaces(); i++)
+    {
+        const label patch = mesh_.boundaryMesh().whichPatch(i);
+        const label celli = mesh_.owner()[i];
+        if (protectedPatches_.find(mesh_.boundary()[patch].name()) != -1)
+        {
+            protectedCells[celli] = true;
+        }
+    }
+    // Extend selected cells by nPatchesBuffers_ layers
+    for(label i=0; i<nPatchesBuffers_+(maxRefinementLevel_-1)*nBufferCells_; i++)
+    //for(label i=0; i<nPatchesBuffers_; i++)
+    {
+        extendMarkedCellsAcrossFaces(protectedCells);
+    }
+
+    label nProtectedCells = 0;
+    forAll(protectedCells, celli)
+    {
+        if (protectedCells[celli])
+        {
+            error_[celli] = 0.0;
+            nProtectedCells++;
+        }
+    }
+
+    // Do not returnReduce here, because some procs could early-return
+    return nProtectedCells;
+}
+
+void Foam::errorEstimator::extendMarkedCellsAcrossFaces
+(
+    boolList& markedCell
+) const
+{
+    boolList markedFace(mesh_.nFaces(), false);
+
+    // Get mesh cells
+    const cellList& meshCells = mesh_.cells();
+
+    // Loop through all cells
+    forAll (markedCell, cellI)
+    {
+        if (markedCell[cellI])
+        {
+            // This cell is marked, get its faces
+            const cell& cFaces = meshCells[cellI];
+            forAll (cFaces, i)
+            {
+                markedFace[cFaces[i]] = true;
+            }
+        }
+    }
+
+    // Snyc the face list across processor boundaries
+    syncTools::syncFaceList(mesh_, markedFace, orEqOp<bool>());
+
+    // Get necessary mesh data
+    const label nInternalFaces = mesh_.nInternalFaces();
+    const labelList& owner = mesh_.faceOwner();
+    const labelList& neighbour = mesh_.faceNeighbour();
+
+    // Internal faces
+    for (label faceI = 0; faceI < nInternalFaces; ++faceI)
+    {
+        if (markedFace[faceI])
+        {
+            // Face is marked, mark both owner and neighbour
+            const label& own = owner[faceI];
+            const label& nei = neighbour[faceI];
+            // Mark owner and neighbour cells
+            markedCell[own] = true;
+            markedCell[nei] = true;
+        }
+    }
+
+    // Boundary faces
+    for (label faceI = nInternalFaces; faceI < mesh_.nFaces(); ++faceI)
+    {
+        if (markedFace[faceI])
+        {
+            // Face is marked, mark owner
+            const label& own = owner[faceI];
+            // Mark owner
+            markedCell[own] = true;
+        }
+    }
 }
 
 // ************************************************************************* //

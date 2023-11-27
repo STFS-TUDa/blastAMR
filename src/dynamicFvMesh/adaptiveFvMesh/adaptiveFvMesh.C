@@ -386,6 +386,9 @@ bool Foam::adaptiveFvMesh::refine()
     //- Update error
     error_->update();
     error_->error().correctBoundaryConditions();
+    label nProtected = error_->protectPatches();
+    Info << "Protecting " << returnReduce(nProtected, sumOp<label>())
+        << " cells next to requested boundary patches." << endl;
     return refiner_->refine(error_->error(), error_->maxRefinement());
 }
 
