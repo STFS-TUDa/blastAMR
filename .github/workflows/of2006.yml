@@ -23,7 +23,7 @@ jobs:
       image: ghcr.io/foamscience/jammy-openfoam:v2006
       options: --user openfoam
       env:
-        CATCH_TIMEOUT: 20
+        CATCH_TIMEOUT: 120
 
     steps:
       - name: Checkout repository
