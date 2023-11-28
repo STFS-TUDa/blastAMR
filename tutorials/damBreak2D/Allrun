@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 cd "${0%/*}" || exit                                # Run from this directory
 . ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
 #------------------------------------------------------------------------------
@@ -6,7 +6,12 @@ cd "${0%/*}" || exit                                # Run from this directory
 restore0Dir
 runApplication blockMesh
 
-export AMRLB_PROJECT=$(git rev-parse --show-toplevel)
+if [ -z "$AMRLB_PROJECT" ]; then
+    echo "AMRLB_PROJECT not set. Please set it to the root of the blastAMR repository."
+    echo "For example, for blastAMR tutorials:"
+    echo 'export AMRLB_PROJECT=$(git rev-parse --show-toplevel)'
+    exit 1
+fi
 export FOAM_CODE_TEMPLATES=$AMRLB_PROJECT/etc/codeTemplates/dynamicCode
 maxRef=$(foamDictionary -entry maxRefinement -value constant/dynamicMeshDict)
 runApplication setFields
