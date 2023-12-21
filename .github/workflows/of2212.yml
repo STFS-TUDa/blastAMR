@@ -23,6 +23,7 @@ jobs:
       options: --user openfoam
       env:
         CATCH_TIMEOUT: 120
+        FOAM_FOAMUT: /tmp/foamUT
 
     steps:
       - name: Checkout repository
