@@ -65,6 +65,9 @@ protected:
         //- Name of error estimator
         word name_;
 
+        //- Configuration
+        dictionary dict_;
+
         //- Reference to error field
         volScalarField& error_;
 
@@ -224,6 +227,11 @@ public:
         //- Write error field if in debug
         virtual bool writeData(Ostream&) const;
 
+        //- Return configuration dictionary
+        const dictionary& dict() const
+        {
+            return dict_;
+        }
 };
 
 

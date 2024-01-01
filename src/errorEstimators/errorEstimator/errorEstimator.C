@@ -131,6 +131,7 @@ Foam::errorEstimator::errorEstimator
     ),
     mesh_(mesh),
     name_(name),
+    dict_(dict),
     error_(lookupOrConstructError(mesh)),
     lowerRefine_(0.0),
     lowerUnrefine_(0.0),
@@ -165,6 +166,7 @@ Foam::errorEstimator::~errorEstimator()
 
 void Foam::errorEstimator::read(const dictionary& dict)
 {
+    dict_ = dict;
     lowerRefine_ = readScalar(dict.lookup("lowerRefineLevel"));
     lowerUnrefine_ = readScalar(dict.lookup("unrefineLevel"));
     upperRefine_ = dict.lookupOrDefault("upperRefineLevel", GREAT);

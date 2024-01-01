@@ -5,7 +5,7 @@ errorEstimator/errorEstimatorNew.C
 
 cellSize/cellSize.C
 fieldValue/fieldValue.C
-densityGradient/densityGradient.C
+gradientRange/gradientRange.C
 delta/delta.C
 scaledDelta/scaledDelta.C
 Lohner/Lohner.C
