@@ -2,7 +2,7 @@
 
 [![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2FSTFS-TUDa%2FblastAMR%2Fbadge%3Fref%3Dmaster%26&style=for-the-badge&label=OF2006%28master%29)](https://actions-badge.atrox.dev/STFS-TUDa/blastAMR/goto?ref=master) [![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2FSTFS-TUDa%2FblastAMR%2Fbadge%3Fref%3Dv2212%26&style=for-the-badge&label=OF2212%28v2212%29)](https://actions-badge.atrox.dev/STFS-TUDa/blastAMR/goto?ref=v2212) [![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2FSTFS-TUDa%2FblastAMR%2Fbadge%3Fref%3Dv2212%26&style=for-the-badge&label=OF2206%28v2212%2CGCC13%29)](https://actions-badge.atrox.dev/STFS-TUDa/blastAMR/goto?ref=v2212) ![Testing framework](https://img.shields.io/badge/tested_with_foamUT-00000?style=for-the-badge) ![GitHub contributors](https://img.shields.io/github/contributors/STFS-TUDa/blastAMR?style=for-the-badge) ![GitHub issues](https://img.shields.io/github/issues/STFS-TUDa/blastAMR?style=for-the-badge) ![GitHub release (with filter)](https://img.shields.io/github/v/release/STFS-TUDa/blastAMR?style=for-the-badge) [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.8427734-lightgreen?style=for-the-badge)](https://zenodo.org/record/8427734)
 
-<details><summary>H2 injection case</summary>
+<details open><summary>H2 injection case</summary>
 
 https://github.com/STFS-TUDa/blastAMR/assets/34474472/44cdc485-0c90-41b0-90b7-956e013abf9c
 
@@ -10,7 +10,7 @@ https://github.com/STFS-TUDa/blastAMR/assets/34474472/44cdc485-0c90-41b0-90b7-95
 
 </details>
 
-<details><summary>Free-propagating flame case</summary>
+<details open><summary>Free-propagating flame case</summary>
 
 https://github.com/STFS-TUDa/blastAMR/assets/34474472/29d1cf64-ade9-4c5c-8044-8e63797d31b7
 
@@ -21,6 +21,10 @@ https://github.com/STFS-TUDa/blastAMR/assets/34474472/29d1cf64-ade9-4c5c-8044-8e
 This repository extracts library parts from [blastFoam](https://github.com/synthetik-technologies/blastfoam) which are relevant to load-balanced adaptive mesh refinement for polyhedral meshes while retaining the original commit history; this is not intended as a full port! Only **tested features** are to be trusted. **!!WIP!!**
 
 To get started, you can visit the one and only [wiki page](https://github.com/STFS-TUDa/blastAMR/wiki).
+
+> [!NOTE]
+> If you're using OpenFOAM v2206 or newer, please switch to the `v2212` branch. The `master` branch is for OpenFOAM v2112
+> and earlier versions for now. See #6.
 
 ## Objectives
 
