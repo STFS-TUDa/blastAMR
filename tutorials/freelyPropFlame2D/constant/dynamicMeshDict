@@ -18,10 +18,17 @@ dynamicFvMesh   adaptiveFvMesh;
 
 refiner         polyRefiner;
 
-errorEstimator  coded;
+errorEstimator  gradientRange; // or, coded
+
+// These three keywords are needed if gradientRange is selected
+
+gradField   T;
+refineThreshold 0.5;
+unrefineThreshold 0.4;
+
+// these two keywords are equivalent if "coded" is selected instead
 
 name            gradientRange;
-
 code            #{
     Info<< "---->! custom error estimator !<----" << endl;
     error_ = 0.0;
@@ -32,8 +39,13 @@ code            #{
         - error_ == -1 if the vertices of the cell are to be unrefined
     */
 
-    const auto& T = mesh_.lookupObject<volScalarField>("T");
-    error_ == mag(fvc::grad(T)) / dimensionedScalar("one",dimTemperature/dimLength,1.0);
+    const word gradField(dict().lookup("gradField"));
+    const auto& T = mesh_.lookupObject<volScalarField>(gradField);
+    const scalar refineThreshold(dict().lookupOrDefault("refineThreshold", 0.5));
+    const scalar unrefineThreshold(dict().lookupOrDefault("unrefineThreshold", 0.4));
+    Info << "refineThreshold = " << refineThreshold << endl;
+    Info << "unrefineThreshold = " << unrefineThreshold << endl;
+    error_ == mag(fvc::grad(T)) / dimensionedScalar(T.dimensions()/dimLength,1.0);
 
     /*
         Here is the deal:
@@ -46,9 +58,9 @@ code            #{
     scalar maxGradT = gMax(error_);
     scalar minGradT = gMin(error_);
 
-    lowerRefine_ = minGradT + 0.5*(maxGradT-minGradT);
+    lowerRefine_ = minGradT + refineThreshold*(maxGradT-minGradT);
     upperRefine_ =  GREAT;
-    lowerUnrefine_ = minGradT + 0.4*(maxGradT-minGradT);
+    lowerUnrefine_ = minGradT + unrefineThreshold*(maxGradT-minGradT);
     upperUnrefine_ =  GREAT;
     // This converts error_ to the right values (-1, 0, 1) based on the
     // settings lowerRefine_ ... etc
