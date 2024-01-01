@@ -23,6 +23,6 @@ for i in $(seq 1 "$maxRef"); do
     runApplication -a setFields
 done
 runApplication decomposePar
-time mpirun -np 16 --output-filename log reactingDyMFoam -parallel
+runParallel reactingDyMFoam
 
 #------------------------------------------------------------------------------
