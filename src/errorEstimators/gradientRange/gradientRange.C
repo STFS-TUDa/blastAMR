@@ -92,21 +92,19 @@ void gradientEstimator::update(const bool scale)
     }
 
     error_ = 0.0;
-    const auto& T = mesh_.lookupObject<volScalarField>(gradField_);
+    const auto& vf = mesh_.lookupObject<volScalarField>(gradField_);
     const scalar refineThreshold(dict().lookupOrDefault("refineThreshold", 0.5));
     const scalar unrefineThreshold(dict().lookupOrDefault("unrefineThreshold", 0.4));
     Info << "refineThreshold = " << refineThreshold << endl;
     Info << "unrefineThreshold = " << unrefineThreshold << endl;
-    // @todo: Use cached gradient if possible in gradient-based error indicators
-    // @body: Explore the possibility of using cached field gradients instead of new computations
-    error_ == mag(fvc::grad(T)) / dimensionedScalar(T.dimensions()/dimLength,1.0);
+    error_ == mag(fvc::grad(vf)) / dimensionedScalar(vf.dimensions()/dimLength,1.0);
 
-    scalar maxGradT = gMax(error_);
-    scalar minGradT = gMin(error_);
+    scalar maxGrad = gMax(error_);
+    scalar minGrad = gMin(error_);
 
-    lowerRefine_ = minGradT + refineThreshold*(maxGradT-minGradT);
+    lowerRefine_ = minGrad + refineThreshold*(maxGrad-minGrad);
     upperRefine_ =  GREAT;
-    lowerUnrefine_ = minGradT + unrefineThreshold*(maxGradT-minGradT);
+    lowerUnrefine_ = minGrad + unrefineThreshold*(maxGrad-minGrad);
     upperUnrefine_ =  GREAT;
     if (scale) normalize(error_);
 }
