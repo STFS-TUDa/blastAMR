@@ -22,7 +22,8 @@ for i in $(seq 1 "$maxRef"); do
     runApplication -a updateMesh -overwrite
     runApplication -a setFields
 done
-runApplication decomposePar
+runParallel redistributePar -overwrite -constant -cellDist -decompose
 runParallel reactingDyMFoam
+runParallel redistributePar -reconstruct
 
 #------------------------------------------------------------------------------
