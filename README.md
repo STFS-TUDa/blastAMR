@@ -1,8 +1,8 @@
 # A Load-balanced adaptive mesh refinement for OpenFOAM
 
 > [!NOTE]
-> If you're using OpenFOAM v2112 or newer, please switch to the `v2212` branch. The `master` branch is for OpenFOAM v2106
-> and earlier versions. See #6. The `Allwmake` does this automatically for you now.
+> If you're using OpenFOAM v2112 or newer, please switch to the `v2212` branch. The `master` branch is for OpenFOAM v2012
+> and earlier versions  (v2106 is not supported). See #6. The `Allwmake` does this automatically for you now.
 
 [![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2FSTFS-TUDa%2FblastAMR%2Fbadge%3Fref%3Dmaster%26&style=for-the-badge&label=OF2006%28master%29)](https://actions-badge.atrox.dev/STFS-TUDa/blastAMR/goto?ref=master) [![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2FSTFS-TUDa%2FblastAMR%2Fbadge%3Fref%3Dv2212%26&style=for-the-badge&label=OF2212%28v2212%29)](https://actions-badge.atrox.dev/STFS-TUDa/blastAMR/goto?ref=v2212) [![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2FSTFS-TUDa%2FblastAMR%2Fbadge%3Fref%3Dv2212%26&style=for-the-badge&label=OF2206%28v2212%2CGCC13%29)](https://actions-badge.atrox.dev/STFS-TUDa/blastAMR/goto?ref=v2212) ![Testing framework](https://img.shields.io/badge/tested_with_foamUT-00000?style=for-the-badge) ![GitHub contributors](https://img.shields.io/github/contributors/STFS-TUDa/blastAMR?style=for-the-badge) ![GitHub issues](https://img.shields.io/github/issues/STFS-TUDa/blastAMR?style=for-the-badge) ![GitHub release (with filter)](https://img.shields.io/github/v/release/STFS-TUDa/blastAMR?style=for-the-badge) [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.8427734-lightgreen?style=for-the-badge)](https://zenodo.org/record/8427734)
 
