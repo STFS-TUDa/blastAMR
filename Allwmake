@@ -4,6 +4,22 @@ cd "${0%/*}" || exit                                # Run from this directory
 
 #------------------------------------------------------------------------------
 
+foamv=${WM_PROJECT_VERSION}
+if [[ $foamv =~ ^v([0-9]{4})$ ]]; then
+    ver=${BASH_REMATCH[1]}
+    if [ "${ver}" -ge "2112" ]; then
+        echo "OpenFOAM-v${ver} detected, checking out the v2212 branch (Take care that this is successful)"
+        git checkout v2212
+    else
+        echo "OpenFOAM-v${ver} detected, checking out the master branch (Take care that this is successful)"
+        git checkout master
+    fi
+else
+    echo "${WM_PROJECT}-${foamv} is not supported, this toolkit only works with OpenCFD's releases of OpenFOAM."
+fi
+
+#------------------------------------------------------------------------------
+
 wmake src/errorEstimators
 wmake src/dynamicMesh
 wmake src/dynamicFvMesh
