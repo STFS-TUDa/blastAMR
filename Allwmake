@@ -5,6 +5,9 @@ cd "${0%/*}" || exit                                # Run from this directory
 #------------------------------------------------------------------------------
 
 foamv=${WM_PROJECT_VERSION}
+curr_branch=$(git branch --show-current)
+if [[ $curr_branch == "master" || $curr_branch == "v2212" ]]; then
+# Switch branches if necessary
 if [[ $foamv =~ ^v([0-9]{4})$ ]]; then
     ver=${BASH_REMATCH[1]}
     if [ "${ver}" -eq "2106" ]; then
@@ -21,6 +24,7 @@ if [[ $foamv =~ ^v([0-9]{4})$ ]]; then
 else
     echo "${WM_PROJECT}-${foamv} is not supported, this toolkit only works with OpenCFD's releases of OpenFOAM."
     exit 1
+fi
 fi
 
 #------------------------------------------------------------------------------
