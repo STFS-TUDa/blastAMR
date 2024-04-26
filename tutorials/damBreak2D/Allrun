@@ -3,6 +3,7 @@ cd "${0%/*}" || exit                                # Run from this directory
 . ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
 #------------------------------------------------------------------------------
 
+set -e
 restore0Dir
 runApplication blockMesh
 
@@ -21,6 +22,6 @@ for i in $(seq 1 $maxRef); do
 done
 cp -rT 0/polyMesh constant/polyMesh
 runApplication decomposePar -constant
-#mpirun -np 8 --output-filename log interFoam -parallel
+mpirun -np 4 --output-filename log interFoam -parallel
 
 #------------------------------------------------------------------------------
