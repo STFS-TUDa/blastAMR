@@ -39,11 +39,13 @@ Description
 
 int main(int argc, char *argv[])
 {
-    argList::validOptions.insert("overwrite", "");
-#   include "addTimeOptions.H"
+    argList::addBoolOption("overwrite", "Overwrite the current polyMesh in <time>");
+    argList::addOption("iterations", "n iterations ","How many iterations of refinement should be performed"); 
+    #include "addTimeOptions.H"
     #include "setRootCase.H"
     bool overwrite = args.found("overwrite");
-
+    label iterations = args.getOrDefault<label>("iterations",1);
+    Info << "Number of refinements: "<<iterations<<endl;
     #include "createTime.H"
     auto Times = runTime.times();
     #include "checkTimeOptions.H"
@@ -52,13 +54,14 @@ int main(int argc, char *argv[])
     #include "createDynamicFvMesh.H"
     #include "createFields.H"
 
-    for (int i=1; i <= refineInterval; i++)
+    for (int i=1; i <= iterations ; i++)
     {
         if (!overwrite)
         {
             runTime++;
         }
-        mesh.update();
+	Info << "updating Mesh"<<endl;
+	mesh.update();
     }
     runTime.writeNow();
 
