@@ -1,7 +1,7 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  v2012                                 |
+|  \\    /   O peration     | Version:  v2112                                 |
 |   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -14,41 +14,69 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-functions
+__surfaceFieldValue
 {
-    sampleSets
+    type            surfaceFieldValue;
+    libs            (fieldFunctionObjects);
+    log             on;
+    enabled         true;
+    writeControl    timeStep;
+    writeInterval   1;
+    writeFields     false;
+    surfaceFormat   vtk;
+}
+
+
+// * * * * * * * * * * * * * * * * Sampling  * * * * * * * * * * * * * * * * //
+
+// Sample volume fields to surfaces and hold on registry.
+sampled
+{
+    type    surfaces;
+    libs    (sampling);
+    log     true;
+
+    executeControl  timeStep;
+    executeInterval 1;
+    writeControl    none;
+    sampleOnExecute true;
+    surfaceFormat   none;
+    fields      ( p U );
+    surfaces
     {
-        type    sets;
-        libs    (sampling);
-
-        writeControl  timeStep;
-        writeInterval 1;
-
-        setFormat           vtk;
-        interpolationScheme cellPointFace;
-        fields ( alpha.water );
-
-        sets
-        (
-            gauge_1
-            {
-                type    face;
-                axis    y;
-                start   (0.02 0.20 0.005);
-                end     (0.02 0.25 0.005);
-                nPoints 100;
-            }
-
-            gauge_2
-            {
-                type    face;
-                axis    y;
-                start   (0.2 0.03 0.005);
-                end     (0.2 0.55 0.005);
-                nPoints 100;
-            }
-        );
+        walls
+        {
+            type patch;
+            patches ( ".*Wall" );
+            // triangulate     false;
+        }
     }
 }
+
+
+// * * * * * * * * * * * * * * * Calculations  * * * * * * * * * * * * * * * //
+
+nonWeightedAreaAverage
+{
+    ${__surfaceFieldValue}
+    enabled         true;
+
+    regionType      sampledSurface;
+    name            sampledTriSurf;
+    sampledSurfaceDict
+    {
+        type patch;
+        patches ( ".*Wall" );
+        interpolate true;
+    }
+
+    operation       areaAverage;
+    fields          ( p U );
+}
+
+// * * * * * * * * * * * * * * * * * Cleanup * * * * * * * * * * * * * * * * //
+
+#remove "__.*"
+
 
 // ************************************************************************* //
