@@ -83,7 +83,7 @@ Foam::autoPtr<Foam::hexRef> Foam::hexRef::New
     const polyMesh& mesh,
     const labelList& cellLevel,
     const labelList& pointLevel,
-    const hexRefRefinementHistory& history,
+    const refinementHistory& history,
     const scalar level0Edge
 )
 {

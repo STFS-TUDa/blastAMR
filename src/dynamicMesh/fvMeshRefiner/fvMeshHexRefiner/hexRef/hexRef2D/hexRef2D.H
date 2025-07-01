@@ -127,7 +127,7 @@ public:
             const polyMesh& mesh,
             const labelList& cellLevel,
             const labelList& pointLevel,
-            const hexRefRefinementHistory& history,
+            const refinementHistory& history,
             const scalar level0Edge = -GREAT
         );
 
@@ -142,6 +142,15 @@ public:
         );
 
     // Member Functions
+
+        void modFace
+        (
+            polyTopoChange& meshMod,
+            const label facei,
+            const face& newFace,
+            const label own,
+            const label nei
+        ) const;
 
         // Refinement
 

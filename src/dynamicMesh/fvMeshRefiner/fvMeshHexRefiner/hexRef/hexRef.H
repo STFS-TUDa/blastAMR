@@ -51,7 +51,7 @@ Authors
 #include "DynamicList.H"
 #include "primitivePatch.H"
 #include "removeFaces.H"
-#include "hexRefRefinementHistory.H"
+#include "refinementHistory.H"
 #include "boolList.H"
 #include "uniformDimensionedFields.H"
 #include "cellShapeList.H"
@@ -107,7 +107,7 @@ protected:
         uniformDimensionedScalarField level0Edge_;
 
         //- Refinement history
-        hexRefRefinementHistory history_;
+        refinementHistory history_;
 
         //- Face remover engine
         removeFaces faceRemover_;
@@ -330,7 +330,7 @@ public:
             const polyMesh& mesh,
             const labelList& cellLevel,
             const labelList& pointLevel,
-            const hexRefRefinementHistory& history,
+            const refinementHistory& history,
             const scalar level0Edge
         ),
         (mesh, cellLevel, pointLevel, history, level0Edge)
@@ -365,7 +365,7 @@ public:
             const polyMesh& mesh,
             const labelList& cellLevel,
             const labelList& pointLevel,
-            const hexRefRefinementHistory& history,
+            const refinementHistory& history,
             const scalar level0Edge = -GREAT
         );
 
@@ -391,7 +391,7 @@ public:
             const polyMesh& mesh,
             const labelList& cellLevel,
             const labelList& pointLevel,
-            const hexRefRefinementHistory& history,
+            const refinementHistory& history,
             const scalar level0Edge = -GREAT
         );
 
@@ -425,12 +425,12 @@ public:
                 return pointLevel_;
             }
 
-            const hexRefRefinementHistory& history() const
+            const refinementHistory& history() const
             {
                 return history_;
             }
 
-            hexRefRefinementHistory& history()
+            refinementHistory& history()
             {
                 return history_;
             }

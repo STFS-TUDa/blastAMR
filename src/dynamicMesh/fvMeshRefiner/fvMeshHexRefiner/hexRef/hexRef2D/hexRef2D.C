@@ -737,7 +737,7 @@ Foam::hexRef2D::hexRef2D
     const polyMesh& mesh,
     const labelList& cellLevel,
     const labelList& pointLevel,
-    const hexRefRefinementHistory& history,
+    const refinementHistory& history,
     const scalar level0Edge
 )
 :
@@ -759,6 +759,68 @@ Foam::hexRef2D::hexRef2D
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+//
+void Foam::hexRef2D::modFace
+(
+    polyTopoChange& meshMod,
+    const label facei,
+    const face& newFace,
+    const label own,
+    const label nei
+) const
+{
+    label patchID, zoneID, zoneFlip;
+
+    meshTools::getFaceInfo(mesh_, facei, patchID, zoneID, zoneFlip);
+
+    if
+    (
+        (own != mesh_.faceOwner()[facei])
+     || (
+            mesh_.isInternalFace(facei)
+         && (nei != mesh_.faceNeighbour()[facei])
+        )
+     || (newFace != mesh_.faces()[facei])
+    )
+    {
+        if ((nei == -1) || (own < nei))
+        {
+            meshMod.setAction
+            (
+                polyModifyFace
+                (
+                    newFace,            // modified face
+                    facei,              // label of face being modified
+                    own,                // owner
+                    nei,                // neighbour
+                    false,              // face flip
+                    patchID,            // patch for face
+                    false,              // remove from zone
+                    zoneID,             // zone for face
+                    zoneFlip            // face flip in zone
+                )
+            );
+        }
+        else
+        {
+            meshMod.setAction
+            (
+                polyModifyFace
+                (
+                    newFace.reverseFace(),  // modified face
+                    facei,                  // label of face being modified
+                    nei,                    // owner
+                    own,                    // neighbour
+                    false,                  // face flip
+                    patchID,                // patch for face
+                    false,                  // remove from zone
+                    zoneID,                 // zone for face
+                    zoneFlip                // face flip in zone
+                )
+            );
+        }
+    }
+}
 
 // Top level driver to insert topo changes to do all refinement.
 Foam::labelListList Foam::hexRef2D::setRefinement

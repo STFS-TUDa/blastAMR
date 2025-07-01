@@ -26,7 +26,7 @@ License
 #include "hexRefRefinementHistoryConstraint.H"
 #include "addToRunTimeSelectionTable.H"
 #include "syncTools.H"
-#include "hexRefRefinementHistory.H"
+#include "refinementHistory.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -84,16 +84,16 @@ void Foam::hexRefRefinementHistoryConstraint::add
     List<labelPair>& explicitConnections
 ) const
 {
-    autoPtr<const hexRefRefinementHistory> storagePtr;
-    hexRefRefinementHistory const* refPtr = nullptr;
+    autoPtr<const refinementHistory> storagePtr;
+    refinementHistory const* refPtr = nullptr;
 
-    if (mesh.foundObject<hexRefRefinementHistory>("refinementHistory"))
+    if (mesh.foundObject<refinementHistory>("refinementHistory"))
     {
         if (decompositionConstraint::debug)
         {
             Info<< type() << " : found refinementHistory" << endl;
         }
-        refPtr = &mesh.lookupObject<hexRefRefinementHistory>("refinementHistory");
+        refPtr = &mesh.lookupObject<refinementHistory>("refinementHistory");
     }
     else
     {
@@ -104,7 +104,7 @@ void Foam::hexRefRefinementHistoryConstraint::add
         }
         storagePtr.reset
         (
-            new hexRefRefinementHistory
+            new refinementHistory
             (
                 IOobject
                 (
@@ -120,7 +120,7 @@ void Foam::hexRefRefinementHistoryConstraint::add
         );
     }
 
-    const hexRefRefinementHistory& history =
+    const refinementHistory& history =
     (
         storagePtr.valid()
       ? storagePtr()
@@ -151,16 +151,16 @@ void Foam::hexRefRefinementHistoryConstraint::apply
     labelList& decomposition
 ) const
 {
-    autoPtr<const hexRefRefinementHistory> storagePtr;
-    hexRefRefinementHistory const* refPtr = nullptr;
+    autoPtr<const refinementHistory> storagePtr;
+    refinementHistory const* refPtr = nullptr;
 
-    if (mesh.foundObject<hexRefRefinementHistory>("refinementHistory"))
+    if (mesh.foundObject<refinementHistory>("refinementHistory"))
     {
         // if (decompositionConstraint::debug)
         //{
         //    Info<< type() << " : found refinementHistory" << endl;
         //}
-        refPtr = &mesh.lookupObject<hexRefRefinementHistory>("refinementHistory");
+        refPtr = &mesh.lookupObject<refinementHistory>("refinementHistory");
     }
     else
     {
@@ -171,7 +171,7 @@ void Foam::hexRefRefinementHistoryConstraint::apply
         //}
         storagePtr.reset
         (
-            new hexRefRefinementHistory
+            new refinementHistory
             (
                 IOobject
                 (
@@ -187,7 +187,7 @@ void Foam::hexRefRefinementHistoryConstraint::apply
         );
     }
 
-    const hexRefRefinementHistory& history =
+    const refinementHistory& history =
     (
         storagePtr.valid()
       ? storagePtr()

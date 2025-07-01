@@ -57,7 +57,7 @@ class hexRefRefinementHistoryConstraint
 public:
 
     //- Runtime type information
-    TypeName("hexRefRefinementHistory");
+    TypeName("hexRefRefinementHistoryConstraint");
 
 
     // Constructors

@@ -1188,7 +1188,7 @@ Foam::hexRef::hexRef
     const polyMesh& mesh,
     const labelList& cellLevel,
     const labelList& pointLevel,
-    const hexRefRefinementHistory& history,
+    const refinementHistory& history,
     const scalar level0Edge
 )
 :
@@ -1357,7 +1357,7 @@ Foam::hexRef::hexRef
             IOobject::NO_READ,
             IOobject::NO_WRITE
         ),
-        List<hexRefRefinementHistory::splitCell8>(0),
+        List<refinementHistory::splitCell8>(0),
         labelList(0),
         false
     ),
