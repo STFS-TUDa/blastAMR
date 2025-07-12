@@ -39,7 +39,6 @@ SourceFiles
 #include "labelIOList.H"
 #include "uniformDimensionedFields.H"
 #include "UPtrList.H"
-#include "refinementHistory.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -49,6 +48,7 @@ namespace Foam
 // Forward declaration of classes
 class mapPolyMesh;
 class mapDistributePolyMesh;
+class hexRefRefinementHistory;
 class fvMesh;
 
 /*---------------------------------------------------------------------------*\
@@ -68,7 +68,7 @@ private:
 
         autoPtr<uniformDimensionedScalarField> level0EdgePtr_;
 
-        autoPtr<refinementHistory> refHistoryPtr_;
+        autoPtr<hexRefRefinementHistory> refHistoryPtr_;
 
 
     // Private Member Functions

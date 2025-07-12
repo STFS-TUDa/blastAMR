@@ -374,20 +374,20 @@ Foam::labelList Foam::fvMeshHexRefiner::selectRefineCells
     }
 
     // Guarantee 2:1 refinement after refinement
-    //labelList consistentSet
-    //(
-    //    meshCutter_->consistentRefinement
-    //    (
-    //        candidates.shrink(),
-    //        true               // Add to set to guarantee 2:1
-    //    )
-    //);
+    labelList consistentSet
+    (
+        meshCutter_->consistentRefinement
+        (
+            candidates.shrink(),
+            true               // Add to set to guarantee 2:1
+        )
+    );
 
-    Info<< "Selected " << returnReduce(candidates.size(), sumOp<label>())
+    Info<< "Selected " << returnReduce(consistentSet.size(), sumOp<label>())
         << " cells for refinement out of " << mesh_.globalData().nTotalCells()
         << "." << endl;
 
-    return candidates;
+    return consistentSet;
 }
 
 
@@ -1655,7 +1655,7 @@ bool Foam::fvMeshHexRefiner::refine
         {
             // Compact refinement history occasionally (how often?).
             // Unrefinement causes holes in the refinementHistory.
-            const_cast<refinementHistory&>
+            const_cast<hexRefRefinementHistory&>
             (
                 meshCutter_->history()
             ).compact();

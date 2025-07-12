@@ -31,7 +31,7 @@ License
 #include "mapDistributePolyMesh.H"
 #include "polyMesh.H"
 #include "syncTools.H"
-#include "refinementHistory.H"
+#include "hexRefRefinementHistory.H"
 #include "fvMesh.H"
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -74,13 +74,13 @@ Foam::hexRefData::hexRefData(const IOobject& io)
         bool haveFile =
             returnReduce
             (
-                rio.typeHeaderOk<refinementHistory>(),
+                rio.typeHeaderOk<hexRefRefinementHistory>(),
                 orOp<bool>()
             );
         if (haveFile)
         {
             Info<< "Reading hexRef data : " << rio.name() << endl;
-            refHistoryPtr_.reset(new refinementHistory(rio));
+            refHistoryPtr_.reset(new hexRefRefinementHistory(rio));
         }
     }
 }
@@ -213,7 +213,7 @@ Foam::hexRefData::hexRefData
         IOobject rio(io);
         rio.rename(procDatas[0].refHistoryPtr_().name());
 
-        UPtrList<const refinementHistory>
+        UPtrList<const hexRefRefinementHistory>
             procRefs(procDatas.size());
         forAll(procDatas, i)
         {
@@ -222,7 +222,7 @@ Foam::hexRefData::hexRefData
 
         refHistoryPtr_.reset
         (
-            new refinementHistory
+            new hexRefRefinementHistory
             (
                 rio,
                 cellMaps,
@@ -296,7 +296,7 @@ void Foam::hexRefData::sync(const IOobject& io)
         rio.readOpt() = IOobject::NO_READ;
         refHistoryPtr_.reset
         (
-            new refinementHistory(rio, mesh.nCells(), true)
+            new hexRefRefinementHistory(rio, mesh.nCells(), true)
         );
     }
 }
