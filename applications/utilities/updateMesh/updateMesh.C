@@ -40,7 +40,8 @@ Description
 int main(int argc, char *argv[])
 {
     argList::validOptions.insert("overwrite", "");
-#   include "addTimeOptions.H"
+    #include "addTimeOptions.H"
+    #include "addRegionOption.H"
     #include "setRootCase.H"
     bool overwrite = args.found("overwrite");
 
@@ -49,7 +50,7 @@ int main(int argc, char *argv[])
     #include "checkTimeOptions.H"
     runTime.setTime(Times[startTime], startTime);
 
-    #include "createDynamicFvMesh.H"
+    #include "createNamedDynamicFvMesh.H"
     #include "createFields.H"
 
     for (int i=1; i <= refineInterval; i++)
