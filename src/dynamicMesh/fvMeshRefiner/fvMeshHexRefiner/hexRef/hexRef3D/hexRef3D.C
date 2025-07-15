@@ -1273,7 +1273,7 @@ Foam::labelListList Foam::hexRef3D::setRefinement
     }
 
     // Get all affected faces.
-    boolList affectedFace(mesh_.nFaces());
+    boolList affectedFace(mesh_.nFaces(), false);
 
     {
         forAll(cellMidPoint, celli)
@@ -1322,7 +1322,7 @@ Foam::labelListList Foam::hexRef3D::setRefinement
 
     forAll(faceMidPoint, facei)
     {
-        if (faceMidPoint[facei] >= 0 && affectedFace.get(facei))
+        if (faceMidPoint[facei] >= 0 && affectedFace[facei])
         {
             // Face needs to be split and hasn't yet been done in some way
             // (affectedFace - is impossible since this is first change but
@@ -1435,7 +1435,7 @@ Foam::labelListList Foam::hexRef3D::setRefinement
             }
 
             // Mark face as having been handled
-            affectedFace.unset(facei);
+            affectedFace.set(facei, false);
         }
     }
 
@@ -1465,7 +1465,7 @@ Foam::labelListList Foam::hexRef3D::setRefinement
             {
                 label facei = eFaces[i];
 
-                if (faceMidPoint[facei] < 0 && affectedFace.get(facei))
+                if (faceMidPoint[facei] < 0 && affectedFace[facei])
                 {
                     // Unsplit face. Add edge splits to face.
 
@@ -1532,7 +1532,7 @@ Foam::labelListList Foam::hexRef3D::setRefinement
                     );
 
                     // Mark face as having been handled
-                    affectedFace.unset(facei);
+                    affectedFace.set(facei, false);
                 }
             }
         }
@@ -1551,7 +1551,7 @@ Foam::labelListList Foam::hexRef3D::setRefinement
 
     forAll(affectedFace, facei)
     {
-        if (affectedFace.get(facei))
+        if (affectedFace[facei])
         {
             const face& f = mesh_.faces()[facei];
 
@@ -1582,7 +1582,7 @@ Foam::labelListList Foam::hexRef3D::setRefinement
             );
 
             // Mark face as having been handled
-            affectedFace.unset(facei);
+            affectedFace.set(facei, false);
         }
     }
 
@@ -1744,13 +1744,13 @@ Foam::labelList Foam::hexRef3D::consistentUnrefinement
     // maxSet = true: select points to refine
 
     // Maintain boolList for pointsToUnrefine and cellsToUnrefine
-    boolList unrefinePoint(mesh_.nPoints());
+    boolList unrefinePoint(mesh_.nPoints(), false);
 
     forAll(pointsToUnrefine, i)
     {
         label pointi = pointsToUnrefine[i];
 
-        unrefinePoint.set(pointi);
+        unrefinePoint.set(pointi, true);
     }
 
 
@@ -1759,17 +1759,17 @@ Foam::labelList Foam::hexRef3D::consistentUnrefinement
         // Construct cells to unrefine
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        boolList unrefineCell(mesh_.nCells());
+        boolList unrefineCell(mesh_.nCells(), false);
 
         forAll(unrefinePoint, pointi)
         {
-            if (unrefinePoint.get(pointi))
+            if (unrefinePoint[pointi])
             {
                 const labelList& pCells = mesh_.pointCells(pointi);
 
                 forAll(pCells, j)
                 {
-                    unrefineCell.set(pCells[j]);
+                    unrefineCell.set(pCells[j], true);
                 }
             }
         }
@@ -1785,10 +1785,10 @@ Foam::labelList Foam::hexRef3D::consistentUnrefinement
         for (label facei = 0; facei < mesh_.nInternalFaces(); facei++)
         {
             label own = mesh_.faceOwner()[facei];
-            label ownLevel = cellLevel_[own] - unrefineCell.get(own);
+            label ownLevel = cellLevel_[own] - unrefineCell[own];
 
             label nei = mesh_.faceNeighbour()[facei];
-            label neiLevel = cellLevel_[nei] - unrefineCell.get(nei);
+            label neiLevel = cellLevel_[nei] - unrefineCell[nei];
 
             if (ownLevel < (neiLevel-1))
             {
@@ -1797,24 +1797,24 @@ Foam::labelList Foam::hexRef3D::consistentUnrefinement
 
                 if (maxSet)
                 {
-                    unrefineCell.set(nei);
+                    unrefineCell.set(nei, true);
                 }
                 else
                 {
                     // could also combine with unset:
-                    // if (!unrefineCell.unset(own))
+                    // if (!unrefineCell.set(own, false))
                     // {
                     //     FatalErrorInFunction
                     //         << "problem cell already unset"
                     //         << abort(FatalError);
                     // }
-                    if (unrefineCell.get(own) == 0)
+                    if (unrefineCell[own] == 0)
                     {
                         FatalErrorInFunction
                             << "problem" << abort(FatalError);
                     }
 
-                    unrefineCell.unset(own);
+                    unrefineCell.set(own, false);
                 }
                 nChanged++;
             }
@@ -1822,17 +1822,17 @@ Foam::labelList Foam::hexRef3D::consistentUnrefinement
             {
                 if (maxSet)
                 {
-                    unrefineCell.set(own);
+                    unrefineCell.set(own, true);
                 }
                 else
                 {
-                    if (unrefineCell.get(nei) == 0)
+                    if (unrefineCell[nei] == 0)
                     {
                         FatalErrorInFunction
                             << "problem" << abort(FatalError);
                     }
 
-                    unrefineCell.unset(nei);
+                    unrefineCell.set(nei, false);
                 }
                 nChanged++;
             }
@@ -1845,8 +1845,7 @@ Foam::labelList Foam::hexRef3D::consistentUnrefinement
         forAll(neiLevel, i)
         {
             label own = mesh_.faceOwner()[i+mesh_.nInternalFaces()];
-
-            neiLevel[i] = cellLevel_[own] - unrefineCell.get(own);
+            neiLevel[i] = cellLevel_[own] - unrefineCell[own];
         }
 
         // Swap to neighbour
@@ -1856,19 +1855,19 @@ Foam::labelList Foam::hexRef3D::consistentUnrefinement
         {
             label facei = i+mesh_.nInternalFaces();
             label own = mesh_.faceOwner()[facei];
-            label ownLevel = cellLevel_[own] - unrefineCell.get(own);
+            label ownLevel = cellLevel_[own] - unrefineCell[own];
 
             if (ownLevel < (neiLevel[i]-1))
             {
                 if (!maxSet)
                 {
-                    if (unrefineCell.get(own) == 0)
+                    if (unrefineCell[own] == 0)
                     {
                         FatalErrorInFunction
                             << "problem" << abort(FatalError);
                     }
 
-                    unrefineCell.unset(own);
+                    unrefineCell.set(own, false);
                     nChanged++;
                 }
             }
@@ -1876,13 +1875,13 @@ Foam::labelList Foam::hexRef3D::consistentUnrefinement
             {
                 if (maxSet)
                 {
-                    if (unrefineCell.get(own) == 1)
+                    if (unrefineCell[own] == 1)
                     {
                         FatalErrorInFunction
                             << "problem" << abort(FatalError);
                     }
 
-                    unrefineCell.set(own);
+                    unrefineCell.set(own, true);
                     nChanged++;
                 }
             }
@@ -1910,15 +1909,15 @@ Foam::labelList Foam::hexRef3D::consistentUnrefinement
         // Knock out any point whose cell neighbour cannot be unrefined.
         forAll(unrefinePoint, pointi)
         {
-            if (unrefinePoint.get(pointi))
+            if (unrefinePoint[pointi])
             {
                 const labelList& pCells = mesh_.pointCells(pointi);
 
                 forAll(pCells, j)
                 {
-                    if (!unrefineCell.get(pCells[j]))
+                    if (!unrefineCell[pCells[j]])
                     {
-                        unrefinePoint.unset(pointi);
+                        unrefinePoint.set(pointi, false);
                         break;
                     }
                 }
@@ -1932,7 +1931,7 @@ Foam::labelList Foam::hexRef3D::consistentUnrefinement
 
     forAll(unrefinePoint, pointi)
     {
-        if (unrefinePoint.get(pointi))
+        if (unrefinePoint[pointi])
         {
             nSet++;
         }
@@ -1943,7 +1942,7 @@ Foam::labelList Foam::hexRef3D::consistentUnrefinement
 
     forAll(unrefinePoint, pointi)
     {
-        if (unrefinePoint.get(pointi))
+        if (unrefinePoint[pointi])
         {
             newPointsToUnrefine[nSet++] = pointi;
         }
@@ -2346,7 +2345,7 @@ Foam::labelList Foam::hexRef3D::selectUnrefineElems
 
             forAll(pCells, pCelli)
             {
-                if (markedCell.get(pCells[pCelli]))
+                if (markedCell[pCells[pCelli]])
                 {
                     hasMarked = true;
                     break;

@@ -621,7 +621,6 @@ bool Foam::fvMeshRefiner::balance()
     const dictionary& balanceDict(dict_.optionalSubDict("loadBalance"));
     balancer_.read(balanceDict);
 
-    Info<< "canBalance(): " << canBalance() << endl;
     // Part 2 - Load Balancing
     if (canBalance(true))
     {
