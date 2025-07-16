@@ -60,5 +60,8 @@ maxAlphaCo      0.5;
 
 maxDeltaT       1;
 
+InfoSwitches {
+    allowSystemOperations 1;
+}
 
 // ************************************************************************* //
