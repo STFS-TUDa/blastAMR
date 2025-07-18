@@ -95,10 +95,7 @@ void Foam::meshSizeObject::calcDx() const
 
         for (label facei = 0; facei < mesh_.nInternalFaces(); facei++)
         {
-            // if (mag(Sf[facei]/magSf[facei] & validD) > 0.5)
-            vector nHat = Sf[facei]/(magSf[facei] + VSMALL);
-            scalar alignment = mag(nHat & validD);   
-            if (alignement > 0.5)
+            if (mag(Sf[facei]/magSf[facei] & validD) > 0.5)
             {
                 dx[own[facei]] += magSf[facei];
                 dx[nei[facei]] += magSf[facei];
@@ -115,11 +112,7 @@ void Foam::meshSizeObject::calcDx() const
             facei++
         )
         {
-            //if (mag(Sf[facei]/magSf[facei] & validD) > 0.5)
-            vector nHat = Sf[facei]/(magSf[facei] + VSMALL);
-	        scalar alignment = mag(nHat & validD);
-
-	        if (alignment > 0.5)
+            if (mag(Sf[facei]/magSf[facei] & validD) > 0.5)
             {
                 dx[own[facei]] += magSf[facei];
                 nFaces[own[facei]]++;
@@ -128,14 +121,7 @@ void Foam::meshSizeObject::calcDx() const
 
         forAll(dx, celli)
         {
-            if (nFaces[celli] > 0 && dx[celli] > VSMALL)
-            {
-                dx[celli] = sqrt(dx[celli]/scalar(nFaces[celli]));
-            }
-            else
-            {
-                dx[celli] = cbrt(mesh_.cellVolumes()[celli]);  // safe fallback
-            }
+            dx[celli] = sqrt(dx[celli]/scalar(nFaces[celli]));
         }
     }
     else
