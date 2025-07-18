@@ -1,0 +1,51 @@
+name: OF2512
+defaults:
+  run:
+    shell: bash -o pipefail -i {0}
+on:
+  push:
+    branches:
+      - v2212
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Tmate debugging session'
+        required: false
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    container:
+      image: ghcr.io/foamscience/noble-openfoam:v2512
+      options: --user openfoam
+      env:
+        CATCH_TIMEOUT: 120
+        FOAM_FOAMUT: /tmp/foamUT
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
+        with:
+          detached: true
+
+      - name: Compile and Test
+        run: |
+          source /usr/lib/openfoam/openfoam2512/etc/bashrc
+          mkdir -p $FOAM_USER_LIBBIN
+          ./Allwmake
+          git clone https://github.com/FoamScience/foamUT $FOAM_FOAMUT
+          sed -i 's/mpirun/mpirun --oversubscribe/g' $FOAM_FOAMUT/Alltest
+          ln -s "$PWD"/tests/adaptiveFvMeshTests "$FOAM_FOAMUT/tests/adaptiveFvMeshTests"
+          rm -rf "$FOAM_FOAMUT/cases"
+          cp -r tests/testCases "$FOAM_FOAMUT/cases"
+          cd $FOAM_FOAMUT || exit 1
+          rm -rf tests/exampleTests
+          ./Alltest "$@"
+          if [ -f $FOAM_FOAMUT/tests/adaptiveFvMeshTests/log.wmake ]; then cat $FOAM_FOAMUT/tests/adaptiveFvMeshTests/log.wmake; fi 
