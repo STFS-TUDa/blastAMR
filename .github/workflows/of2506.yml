@@ -1,4 +1,4 @@
-name: OF2512
+name: OF2506
 defaults:
   run:
     shell: bash -o pipefail -i {0}
@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     container:
-      image: ghcr.io/foamscience/noble-openfoam:v2512
+      image: ghcr.io/foamscience/noble-openfoam:v2506
       options: --user openfoam
       env:
         CATCH_TIMEOUT: 120
@@ -37,7 +37,7 @@ jobs:
 
       - name: Compile and Test
         run: |
-          source /usr/lib/openfoam/openfoam2512/etc/bashrc
+          source /usr/lib/openfoam/openfoam2506/etc/bashrc
           mkdir -p $FOAM_USER_LIBBIN
           ./Allwmake
           git clone https://github.com/FoamScience/foamUT $FOAM_FOAMUT
