@@ -6,6 +6,9 @@ on:
   push:
     branches:
       - v2212
+  pull_request:
+    branches:
+      - v2212
   workflow_dispatch:
     inputs:
       debug_enabled:
