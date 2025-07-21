@@ -74,7 +74,11 @@ TEST_CASE
     const std::vector<scalar> boxBounds = {0.02, 0.04, 0.025, 0.035};
 
     // Tested variables' matrix 
-    word refiner = GENERATE("polyRefiner");
+    word refiner = GENERATE("polyRefiner", "hexRefiner");
+    if (refiner == "hexRefiner" && runTime.caseName().find("poly") != string::npos) {
+        REQUIRE(true);
+        return;
+    }
     word balance = Pstream::parRun() ? GENERATE("no", "yes") : GENERATE("no");
     label nBufferLayers = GENERATE(1, 2);
     label maxRefL = GENERATE(1, 3);

@@ -480,16 +480,6 @@ public:
                 const labelList& pointsToCheck
             ) const;
 
-            //- Like consistentSlowRefinement but uses different meshWave
-            //  (proper distance instead of toplogical count). No point checks
-            //  yet.
-            labelList consistentSlowRefinement2
-            (
-                const label maxFaceDiff,
-                const labelList& cellsToRefine,
-                const labelList& facesToCheck
-            ) const;
-
             //- Insert refinement. All selected cells will be split.
             //  Returns per element in cells the cells they were split into.
             virtual labelListList setRefinement
