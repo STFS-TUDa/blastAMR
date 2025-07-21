@@ -51,6 +51,7 @@ License
 #include "RefineBalanceMeshObject.H"
 //#include "parcelCloud.H"
 #include "extrapolatedCalculatedFvPatchField.H"
+#include "DDD.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -612,7 +613,6 @@ void Foam::fvMeshRefiner::readDict(const dictionary& dict)
     }
 }
 
-
 bool Foam::fvMeshRefiner::balance()
 {
     if (!Pstream::parRun()) return false;
@@ -633,13 +633,11 @@ bool Foam::fvMeshRefiner::balance()
         //  actually need to be mapped
         if (mesh_.V0Ptr_)
         {
-            V0OldPtr_ = mesh_.V0Ptr_;
-            mesh_.V0Ptr_ = nullptr;
+            assignPtrCompat(V0OldPtr_, mesh_.V0Ptr_);
         }
         if (mesh_.V00Ptr_)
         {
-            V00OldPtr_ = mesh_.V00Ptr_;
-            mesh_.V00Ptr_ = nullptr;
+            assignPtrCompat(V00OldPtr_, mesh_.V00Ptr_);
         }
 
         //- Only clear old volumes if balancing is occurring
@@ -716,20 +714,18 @@ void Foam::fvMeshRefiner::distribute
         map.distributeCellData(*V0OldPtr_);
         if (mesh_.V0Ptr_)
         {
-            deleteDemandDrivenData(mesh_.V0Ptr_);
+            deleteDemandDrivenDataOrReset(mesh_.V0Ptr_);
         }
-        mesh_.V0Ptr_ = V0OldPtr_;
-        V0OldPtr_ = nullptr;
+        assignUniquePtrCompat(mesh_.V0Ptr_, V0OldPtr_);
     }
     if (V00OldPtr_)
     {
         map.distributeCellData(*V00OldPtr_);
         if (mesh_.V00Ptr_)
         {
-            deleteDemandDrivenData(mesh_.V0Ptr_);
+            deleteDemandDrivenDataOrReset(mesh_.V00Ptr_);
         }
-        mesh_.V00Ptr_ = V00OldPtr_;
-        V00OldPtr_ = nullptr;
+        assignUniquePtrCompat(mesh_.V00Ptr_, V00OldPtr_);
     }
 }
 
