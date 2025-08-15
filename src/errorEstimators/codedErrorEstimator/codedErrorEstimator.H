@@ -106,6 +106,11 @@ class codedErrorEstimator
 
         word redirectName_;
 
+        // custom code fields
+        string codeData_;
+        string codeDataConstruct_;
+        string codeRead_;
+
         //- Pointer to the real refinement error estimator object
         mutable autoPtr<errorEstimator> redirectErrorEstimatorPtr_;
 

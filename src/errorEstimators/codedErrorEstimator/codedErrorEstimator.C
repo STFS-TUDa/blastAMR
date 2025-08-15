@@ -113,6 +113,9 @@ void Foam::errorEstimators::codedErrorEstimator::prepare
 
     // Take no chances - typeName must be identical to redirectName_
     dynCode.setFilterVariable("typeName", redirectName_);
+    dynCode.setFilterVariable("codeData", codeData_);
+    dynCode.setFilterVariable("codeDataConstruct", codeDataConstruct_);
+    dynCode.setFilterVariable("codeRead", codeRead_);
 
     // Set TemplateType and FieldType filter variables
     //dynCode.setFieldTemplates<Type>();
@@ -122,12 +125,6 @@ void Foam::errorEstimators::codedErrorEstimator::prepare
 
     // Copy filtered H template
     dynCode.addCopyFile(codeTemplateH);
-
-    #ifdef FULLDEBUG
-    dynCode.setFilterVariable("verbose", "true");
-    DetailInfo
-        <<"compile " << redirectName_ << " sha1: " << context.sha1() << endl;
-    #endif
 
     // Define Make/options
     dynCode.setMakeOptions
@@ -158,7 +155,10 @@ Foam::errorEstimators::codedErrorEstimator::codedErrorEstimator
     errorEstimator(mesh, dict, name),
     codedBase(),
     dict_(dict),
-    redirectName_(dict.getOrDefault<word>("name", name))
+    redirectName_(dict.getOrDefault<word>("name", name)),
+    codeData_(dict.getOrDefault<string>("codeData", "")),
+    codeDataConstruct_(dict.getOrDefault<string>("codeDataConstruct", "")),
+    codeRead_(dict.getOrDefault<string>("codeRead", ""))
 {
     //this->codedBase::setCodeContext(dict_);
     read(dict_);
