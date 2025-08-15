@@ -95,6 +95,9 @@ ${typeName}ErrorEstimator::${typeName}ErrorEstimator
 )
 :
     errorEstimator(mesh, dict, name)
+//{{{ begin codeDataConstruct
+    ${codeDataConstruct}
+//{{{ end codeDataConstruct
 {
     read(dict);
 }
