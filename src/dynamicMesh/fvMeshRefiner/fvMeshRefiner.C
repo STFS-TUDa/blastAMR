@@ -433,6 +433,7 @@ Foam::fvMeshRefiner::fvMeshRefiner(fvMesh& mesh)
     nUnrefinementBufferLayers_(0),
 
     protectedPatches_(),
+    protectRefinementHistory_(false),
 
     dumpLevel_(false),
 
@@ -504,6 +505,7 @@ Foam::fvMeshRefiner::fvMeshRefiner
     nUnrefinementBufferLayers_(0),
 
     protectedPatches_(),
+    protectRefinementHistory_(false),
 
     dumpLevel_(false),
 
@@ -561,6 +563,8 @@ void Foam::fvMeshRefiner::readDict(const dictionary& dict)
 
     dumpLevel_ = dict_.lookupOrDefault<bool>("dumpLevel", false);
     protectedPatches_ = dict_.lookupOrDefault("protectedPatches", wordList());
+    protectRefinementHistory_ =
+        dict_.lookupOrDefault<bool>("protectRefinementHistory", false);
 
     refine_ = dict_.lookupOrDefault("refine", true);
     unrefine_ = dict_.lookupOrDefault("unrefine", true);

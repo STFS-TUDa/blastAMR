@@ -194,6 +194,14 @@ Foam::fvMeshPolyRefiner::fvMeshPolyRefiner
 
     readDict(dict);
 
+    bool hexRefinementHistory =
+        dict.lookupOrDefault<bool>("hexRefinementHistory", false);
+    if (hexRefinementHistory)
+    {
+        Info<< "hexRefinementHistory enabled: will read hex mesh refinement "
+            << "data if present" << endl;
+    }
+
     // Get number of valid geometric dimensions
     const label nGeometricDirs = mesh_.nGeometricD();
 
@@ -210,7 +218,8 @@ Foam::fvMeshPolyRefiner::fvMeshPolyRefiner
                 (
                     mesh,
                     dict_,
-                    read
+                    read,
+                    hexRefinementHistory
                 )
             );
             break;
@@ -226,7 +235,8 @@ Foam::fvMeshPolyRefiner::fvMeshPolyRefiner
                 (
                     mesh,
                     dict_,
-                    read
+                    read,
+                    hexRefinementHistory
                 )
             );
             break;
@@ -349,6 +359,19 @@ bool Foam::fvMeshPolyRefiner::refine
                 }
             }
 
+            // Protect cells with refinement history from further refinement
+            if (protectRefinementHistory_)
+            {
+                const labelList& cellLevels = refiner_->cellLevel();
+                forAll(cellLevels, celli)
+                {
+                    if (cellLevels[celli] >= 1)
+                    {
+                        refineCell.set(celli, false);
+                    }
+                }
+            }
+
             // Select subset of candidates. Take into account max allowable
             // cells, refinement level, protected cells.
             labelList cellsToRefine
@@ -435,6 +458,19 @@ bool Foam::fvMeshPolyRefiner::refine
                 {
                     label own = mesh_.faceOwner()[facei + p.start()];
                     refineCell.set(own, true);
+                }
+            }
+
+            // Protect cells with refinement history from unrefinement
+            if (protectRefinementHistory_)
+            {
+                const labelList& cellLevels = refiner_->cellLevel();
+                forAll(cellLevels, celli)
+                {
+                    if (cellLevels[celli] >= 1)
+                    {
+                        refineCell.set(celli, true);
+                    }
                 }
             }
 
