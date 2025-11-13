@@ -1,7 +1,7 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  2312                                  |
+|  \\    /   O peration     | Version:  2506                                  |
 |   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -16,7 +16,11 @@ FoamFile
 
 dynamicFvMesh   adaptiveFvMesh;
 
-refiner         hexRefiner;
+refiner         polyRefiner;
+
+hexRefinementHistory true;
+
+protectRefinementHistory true;
 
 errorEstimator  coded;
 
@@ -63,9 +67,9 @@ code            #{
 
 balance         yes;
 
-refineInterval  30;
+refineInterval  1;
 
-unrefineInterval 90;
+unrefineInterval 1;
 
 maxRefinement   2;
 
