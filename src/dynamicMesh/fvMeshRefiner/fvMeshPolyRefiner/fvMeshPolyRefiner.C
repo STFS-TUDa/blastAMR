@@ -325,6 +325,53 @@ bool Foam::fvMeshPolyRefiner::refine
 
     if (preUpdate())
     {
+        // Handle refinementHistory cellZone on first timestep
+        if (protectRefinementHistory_)
+        {
+            const cellZoneMesh& cellZones = mesh_.cellZones();
+            label zoneID = cellZones.findZoneID("refinementHistory");
+
+            if (zoneID == -1)
+            {
+                // Zone doesn't exist, create it with cells that have cellLevel > 0
+                const labelList& cellLevels = refiner_->cellLevel();
+                DynamicList<label> zoneCells(mesh_.nCells());
+
+                forAll(cellLevels, celli)
+                {
+                    if (cellLevels[celli] > 0)
+                    {
+                        zoneCells.append(celli);
+                    }
+                }
+
+                if (zoneCells.size() > 0)
+                {
+                    Info<< "protectRefinementHistory: Creating refinementHistory cellZone with "
+                        << returnReduce(zoneCells.size(), sumOp<label>())
+                        << " cells" << endl;
+
+                    cellZoneMesh& czm = const_cast<cellZoneMesh&>(cellZones);
+                    czm.append
+                    (
+                        new cellZone
+                        (
+                            "refinementHistory",
+                            zoneCells,
+                            czm.size(),
+                            czm
+                        )
+                    );
+                }
+            }
+            else
+            {
+                Info<< "protectRefinementHistory: Found existing refinementHistory cellZone with "
+                    << returnReduce(cellZones[zoneID].size(), sumOp<label>())
+                    << " cells" << endl;
+            }
+        }
+
         // Cells marked for refinement or otherwise protected from unrefinement.
         boolList refineCell(mesh_.nCells());
 
@@ -356,19 +403,6 @@ bool Foam::fvMeshPolyRefiner::refine
                 {
                     label own = mesh_.faceOwner()[facei + p.start()];
                     refineCell.set(own, false);
-                }
-            }
-
-            // Protect cells with refinement history from further refinement
-            if (protectRefinementHistory_)
-            {
-                const labelList& cellLevels = refiner_->cellLevel();
-                forAll(cellLevels, celli)
-                {
-                    if (cellLevels[celli] >= 1)
-                    {
-                        refineCell.set(celli, false);
-                    }
                 }
             }
 
@@ -461,15 +495,18 @@ bool Foam::fvMeshPolyRefiner::refine
                 }
             }
 
-            // Protect cells with refinement history from unrefinement
+            // Protect cells in refinementHistory zone from unrefinement
             if (protectRefinementHistory_)
             {
-                const labelList& cellLevels = refiner_->cellLevel();
-                forAll(cellLevels, celli)
+                const cellZoneMesh& cellZones = mesh_.cellZones();
+                label zoneID = cellZones.findZoneID("refinementHistory");
+
+                if (zoneID != -1)
                 {
-                    if (cellLevels[celli] >= 1)
+                    const cellZone& zone = cellZones[zoneID];
+                    forAll(zone, i)
                     {
-                        refineCell.set(celli, true);
+                        refineCell.set(zone[i], true);
                     }
                 }
             }
