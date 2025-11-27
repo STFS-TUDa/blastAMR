@@ -38,6 +38,20 @@ void Foam::fvMeshBalance::correctBoundaries()
     {
         GeoField& fld = *iter();
 
+        // Skip if boundary field size doesn't match mesh boundary
+        // This can happen during redistribution when patches are added/removed
+        if (fld.boundaryField().size() != mesh_.boundaryMesh().size())
+        {
+            if (debug)
+            {
+                Pout<< "correctBoundaries: skipping " << fld.name()
+                    << " - boundary size mismatch (field: "
+                    << fld.boundaryField().size() << ", mesh: "
+                    << mesh_.boundaryMesh().size() << ")" << endl;
+            }
+            continue;
+        }
+
         //mimic "evaluate" but only for coupled patches (processor or cyclic)
         // and only for blocking or nonBlocking comms (no scheduled comms)
         if
@@ -50,7 +64,8 @@ void Foam::fvMeshBalance::correctBoundaries()
 
             forAll(fld.boundaryField(), patchi)
             {
-                if (isA<processorPolyPatch>(mesh_.boundaryMesh()[patchi]))
+                if (patchi < mesh_.boundaryMesh().size()
+                    && isA<processorPolyPatch>(mesh_.boundaryMesh()[patchi]))
                 {
                     fld.boundaryFieldRef()[patchi].initEvaluate
                     (
@@ -71,7 +86,8 @@ void Foam::fvMeshBalance::correctBoundaries()
 
             forAll(fld.boundaryField(), patchi)
             {
-                if (isA<processorPolyPatch>(mesh_.boundaryMesh()[patchi]))
+                if (patchi < mesh_.boundaryMesh().size()
+                    && isA<processorPolyPatch>(mesh_.boundaryMesh()[patchi]))
                 {
                     fld.boundaryFieldRef()[patchi].evaluate
                     (

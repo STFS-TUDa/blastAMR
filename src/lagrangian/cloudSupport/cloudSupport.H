@@ -77,16 +77,16 @@ namespace cloudSupport
 
 __attribute__((constructor))
 static void onCloudSupportload() {
+    if (!Pstream::master()) return;
     Info<< "This library supports a specific set of OpenFOAM cloud types. "
         << "Generic support is unfortunately not possible." << nl
-        << "Supported cloud types :"
-        << "(" << nl
-        << "basicReactingMultiphaseCloud" << nl
-        << "basicReactingCloud" << nl
-        << "basicThermoCloud" << nl
-        << "basicKinematicCollidingCloud" << nl
-        << "basicKinematicMPPICCloud" << nl
-        << "basicKinematicCloud" << nl
+        << "Supported cloud types: ("
+        << "    basicReactingMultiphaseCloud" << nl
+        << "    basicReactingCloud" << nl
+        << "    basicThermoCloud" << nl
+        << "    basicKinematicCollidingCloud" << nl
+        << "    basicKinematicMPPICCloud" << nl
+        << "    basicKinematicCloud" << nl
         << ")" << endl;
 }
 
