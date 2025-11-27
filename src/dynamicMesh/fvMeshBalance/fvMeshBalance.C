@@ -27,7 +27,7 @@ License
 #include "decompositionMethod.H"
 #include "addToRunTimeSelectionTable.H"
 #include "RefineBalanceMeshObject.H"
-//#include "parcelCloud.H"
+#include "cloudSupport.H"
 #include "preserveFaceZonesConstraint.H"
 #include "singleProcessorFaceSetsConstraint.H"
 #include "preservePatchesConstraint.H"
@@ -506,20 +506,30 @@ bool Foam::fvMeshBalance::canBalance() const
 Foam::autoPtr<Foam::mapDistributePolyMesh>
 Foam::fvMeshBalance::distribute()
 {
-    //Correct values on all coupled patches
-    correctBoundaries<volScalarField>();
-    correctBoundaries<volVectorField>();
-    correctBoundaries<volSphericalTensorField>();
-    correctBoundaries<volSymmTensorField>();
-    correctBoundaries<volTensorField>();
-
-    correctBoundaries<pointScalarField>();
-    correctBoundaries<pointVectorField>();
-    correctBoundaries<pointSphericalTensorField>();
-    correctBoundaries<pointSymmTensorField>();
-    correctBoundaries<pointTensorField>();
+    // Synchronize oldTime fields across processors before distribution.
+    // Different processors may end up with different fields after mesh changes
+    // (e.g., U_0 from particle-wall interactions in kinematicCloud).
+    // Hence forcing oldTime on any field that has "oldTime" on any processor
+    syncOldTimeFields<volScalarField>();
+    syncOldTimeFields<volVectorField>();
+    syncOldTimeFields<volSphericalTensorField>();
+    syncOldTimeFields<volSymmTensorField>();
+    syncOldTimeFields<volTensorField>();
+    syncOldTimeFields<surfaceScalarField>();
+    syncOldTimeFields<surfaceVectorField>();
+    syncOldTimeFields<surfaceSphericalTensorField>();
+    syncOldTimeFields<surfaceSymmTensorField>();
+    syncOldTimeFields<surfaceTensorField>();
 
     blastMeshObject::preDistribute<fvMesh>(mesh_);
+
+    // Store global positions for all clouds before distribution
+    // -- this is unified externally for all cloud types
+    cloudSupport::storeGlobalPositions(mesh_);
+
+    // Distribute clouds to new processors BEFORE mesh distribution
+    // This transfers particles based on which processor their cell is going to
+    cloudSupport::distributeClouds(mesh_, distribution_);
 
     Info<< "Distributing the mesh ..." << endl;
     balancing = true;
@@ -550,6 +560,8 @@ Foam::fvMeshBalance::distribute()
 
     blastMeshObject::distribute<fvMesh>(mesh_, map());
 
+    // Relocate particles to their new cells after mesh distribution
+    cloudSupport::relocateClouds(mesh_);
 
     //Correct values on all coupled patches
     correctBoundaries<volScalarField>();

@@ -49,7 +49,8 @@ License
 #include "wedgePolyPatch.H"
 #include "hexRef3D.H"
 #include "RefineBalanceMeshObject.H"
-//#include "parcelCloud.H"
+#include "cloudSupport.H"
+#include "fvMeshBalance.H"
 #include "extrapolatedCalculatedFvPatchField.H"
 #include "DDD.H"
 
@@ -256,19 +257,12 @@ void Foam::fvMeshRefiner::setMaxCellLevel(labelList& maxCellLevel) const
 
 bool Foam::fvMeshRefiner::preUpdate()
 {
-    //if (canRefine() || canUnrefine())
-    //{
-    //    HashTable<parcelCloud*> clouds
-    //    (
-    //        mesh_.lookupClass<parcelCloud>()
-    //    );
-    //    forAllIter(HashTable<parcelCloud*>, clouds, iter)
-    //    {
-    //        iter()->storeGlobalPositions();
-    //    }
-    //    return true;
-    //}
-    return canRefine() || canUnrefine();
+    if (canRefine() || canUnrefine())
+    {
+        cloudSupport::storeGlobalPositions(mesh_);
+        return true;
+    }
+    return false;
 }
 
 
@@ -694,6 +688,13 @@ void Foam::fvMeshRefiner::updateMesh(const mapPolyMesh& mpm)
     else
     {
         mesh_.clearGeomNotOldVol();
+    }
+
+    // Remap particles to new mesh topology
+    // Skip during load balancing - distribution handles particles differently
+    if (!fvMeshBalance::isBalancing())
+    {
+        cloudSupport::autoMapClouds(mesh_, mpm);
     }
 }
 

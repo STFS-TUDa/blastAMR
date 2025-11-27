@@ -91,6 +91,64 @@ void Foam::fvMeshBalance::correctBoundaries()
     }
 }
 
+template<class GeoField>
+void Foam::fvMeshBalance::syncOldTimeFields()
+{
+    HashTable<GeoField*> flds(mesh_.lookupClass<GeoField>());
+    wordList localNames;
+    forAllConstIter(typename HashTable<GeoField*>, flds, iter)
+    {
+        localNames.append(iter.key());
+    }
+    List<wordList> allNames(Pstream::nProcs());
+    allNames[Pstream::myProcNo()] = localNames;
+    Pstream::allGatherList(allNames);
+    wordHashSet allFieldNames;
+    forAll(allNames, proci)
+    {
+        forAll(allNames[proci], i)
+        {
+            allFieldNames.insert(allNames[proci][i]);
+        }
+    }
+
+    // For each field in the set, ensure it exists on this processor
+    // by triggering oldTime() creation on any field that this processor has
+    for (const word& fieldName : allFieldNames)
+    {
+        GeoField* fldPtr = mesh_.getObjectPtr<GeoField>(fieldName);
+
+        if (!fldPtr)
+        {
+            // This processor doesn't have this field at all
+            // This is pretty serious - the field should exist everywhere
+            // For now, only handle oldTime fields (ending with _0)
+            if (debug)
+            {
+                Pout<< "syncOldTimeFields: processor " << Pstream::myProcNo()
+                    << " missing field " << fieldName << endl;
+            }
+            continue;
+        }
+
+        // assuming "oldTime" fields end with _0
+        if (!fieldName.ends_with("_0"))
+        {
+            const word oldTimeName = fieldName + "_0";
+            if (allFieldNames.found(oldTimeName))
+            {
+                if (debug)
+                {
+                    Pout<< "syncOldTimeFields: processor " << Pstream::myProcNo()
+                        << " ensuring oldTime for " << fieldName << endl;
+                }
+                fldPtr->oldTime();
+            }
+        }
+    }
+}
+
+
 template<class Type>
 void Foam::fvMeshBalance::pushUntransformedData
 (

@@ -129,6 +129,10 @@ public:
         //- Template to update all volField boundaries
         template<class GeoField> void correctBoundaries();
 
+        //- Synchronize oldTime fields across processors before distribution
+        //  This ensures all processors have the same fields registered
+        template<class GeoField> void syncOldTimeFields();
+
         //- Is balancing enabled
         bool balance() const
         {
