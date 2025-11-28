@@ -66,9 +66,11 @@ code
 
 balance         yes;
 
-refineInterval  1;
+loadPolicy cpuLoad;
 
-unrefineInterval 1;
+refineInterval  50;
+
+unrefineInterval 250;
 
 maxRefinement   2;
 
