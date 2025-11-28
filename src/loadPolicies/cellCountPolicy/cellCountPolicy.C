@@ -30,6 +30,7 @@ License
 
 #include "cellCountPolicy.H"
 #include "addToRunTimeSelectionTable.H"
+#include "cloudSupport.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -47,8 +48,10 @@ Foam::cellCountPolicy::cellCountPolicy
     const dictionary& dict
 )
 :
-    loadPolicy(mesh, dict)
+    loadPolicy(mesh, dict),
+    particleCoeff_(dict.getOrDefault<scalar>("particleCoeff", 1.0))
 {
+    Info<< "    particleCoeff: " << particleCoeff_ << endl;
 }
 
 
@@ -63,12 +66,20 @@ Foam::cellCountPolicy::~cellCountPolicy()
 bool Foam::cellCountPolicy::canBalance()
 {
     Info<< "--- Running cellCountPolicy::canBalance()" << endl;
-    myLoad_ = mesh_.nCells();
+
+    label nParticles = cloudSupport::countParticles(mesh_);
+    myLoad_ = mesh_.nCells() + particleCoeff_ * nParticles;
+
+    Info<< "    cells: " << mesh_.nCells()
+        << ", particles: " << nParticles
+        << ", load: " << myLoad_ << endl;
+
     myLoadHistory_.set(mesh_.time().timeIndex(), myLoad_);
-    label nGlobalCells = returnReduce(mesh_.nCells(), sumOp<label>());
-    scalar idealNCells =
-        scalar(nGlobalCells)/scalar(Pstream::nProcs());
-    scalar maxImbalance = returnReduce(mag(scalar(mesh_.nCells()) - idealNCells) / idealNCells, maxOp<scalar>());
+
+    scalar globalLoad = returnReduce(myLoad_, sumOp<scalar>());
+    scalar idealLoad = globalLoad / scalar(Pstream::nProcs());
+    scalar maxImbalance = returnReduce(mag(myLoad_ - idealLoad) / idealLoad, maxOp<scalar>());
+
     Info<< "Maximum imbalance found = " << 100*maxImbalance << " %" << endl;
     if (maxImbalance < allowedImbalance_)
     {
@@ -77,8 +88,23 @@ bool Foam::cellCountPolicy::canBalance()
     return true;
 }
 
-Foam::scalarField Foam::cellCountPolicy::cellWeights() {
-    return scalarField(mesh_.nCells(), 1.0);
+Foam::scalarField Foam::cellCountPolicy::cellWeights()
+{
+    // Base weight of 1 per cell + particle contribution
+    scalarField weights(mesh_.nCells(), 1.0);
+
+    if (particleCoeff_ > SMALL)
+    {
+        tmp<labelField> tParticlesPerCell = cloudSupport::particlesPerCell(mesh_);
+        const labelField& ppc = tParticlesPerCell();
+
+        forAll(weights, celli)
+        {
+            weights[celli] += particleCoeff_ * ppc[celli];
+        }
+    }
+
+    return weights;
 }
 
 bool Foam::cellCountPolicy::willBeBeneficial

@@ -61,10 +61,14 @@ class cpuLoadPolicy
 :   public loadPolicy
 {
 protected:
-    // Maximum number of time steps to resut MPI data
+    // Maximum number of time steps to reset MPI data
     label maxCycleLength_;
+
     // Is MPI call interception active
     bool isActive_;
+
+    // Time unit for reporting (nano, micro, milli)
+    TimeUnit timeUnit_;
 
 public:
 

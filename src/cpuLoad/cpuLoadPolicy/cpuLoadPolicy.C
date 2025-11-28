@@ -263,6 +263,24 @@ WRAP_MPI_FUNCTION(
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
+namespace
+{
+    // Helper to parse time unit from string
+    Foam::TimeUnit parseTimeUnit(const Foam::word& unitStr)
+    {
+        if (unitStr == "nano" || unitStr == "nanoseconds" || unitStr == "ns")
+        {
+            return Foam::TimeUnit::Nano;
+        }
+        else if (unitStr == "milli" || unitStr == "milliseconds" || unitStr == "ms")
+        {
+            return Foam::TimeUnit::Milli;
+        }
+        // Default to microseconds
+        return Foam::TimeUnit::Micro;
+    }
+}
+
 Foam::cpuLoadPolicy::cpuLoadPolicy
 (
     const fvMesh& mesh,
@@ -271,8 +289,14 @@ Foam::cpuLoadPolicy::cpuLoadPolicy
 :
     loadPolicy(mesh, dict),
     maxCycleLength_(dict.lookupOrDefault("maxLBCycleLength", 5*readLabel(dict.lookup("refineInterval")))),
-    isActive_(true)
+    isActive_(true),
+    timeUnit_(parseTimeUnit(dict.getOrDefault<word>("timeUnit", "micro")))
 {
+    // Set the global time unit for output formatting
+    profilerTimeUnit() = timeUnit_;
+
+    Info<< "    timeUnit: " << timeUnitSuffix(timeUnit_) << endl;
+
     mpiCommsStats.reset();
 }
 

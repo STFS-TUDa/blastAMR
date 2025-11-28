@@ -56,6 +56,12 @@ namespace Foam
 class cellCountPolicy
 :   public loadPolicy
 {
+    // Private data
+
+        //- Coefficient for particle contribution to load
+        //  load = cellCount + particleCoeff * particleCount
+        scalar particleCoeff_;
+
 public:
 
     //- Runtime type information
