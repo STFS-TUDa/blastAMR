@@ -546,6 +546,7 @@ bool Foam::fvMeshPolyRefiner::refine
         {
             hasChanged = true;
         }
+        reduce(hasChanged, orOp<bool>());
         mesh_.topoChanging(hasChanged);
 
         if (hasChanged)

@@ -93,6 +93,7 @@ public:
     // Member Functions
 
         //- Update error
+        void computeDx();
         virtual void update(const bool scale = true);
 
         //- Return non constant reference to error field
@@ -100,6 +101,20 @@ public:
 
         //- Read parameters
         virtual void read(const dictionary& dict);
+
+        word sizeType() const {
+            return sizeTypeNames[sizeType_];
+        }
+        scalar maxDx() const {
+            return gMax(this->error_.internalField());
+        }
+        scalar minDx() const {
+            return gMin(this->error_.internalField());
+        }
+        labelList cmpts() const {
+            return cmpts_;
+        }
+
 };
 
 

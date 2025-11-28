@@ -91,8 +91,7 @@ Foam::fvMeshBalance::fvMeshBalance(fvMesh& mesh)
     //preservePatchesDict_(nullptr),
     //preserveBafflesDict_(nullptr),
     distributor_(mesh_),
-    balance_(true),
-    allowableImbalance_(0.2)
+    loadPolicy_(loadPolicy::New(mesh_, dictionary{}))
 {
     if (!constraintsDict_)
     {
@@ -162,8 +161,7 @@ Foam::fvMeshBalance::fvMeshBalance
     //preservePatchesDict_(nullptr),
     //preserveBafflesDict_(nullptr),
     distributor_(mesh_),
-    balance_(false),
-    allowableImbalance_(0.2)
+    loadPolicy_(dict.lookupOrDefault<Switch>("balance", false) ? loadPolicy::New(mesh, dict) : nullptr)
 {
     if (!constraintsDict_)
     {
@@ -218,13 +216,13 @@ void Foam::fvMeshBalance::read(const dictionary& balanceDict)
 {
     if (!Pstream::parRun())
     {
-        balance_ = false;
+        loadPolicy_ = nullptr;
         return;
     }
 
-    balance_ = balanceDict.lookupOrDefault("balance", true);
+    loadPolicy_ = balanceDict.lookupOrDefault("balance", true) ? loadPolicy::New(mesh_, balanceDict) : nullptr;
 
-    if (!balance_)
+    if (!loadPolicy_)
     {
         return;
     }
@@ -247,8 +245,6 @@ void Foam::fvMeshBalance::read(const dictionary& balanceDict)
         }
     }
     decompositionDict_ <<= balanceDict;
-
-    balanceDict.readIfPresent("allowableImbalance", allowableImbalance_);
 }
 
 
@@ -453,78 +449,57 @@ Foam::decompositionMethod& Foam::fvMeshBalance::decomposer() const
 
 bool Foam::fvMeshBalance::canBalance() const
 {
-    if (!balance_)
+    Info<< "Is balancing set up? " << loadPolicy_.valid() << endl;
+    if (!loadPolicy_)
     {
         return false;
     }
 
-    //First determine current level of imbalance - do this for all
-    // parallel runs with a changing mesh, even if balancing is disabled
-    label nGlobalCells = returnReduce(mesh_.nCells(), sumOp<label>());
-    scalar idealNCells =
-        scalar(nGlobalCells)/scalar(Pstream::nProcs());
-    scalar localImbalance = mag(scalar(mesh_.nCells()) - idealNCells);
-    scalar maxImbalance = returnReduce(localImbalance, maxOp<scalar>());
-    scalar maxImbalanceRatio = maxImbalance/idealNCells;
+    if(!loadPolicy_->canBalance()) return false;
 
-    Info<<"Maximum imbalance = " << 100*maxImbalanceRatio << " %" << endl;
-
-    if (debug)
-    {
-        Pout<< " localImbalance = "
-            << 100.0*localImbalance/idealNCells << "%, "
-            << "nCells = " << mesh_.nCells()
-            << endl;
-    }
-
-    //If imbalanced, construct weighted coarse graph (level 0) with node
-    // weights equal to their number of subcells. This partitioning works
-    // as long as the number of level 0 cells is several times greater than
-    // the number of processors.
-    if (maxImbalanceRatio < allowableImbalance_)
-    {
-        return false;
-    }
-
+    Info << "Should balance" << endl;
     // Decompose the mesh with uniform weights
     // The refinementHistory constraint is applied internally
     distribution_ = decomposer().decompose
     (
         mesh_,
-        scalarField(mesh_.nCells(), 1.0)
+        loadPolicy_->cellWeights()
+        //scalarField(mesh_.nCells(), 1.0)
     );
 
     // Check if distribution will improve anything
-    labelList procLoadNew(Pstream::nProcs(), 0);
-    forAll(distribution_, celli)
-    {
-        procLoadNew[distribution_[celli]]++;
-    }
-    reduce(procLoadNew, sumOp<labelList>());
-    if (min(procLoadNew) == 0)
-    {
-        DebugInfo
-            << "New distribtion results in a load of 0. Skipping" << endl;
-        return false;
-    }
-    scalar averageLoadNew
-    (
-        scalar(sum(procLoadNew))/scalar(Pstream::nProcs())
-    );
-    scalar maxDevNew(max(mag(procLoadNew - averageLoadNew))/averageLoadNew);
+    return loadPolicy_->willBeBeneficial(distribution_);
 
-    if (maxDevNew > maxImbalanceRatio*0.99)
-    {
-        Info
-            << "    Not balancing because the new distribution does" << nl
-            << "    not improve the load. Skipping" << nl
-            << "    old imbalance: " << maxImbalanceRatio << nl
-            << "    new imbalance: " << maxDevNew << nl
-            << endl;
-        return false;
-    }
+    //labelList procLoadNew(Pstream::nProcs(), 0);
+    //forAll(distribution_, celli)
+    //{
+    //    procLoadNew[distribution_[celli]]++;
+    //}
+    //reduce(procLoadNew, sumOp<labelList>());
+    //if (min(procLoadNew) == 0)
+    //{
+    //    DebugInfo
+    //        << "New distribtion results in a load of 0. Skipping" << endl;
+    //    return false;
+    //}
+    //scalar averageLoadNew
+    //(
+    //    scalar(sum(procLoadNew))/scalar(Pstream::nProcs())
+    //);
+    //scalar maxDevNew(max(mag(procLoadNew - averageLoadNew))/averageLoadNew);
 
-    return true;
+    //if (maxDevNew > maxImbalanceRatio*0.99)
+    //{
+    //    Info
+    //        << "    Not balancing because the new distribution does" << nl
+    //        << "    not improve the load. Skipping" << nl
+    //        << "    old imbalance: " << maxImbalanceRatio << nl
+    //        << "    new imbalance: " << maxDevNew << nl
+    //        << endl;
+    //    return false;
+    //}
+
+    //return true;
 }
 
 
@@ -596,7 +571,7 @@ bool Foam::fvMeshBalance::write(const bool write) const
 {
     if
     (
-        balance_ && modified_ && write &&
+        loadPolicy_ && modified_ && write &&
         decompositionDict_.lookupOrDefault("writeDecomposeDict", false)
     )
     {
