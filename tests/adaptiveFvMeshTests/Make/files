@@ -1,5 +1,7 @@
-$(FOAM_FOAMUT)/tests/testDriver.C
+/home/fadeli/repos/foamUT/tests/testDriver.C
 
 adaptiveFvMeshTest.C
+adaptiveFvMeshCloudTest.C
+adaptiveFvMeshIntermediateCloudTest.C
 
 EXE = ./testDriver
