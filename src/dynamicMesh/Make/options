@@ -13,5 +13,8 @@ LIB_LIBS = \
     -ldynamicMesh \
     -ldecompositionMethods \
     -llagrangian \
-    -L$(FOAM_USER_LIBBIN) -lamrLagrangian -lamrLoadPolicies -lamrIndicators \
+    -L$(FOAM_USER_LIBBIN) \
+    -lamrLagrangian \
+    -lamrLoadPolicies \
+    -lamrIndicators \
     -L$(FOAM_LIBBIN)/dummy -lptscotchDecomp -lscotchDecomp
