@@ -369,7 +369,7 @@ public:
         ) = 0;
 
         //- Balance the mesh
-        virtual bool balance();
+        bool balance();
 
         //- Overload update mesh to include other methods
         virtual void updateMesh(const mapPolyMesh& mpm);

@@ -19,7 +19,7 @@ libs
 (
     libamrDynamicFvMesh.so
     libamrIndicators.so
-    libamrDynamicMesh.so
+    libamrCPULoad.so
 );
 
 application     interFoam;

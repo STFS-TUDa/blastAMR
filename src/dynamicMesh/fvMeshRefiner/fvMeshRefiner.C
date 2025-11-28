@@ -626,6 +626,7 @@ bool Foam::fvMeshRefiner::balance()
     balancer_.read(balanceDict);
 
     // Part 2 - Load Balancing
+    Info << "---------------- CAN I BALANCE? " << canBalance() << endl;
     if (canBalance(true))
     {
         isBalancing_ = true;

@@ -29,6 +29,8 @@ fi
 
 #------------------------------------------------------------------------------
 
+wmake src/loadPolicies
+wmake src/cpuLoad
 wmake src/errorEstimators
 wmake src/dynamicMesh
 wmake src/dynamicFvMesh

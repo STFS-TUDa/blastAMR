@@ -38,6 +38,7 @@ Description
 #define fvMeshBalance_H
 
 #include "fvMeshDistribute.H"
+#include "loadPolicy.H"
 #include "mapDistributePolyMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -89,11 +90,7 @@ protected:
 
         fvMeshDistribute distributor_;
 
-        //- Does the mesh get balanced
-        bool balance_;
-
-        //- Allowable imbalance
-        scalar allowableImbalance_;
+        mutable autoPtr<loadPolicy> loadPolicy_;
 
         //- Distribution
         mutable labelList distribution_;
@@ -135,13 +132,7 @@ public:
         //- Is balancing enabled
         bool balance() const
         {
-            return balance_;
-        }
-
-        //- Access if balancing enabled
-        bool& balance()
-        {
-            return balance_;
+            return loadPolicy_.valid();
         }
 
         //- Does the mesh need to be balanced

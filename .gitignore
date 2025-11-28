@@ -92,3 +92,12 @@ doc/Doxygen/DTAGS
 
 # Ignore XML reports
 *.xml
+
+*mp4
+*avi
+[0-9]*.[0-9]*/
+[0-9]*/
+!0/
+*pvsm
+log.*
+processor*/

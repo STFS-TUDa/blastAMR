@@ -20,7 +20,7 @@ for i in $(seq 1 $maxRef); do
     runApplication -a setFields
 done
 cp -rT 0/polyMesh constant/polyMesh
-runApplication decomposePar -constant
+runApplication decomposePar -constant -cellDist
 #mpirun -np 8 --output-filename log interFoam -parallel
 
 #------------------------------------------------------------------------------

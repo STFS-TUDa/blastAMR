@@ -132,6 +132,54 @@ Foam::labelList Foam::errorEstimators::cellSize::maxRefinement() const
     return mesh_.lookupObject<labelIOList>("cellLevel") + 1;
 }
 
+void Foam::errorEstimators::cellSize::computeDx() {
+    if (sizeType_ == VOLUME)
+    {
+        this->error_.internalFieldRef().field() = mesh_.V().field();
+    }
+    else if (sizeType_ == CHARACTERISTIC)
+    {
+        this->error_.internalFieldRef().field() = meshSizeObject::New(mesh_).dx();
+    }
+    else if (sizeType_ == MAG)
+    {
+        const vectorField& dX = meshSizeObject::New(mesh_).dX();
+        const Vector<label> geoD(mesh_.geometricD());
+        this->error_.internalFieldRef() = 0.0;
+        forAll(geoD, cmpti)
+        {
+            if (geoD[cmpti] == 1)
+            {
+                this->error_.internalFieldRef().field() += sqr(dX.component(cmpti));
+            }
+        }
+        this->error_.internalFieldRef() = sqrt(this->error_.internalFieldRef());
+    }
+    else if (sizeType_ == CMPT)
+    {
+        const vectorField& dX = meshSizeObject::New(mesh_).dX();
+        forAll(cmpts_, i)
+        {
+            label cmpti = cmpts_[i];
+            forAll(this->error_.internalFieldRef(), celli)
+            {
+                if (dX[celli][cmpti] > maxDX_[cmpti])
+                {
+                    this->error_.internalFieldRef()[celli] = max(1.0, this->error_.internalFieldRef()[celli]);
+                }
+                else if (dX[celli][cmpti] < minDX_[cmpti])
+                {
+                    this->error_.internalFieldRef()[celli] = max(-1.0, this->error_.internalFieldRef()[celli]);
+                }
+                else
+                {
+                    this->error_.internalFieldRef()[celli] = max(0, this->error_.internalFieldRef()[celli]);
+                }
+            }
+        }
+    }
+}
+
 
 void Foam::errorEstimators::cellSize::update(const bool scale)
 {
@@ -140,68 +188,23 @@ void Foam::errorEstimators::cellSize::update(const bool scale)
         return;
     }
 
-    scalarField& errorCells(error_);
-    if (sizeType_ == VOLUME)
-    {
-        errorCells = mesh_.V();
-    }
-    else if (sizeType_ == CHARACTERISTIC)
-    {
-        errorCells = meshSizeObject::New(mesh_).dx();
-    }
-    else if (sizeType_ == MAG)
-    {
-        const vectorField& dX = meshSizeObject::New(mesh_).dX();
-        const Vector<label> geoD(mesh_.geometricD());
-        errorCells = 0.0;
-        forAll(geoD, cmpti)
-        {
-            if (geoD[cmpti] == 1)
-            {
-                errorCells += sqr(dX.component(cmpti));
-            }
-        }
-        errorCells = sqrt(errorCells);
-    }
-    else if (sizeType_ == CMPT)
-    {
-        const vectorField& dX = meshSizeObject::New(mesh_).dX();
-        forAll(cmpts_, i)
-        {
-            label cmpti = cmpts_[i];
-            forAll(errorCells, celli)
-            {
-                if (dX[celli][cmpti] > maxDX_[cmpti])
-                {
-                    errorCells[celli] = max(1.0, errorCells[celli]);
-                }
-                else if (dX[celli][cmpti] < minDX_[cmpti])
-                {
-                    errorCells[celli] = max(-1.0, errorCells[celli]);
-                }
-                else
-                {
-                    errorCells[celli] = max(0, errorCells[celli]);
-                }
-            }
-        }
-    }
+    computeDx();
 
     if (sizeType_ != CMPT)
     {
-        forAll(errorCells, celli)
+        forAll(this->error_.internalFieldRef(), celli)
         {
-            if (errorCells[celli] < lowerUnrefine_)
+            if (this->error_.internalFieldRef()[celli] < lowerUnrefine_)
             {
-                errorCells[celli] = -1.0;
+                this->error_.internalFieldRef()[celli] = -1.0;
             }
-            else if (errorCells[celli] > lowerRefine_)
+            else if (this->error_.internalFieldRef()[celli] > lowerRefine_)
             {
-                errorCells[celli] = 1.0;
+                this->error_.internalFieldRef()[celli] = 1.0;
             }
             else
             {
-                errorCells[celli] = 0.0;
+                this->error_.internalFieldRef()[celli] = 0.0;
             }
         }
     }
@@ -216,7 +219,6 @@ void Foam::errorEstimators::cellSize::read(const dictionary& dict)
         cmpts_ = readCmpts(dict.lookup("cmpts"));
         minDX_ = vector(dict.lookup("minDX"));
         maxDX_ = vector(dict.lookup("maxDX"));
-        Info<<cmpts_<<endl;
     }
     else if (sizeType_ == VOLUME)
     {
