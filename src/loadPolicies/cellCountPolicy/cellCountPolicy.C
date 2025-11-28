@@ -111,29 +111,37 @@ bool Foam::cellCountPolicy::willBeBeneficial
 (
     const labelList distribution
 ) {
-    labelList procLoadNew(Pstream::nProcs(), 0);
+    // Get cell weights including particle contributions
+    scalarField weights = cellWeights();
+
+    // Calculate new load per processor based on the proposed distribution
+    scalarList procLoadNew(Pstream::nProcs(), 0.0);
     forAll(distribution, celli)
     {
-        procLoadNew[distribution[celli]]++;
+        procLoadNew[distribution[celli]] += weights[celli];
     }
-    reduce(procLoadNew, sumOp<labelList>());
-    if (min(procLoadNew) == 0)
+    reduce(procLoadNew, sumOp<scalarList>());
+
+    if (min(procLoadNew) < SMALL)
     {
         DebugInfo
-            << "New distribtion results in a load of 0. Skipping" << endl;
+            << "New distribution results in a load of ~0. Skipping" << endl;
         return false;
     }
-    scalar averageLoadNew
-    (
-        scalar(sum(procLoadNew))/scalar(Pstream::nProcs())
-    );
-    scalar maxDevNew(max(mag(procLoadNew - averageLoadNew))/averageLoadNew);
 
-    // TODO: A bit of repetition here, maybe factor out the imbalance logic from canBalance
-    scalar nGlobalCells = returnReduce(myLoad_, sumOp<scalar>());
-    scalar idealNCells = nGlobalCells/Pstream::nProcs();
-    scalar maxImbalance = returnReduce(mag(myLoad_ - idealNCells)/idealNCells, maxOp<scalar>());
-    if (maxDevNew > maxImbalance*0.99)
+    scalar averageLoadNew = sum(procLoadNew) / scalar(Pstream::nProcs());
+    scalar maxDevNew = 0;
+    forAll(procLoadNew, proci)
+    {
+        maxDevNew = max(maxDevNew, mag(procLoadNew[proci] - averageLoadNew) / averageLoadNew);
+    }
+
+    // Calculate current imbalance using myLoad_ (already includes particles)
+    scalar nGlobalLoad = returnReduce(myLoad_, sumOp<scalar>());
+    scalar idealLoad = nGlobalLoad / Pstream::nProcs();
+    scalar maxImbalance = returnReduce(mag(myLoad_ - idealLoad) / idealLoad, maxOp<scalar>());
+
+    if (maxDevNew > maxImbalance * 0.99)
     {
         Info
             << "    Not balancing because the new distribution does" << nl

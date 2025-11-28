@@ -29,10 +29,10 @@ fi
 
 #------------------------------------------------------------------------------
 
+wmake src/lagrangian
 wmake src/loadPolicies
 wmake src/cpuLoad
 wmake src/errorEstimators
-wmake src/lagrangian
 wmake src/dynamicMesh
 wmake src/dynamicFvMesh
 wmake src/functionObjects
