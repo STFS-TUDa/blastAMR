@@ -690,12 +690,17 @@ void Foam::fvMeshRefiner::updateMesh(const mapPolyMesh& mpm)
         mesh_.clearGeomNotOldVol();
     }
 
-    // Remap particles to new mesh topology
-    // Skip during load balancing - distribution handles particles differently
-    if (!fvMeshBalance::isBalancing())
-    {
-        cloudSupport::autoMapClouds(mesh_, mpm);
-    }
+    // Note: Cloud remapping is NOT done here because this callback is invoked
+    // during fvMesh::updateMesh, before volume fields are properly sized.
+    // Calling cloud.autoMap would trigger mesh_.V() which reconstructs volumes
+    // with the NEW mesh size, causing the check in fvMesh::updateMesh to fail
+    // ("V:newSize not equal to the number of old cells oldSize").
+    //
+    // Cloud remapping is handled by:
+    // - adaptiveFvMesh route: adaptiveFvMesh::updateMesh calls amrCore_.updateMesh
+    //   BEFORE fvMesh::updateMesh, which correctly sequences the operations
+    // - loadBalancedAMR route: amrCore::refine() calls autoMapClouds AFTER
+    //   the refiner finishes and mesh_.updateMesh has completed
 }
 
 

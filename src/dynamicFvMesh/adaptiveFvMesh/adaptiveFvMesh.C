@@ -30,6 +30,7 @@ License
 
 #include "adaptiveFvMesh.H"
 #include "addToRunTimeSelectionTable.H"
+#include "cloudSupport.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -102,6 +103,12 @@ void Foam::adaptiveFvMesh::updateMesh(const mapPolyMesh& map)
 
     // Call parent updateMesh
     fvMesh::updateMesh(map);
+
+    // Remap clouds AFTER fvMesh::updateMesh completes.
+    // This must happen after fvMesh::updateMesh because cloud.autoMap
+    // triggers mesh_.V() which reconstructs volumes. If done before,
+    // the volume size check in fvMesh::updateMesh would fail.
+    cloudSupport::autoMapClouds(*this, map);
 }
 
 

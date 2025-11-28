@@ -410,8 +410,14 @@ void Foam::amrCore::updateMesh(const mapPolyMesh& map)
         refiner_->updateMesh(map);
     }
 
-    // Remap clouds
-    cloudSupport::autoMapClouds(mesh_, map);
+    // Note: Cloud remapping is NOT done here because this is called
+    // from adaptiveFvMesh::updateMesh BEFORE fvMesh::updateMesh.
+    // Calling cloud.autoMap would trigger mesh_.V() which reconstructs
+    // volumes with the NEW mesh size, causing the check in
+    // fvMesh::updateMesh to fail.
+    //
+    // Cloud remapping is done in adaptiveFvMesh::updateMesh AFTER
+    // fvMesh::updateMesh completes.
 }
 
 
