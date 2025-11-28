@@ -1,4 +1,7 @@
 EXE_INC = $(DEBUG_FLAGS) \
+    -IcloudSupport \
+    -IcloudSupport/cloudHandler \
+    -IcloudSupport/handlers \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
     -I$(LIB_SRC)/lagrangian/basic/lnInclude \

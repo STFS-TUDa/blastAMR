@@ -26,27 +26,13 @@ License
 #include "cloudSupport.H"
 #include "polyMesh.H"
 #include "PstreamBuffers.H"
-#include "mapDistribute.H"
 #include "globalIndex.H"
-#include "DynamicList.H"
-#include "HashTable.H"
-#include "IDLList.H"
+#include "IOdictionary.H"
 
-// Intermediate cloud includes for dynamic_cast support
-#include "basicKinematicCloud.H"
-#include "basicKinematicCollidingCloud.H"
-#include "basicKinematicMPPICCloud.H"
-#include "basicThermoCloud.H"
-#include "basicReactingCloud.H"
-#include "basicReactingMultiphaseCloud.H"
-
-// Parcel type includes for streaming/creating parcels
-#include "basicKinematicParcel.H"
-#include "basicKinematicCollidingParcel.H"
-#include "basicKinematicMPPICParcel.H"
-#include "basicThermoParcel.H"
-#include "basicReactingParcel.H"
-#include "basicReactingMultiphaseParcel.H"
+// Handler system
+#include "cloudHandler.H"
+#include "kinematicCloudHandler.H"
+#include "passiveCloudHandler.H"
 
 // Debug switch for detailed particle tracking output
 int cloudSupportDebug = Foam::debug::debugSwitch("cloudSupport", 0);
@@ -57,56 +43,82 @@ namespace Foam
 {
 namespace cloudSupport
 {
-    // Static storage for pending positions during distribution (legacy)
-    static HashTable<DynamicList<point>> pendingPositions_;
-
-    // Static storage for pending parcel data during distribution
-    // Key: cloudName, Value: raw binary data containing serialized parcels
-    static HashTable<List<char>> pendingParcelData_;
-
     // Track last timestep when autoMapClouds was called to prevent double-mapping
     static label lastAutoMapTimeIndex_ = -1;
 
-    // Helper macro to try dynamic_cast and call storeGlobalPositions
-    #define TRY_STORE_POSITIONS(CloudType)                                    \
-        if (auto* ptr = dynamic_cast<CloudType*>(&c))                         \
-        {                                                                     \
-            ptr->storeGlobalPositions();                                      \
-            Info<< "    Cloud '" << c.name() << "' (" << #CloudType           \
-                << "): " << ptr->nParcels() << " particles" << endl;          \
-            handled = true;                                                   \
-        }
+    // Cache handlers for each cloud to avoid repeated lookups
+    static HashTable<autoPtr<cloudHandler>> handlerCache_;
+}
+}
 
-    // Helper function to store positions for a single cloud
-    bool storePositionsForCloud(cloud& c)
+// * * * * * * * * * * * * * * * Local Functions * * * * * * * * * * * * * * //
+
+namespace Foam
+{
+namespace cloudSupport
+{
+
+// Get the cloudHandler name from dynamicMeshDict (if specified)
+static word getConfiguredHandlerName(const fvMesh& mesh)
+{
+    // Try to read dynamicMeshDict
+    IOobject dictIO
+    (
+        "dynamicMeshDict",
+        mesh.time().constant(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
+        IOobject::NO_WRITE,
+        IOobject::NO_REGISTER
+    );
+
+    if (dictIO.typeHeaderOk<IOdictionary>(true))
     {
-        bool handled = false;
-
-        // Try each known cloud type in order of specificity
-        // (most derived first to get best match)
-
-        // Reacting multiphase clouds (most derived)
-        TRY_STORE_POSITIONS(basicReactingMultiphaseCloud)
-        else TRY_STORE_POSITIONS(basicReactingCloud)
-        else TRY_STORE_POSITIONS(basicThermoCloud)
-        else TRY_STORE_POSITIONS(basicKinematicCollidingCloud)
-        else TRY_STORE_POSITIONS(basicKinematicMPPICCloud)
-        else TRY_STORE_POSITIONS(basicKinematicCloud)
-        // passiveParticle clouds (base case)
-        else if (auto* ptr = dynamic_cast<Cloud<passiveParticle>*>(&c))
-        {
-            ptr->storeGlobalPositions();
-            Info<< "    Cloud '" << c.name() << "' (passiveParticleCloud): "
-                << ptr->size() << " particles" << endl;
-            handled = true;
-        }
-
-        return handled;
+        IOdictionary dict(dictIO);
+        return dict.getOrDefault<word>("cloudHandler", word::null);
     }
 
-    #undef TRY_STORE_POSITIONS
+    return word::null;
 }
+
+
+// Get or create handler for a cloud (returns reference to cached handler)
+// Returns nullptr equivalent via empty autoPtr if no handler found
+static autoPtr<cloudHandler>& getHandler(cloud& c, const fvMesh& mesh)
+{
+    static autoPtr<cloudHandler> nullHandler;  // Empty handler for "not found"
+    const word& cloudName = c.name();
+
+    // Check cache first
+    if (handlerCache_.found(cloudName) && handlerCache_[cloudName])
+    {
+        // Verify handler still valid for this cloud
+        if (handlerCache_[cloudName]->canHandle(c))
+        {
+            return handlerCache_[cloudName];
+        }
+        // Handler no longer valid, remove from cache
+        handlerCache_.erase(cloudName);
+    }
+
+    // Check if user specified an explicit handler in dynamicMeshDict
+    const word handlerName = getConfiguredHandlerName(mesh);
+
+    // Try to create new handler
+    autoPtr<cloudHandler> handler = cloudHandler::tryNew(c, mesh, handlerName);
+    if (handler)
+    {
+        handlerCache_.set(cloudName, std::move(handler));
+        return handlerCache_[cloudName];
+    }
+
+    nullHandler.reset();
+    return nullHandler;
 }
+
+} // End namespace cloudSupport
+} // End namespace Foam
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -127,13 +139,20 @@ void Foam::cloudSupport::storeGlobalPositions(const fvMesh& mesh)
     {
         cloud& c = const_cast<cloud&>(constCloud);
 
-        if (!storePositionsForCloud(c))
+        autoPtr<cloudHandler>& handler = getHandler(c, mesh);
+        if (handler)
+        {
+            handler->storePositions(c);
+        }
+        else
         {
             // Unknown cloud type - warn but don't fail
             WarningInFunction
-                << "Unknown cloud type for '" << c.name()
+                << "No handler found for cloud '" << c.name()
                 << "' - positions not stored. "
-                << "Load balancing may fail for this cloud." << endl;
+                << "Load balancing may fail for this cloud." << nl
+                << "Consider loading a library with a handler for this cloud type "
+                << "via system/controlDict: libs (libmyCloudHandler);" << endl;
         }
     }
 }
@@ -188,193 +207,13 @@ void Foam::cloudSupport::autoMapClouds
 }
 
 
-// Helper struct to store parcel data during transfer
-struct ParcelData
-{
-    point position;
-    vector U;           // velocity
-    scalar d;           // diameter
-    scalar rho;         // density
-    scalar nParticle;   // number of particles
-    scalar age;         // parcel age
-    scalar dTarget;     // target diameter
-    label typeId;       // parcel type ID
-    bool active;        // active flag
-};
-
-// Static storage for pending parcel data during distribution
-static HashTable<DynamicList<ParcelData>> pendingParcelDataFull_;
-
-// Helper macro to extract and transfer full parcel data between procs
-// This preserves all parcel properties (position, velocity, diameter, etc.)
-#define DISTRIBUTE_PARCELS(CloudType, ParcelType)                             \
-    if (auto* ptr = dynamic_cast<CloudType*>(&c))                             \
-    {                                                                         \
-        /* Lists of parcel data to be transferred to each processor */        \
-        List<DynamicList<ParcelData>> dataTransferLists(UPstream::nProcs());  \
-                                                                              \
-        /* Extract parcel data and sort by destination processor */           \
-        for (const auto& p : *ptr)                                            \
-        {                                                                     \
-            const label celli = p.cell();                                     \
-            if (celli >= 0 && celli < distribution.size())                    \
-            {                                                                 \
-                ParcelData pd;                                                \
-                pd.position = p.position();                                   \
-                pd.U = p.U();                                                 \
-                pd.d = p.d();                                                 \
-                pd.rho = p.rho();                                             \
-                pd.nParticle = p.nParticle();                                 \
-                pd.age = p.age();                                             \
-                pd.dTarget = p.dTarget();                                     \
-                pd.typeId = p.typeId();                                       \
-                pd.active = p.active();                                       \
-                dataTransferLists[distribution[celli]].append(pd);            \
-            }                                                                 \
-        }                                                                     \
-                                                                              \
-        /* Clear the cloud */                                                 \
-        ptr->clear();                                                         \
-                                                                              \
-        if (cloudSupportDebug)                                                \
-        {                                                                     \
-            forAll(dataTransferLists, procI)                                  \
-            {                                                                 \
-                Pout<< "      -> proc " << procI << ": "                      \
-                    << dataTransferLists[procI].size() << " parcels" << nl;   \
-            }                                                                 \
-        }                                                                     \
-                                                                              \
-        /* Stream parcel data into send buffers */                            \
-        forAll(dataTransferLists, procI)                                      \
-        {                                                                     \
-            if (dataTransferLists[procI].size())                              \
-            {                                                                 \
-                UOPstream os(procI, pBufs);                                   \
-                const DynamicList<ParcelData>& list = dataTransferLists[procI]; \
-                os << label(list.size());                                     \
-                for (const ParcelData& pd : list)                             \
-                {                                                             \
-                    os << pd.position << pd.U << pd.d << pd.rho               \
-                       << pd.nParticle << pd.age << pd.dTarget                \
-                       << pd.typeId << pd.active;                             \
-                }                                                             \
-            }                                                                 \
-        }                                                                     \
-                                                                              \
-        pBufs.finishedSends();                                                \
-                                                                              \
-        /* Receive parcel data */                                             \
-        DynamicList<ParcelData> receivedData;                                 \
-        for (const int proci : pBufs.allProcs())                              \
-        {                                                                     \
-            if (pBufs.recvDataCount(proci))                                   \
-            {                                                                 \
-                UIPstream is(proci, pBufs);                                   \
-                label nParcels;                                               \
-                is >> nParcels;                                               \
-                for (label i = 0; i < nParcels; i++)                          \
-                {                                                             \
-                    ParcelData pd;                                            \
-                    is >> pd.position >> pd.U >> pd.d >> pd.rho               \
-                       >> pd.nParticle >> pd.age >> pd.dTarget                \
-                       >> pd.typeId >> pd.active;                             \
-                    receivedData.append(pd);                                  \
-                }                                                             \
-                                                                              \
-                if (cloudSupportDebug)                                        \
-                {                                                             \
-                    Pout<< "      <- proc " << proci << ": "                  \
-                        << nParcels << " parcels" << nl;                      \
-                }                                                             \
-            }                                                                 \
-        }                                                                     \
-                                                                              \
-        /* Store parcel data for later relocation */                          \
-        pendingParcelDataFull_.set(cloudName, receivedData);                  \
-        globalNewSize = returnReduce(receivedData.size(), sumOp<label>());    \
-        handled = true;                                                       \
-    }
-
-// Helper macro for passiveParticle clouds (position-only transfer)
-#define DISTRIBUTE_PASSIVE_POSITIONS(CloudType)                               \
-    if (auto* ptr = dynamic_cast<CloudType*>(&c))                             \
-    {                                                                         \
-        /* Lists of positions to be transferred to each processor */          \
-        List<DynamicList<point>> posTransferLists(UPstream::nProcs());        \
-                                                                              \
-        /* Extract positions and sort by destination processor */             \
-        for (const auto& p : *ptr)                                            \
-        {                                                                     \
-            const label celli = p.cell();                                     \
-            if (celli >= 0 && celli < distribution.size())                    \
-            {                                                                 \
-                posTransferLists[distribution[celli]].append(p.position());   \
-            }                                                                 \
-        }                                                                     \
-                                                                              \
-        /* Clear the cloud */                                                 \
-        ptr->clear();                                                         \
-                                                                              \
-        if (cloudSupportDebug)                                                \
-        {                                                                     \
-            forAll(posTransferLists, procI)                                   \
-            {                                                                 \
-                Pout<< "      -> proc " << procI << ": "                      \
-                    << posTransferLists[procI].size() << " positions" << nl;  \
-            }                                                                 \
-        }                                                                     \
-                                                                              \
-        /* Stream positions into send buffers */                              \
-        forAll(posTransferLists, procI)                                       \
-        {                                                                     \
-            if (posTransferLists[procI].size())                               \
-            {                                                                 \
-                UOPstream os(procI, pBufs);                                   \
-                os << posTransferLists[procI];                                \
-            }                                                                 \
-        }                                                                     \
-                                                                              \
-        pBufs.finishedSends();                                                \
-                                                                              \
-        /* Receive positions */                                               \
-        DynamicList<point> receivedPositions;                                 \
-        for (const int proci : pBufs.allProcs())                              \
-        {                                                                     \
-            if (pBufs.recvDataCount(proci))                                   \
-            {                                                                 \
-                UIPstream is(proci, pBufs);                                   \
-                List<point> positions(is);                                    \
-                receivedPositions.append(positions);                          \
-                                                                              \
-                if (cloudSupportDebug)                                        \
-                {                                                             \
-                    Pout<< "      <- proc " << proci << ": "                  \
-                        << positions.size() << " positions" << nl;            \
-                }                                                             \
-            }                                                                 \
-        }                                                                     \
-                                                                              \
-        /* Store positions for later relocation */                            \
-        pendingPositions_.set(cloudName, receivedPositions);                  \
-        globalNewSize = returnReduce(receivedPositions.size(), sumOp<label>());\
-        handled = true;                                                       \
-    }
-
-
 void Foam::cloudSupport::distributeClouds
 (
     const fvMesh& mesh,
     const labelList& distribution
 )
 {
-    // For distribution, we transfer full parcel data between processors.
-    // For intermediate clouds (kinematicCloud, thermoCloud, etc.), this
-    // preserves all parcel properties (velocity, diameter, etc.).
-    // For passiveParticleCloud, only positions are transferred.
-
     UPtrList<const cloud> allClouds = mesh.csorted<cloud>();
-
     if (allClouds.empty())
     {
         return;
@@ -402,98 +241,38 @@ void Foam::cloudSupport::distributeClouds
                 << UPstream::myProcNo() << ": " << oldSize << " parcels" << endl;
         }
 
-        // Transfer buffers
-        PstreamBuffers pBufs(UPstream::commsTypes::nonBlocking);
-
-        bool handled = false;
-        label globalNewSize = 0;
-
-        // Try each known cloud type - extract and transfer full parcel data
-        // Most derived first to get best match
-        DISTRIBUTE_PARCELS(basicReactingMultiphaseCloud, basicReactingMultiphaseParcel)
-        else DISTRIBUTE_PARCELS(basicReactingCloud, basicReactingParcel)
-        else DISTRIBUTE_PARCELS(basicThermoCloud, basicThermoParcel)
-        else DISTRIBUTE_PARCELS(basicKinematicCollidingCloud, basicKinematicCollidingParcel)
-        else DISTRIBUTE_PARCELS(basicKinematicMPPICCloud, basicKinematicMPPICParcel)
-        else DISTRIBUTE_PARCELS(basicKinematicCloud, basicKinematicParcel)
-        // passiveParticleCloud uses position-only transfer
-        else DISTRIBUTE_PASSIVE_POSITIONS(Cloud<passiveParticle>)
-
-        if (!handled)
+        autoPtr<cloudHandler>& handler = getHandler(c, mesh);
+        if (!handler)
         {
             WarningInFunction
-                << "Unknown cloud type for '" << cloudName
+                << "No handler found for cloud '" << cloudName
                 << "' - cannot distribute particles" << endl;
             continue;
         }
 
-        Info<< "    Cloud '" << cloudName
-            << "': " << globalOldSize << " -> " << globalNewSize
-            << " parcels transferred" << endl;
+        // Transfer buffers
+        PstreamBuffers pBufs(UPstream::commsTypes::nonBlocking);
 
-        if (globalOldSize != globalNewSize)
-        {
-            WarningInFunction
-                << "Parcel count changed during distribution for cloud '"
-                << cloudName << "': " << globalOldSize << " -> " << globalNewSize
-                << endl;
-        }
+        // Use handler to distribute
+        handler->distribute(c, mesh, distribution, pBufs);
+
+        Info<< "    Cloud '" << cloudName
+            << "': distributed from " << globalOldSize << " parcels" << endl;
     }
 }
-
-#undef DISTRIBUTE_PARCELS
-#undef DISTRIBUTE_PASSIVE_POSITIONS
-
-
-// Helper macro to create parcels from full parcel data for intermediate cloud types
-// This restores all parcel properties (position, velocity, diameter, etc.)
-#define RELOCATE_KINEMATIC_PARCELS(CloudType, ParcelType)                     \
-    if (auto* ptr = dynamic_cast<CloudType*>(&c))                             \
-    {                                                                         \
-        if (pendingParcelDataFull_.found(cloudName))                          \
-        {                                                                     \
-            const DynamicList<ParcelData>& dataList =                         \
-                pendingParcelDataFull_[cloudName];                            \
-            for (const ParcelData& pd : dataList)                             \
-            {                                                                 \
-                const label celli = mesh.findCell(pd.position);               \
-                if (celli >= 0)                                               \
-                {                                                             \
-                    auto* p = new ParcelType(mesh, pd.position, celli);       \
-                    /* Restore all parcel properties */                       \
-                    p->U() = pd.U;                                            \
-                    p->d() = pd.d;                                            \
-                    p->rho() = pd.rho;                                        \
-                    p->nParticle() = pd.nParticle;                            \
-                    p->age() = pd.age;                                        \
-                    p->dTarget() = pd.dTarget;                                \
-                    p->typeId() = pd.typeId;                                  \
-                    /* Note: active flag handled by constructor (true) */     \
-                    ptr->addParticle(p);                                      \
-                    nRelocated++;                                             \
-                }                                                             \
-                else                                                          \
-                {                                                             \
-                    nLost++;                                                  \
-                    if (cloudSupportDebug)                                    \
-                    {                                                         \
-                        Pout<< "      Lost parcel at " << pd.position         \
-                            << " with U=" << pd.U << " (not in mesh)" << nl;  \
-                    }                                                         \
-                }                                                             \
-            }                                                                 \
-        }                                                                     \
-        handled = true;                                                       \
-    }
 
 
 void Foam::cloudSupport::relocateClouds(const fvMesh& mesh)
 {
-    // After mesh redistribution, this function creates parcels from
-    // the full parcel data that was stored during distributeClouds().
+    // After mesh redistribution, this method uses handlers to create parcels
+    // from the data that was stored during distributeClouds().
 
-    // Check if we have full parcel data (kinematic clouds) or positions only (passive)
-    if (pendingParcelDataFull_.empty() && pendingPositions_.empty())
+    // Check if any handler has pending data
+    bool hasPendingData =
+        !kinematicCloudHandler::pendingData().empty()
+     || !passiveCloudHandler::pendingData().empty();
+
+    if (!hasPendingData)
     {
         if (cloudSupportDebug)
         {
@@ -508,130 +287,23 @@ void Foam::cloudSupport::relocateClouds(const fvMesh& mesh)
 
     Info<< "cloudSupport: Relocating clouds after distribution" << endl;
 
-    // Process each cloud that has pending full parcel data (kinematic clouds)
-    forAllIter(HashTable<DynamicList<ParcelData>>, pendingParcelDataFull_, iter)
+    // Process each cloud that might have pending data
+    UPtrList<const cloud> allClouds = mesh.csorted<cloud>();
+
+    for (const cloud& constCloud : allClouds)
     {
-        const word& cloudName = iter.key();
-        const DynamicList<ParcelData>& dataList = iter();
+        cloud& c = const_cast<cloud&>(constCloud);
 
-        if (cloudSupportDebug)
+        autoPtr<cloudHandler>& handler = getHandler(c, mesh);
+        if (handler)
         {
-            Pout<< "    Processing " << dataList.size()
-                << " parcels for cloud '" << cloudName << "'" << endl;
+            handler->relocate(c, mesh);
         }
-
-        // Find the cloud in the registry
-        auto* cloudPtr = mesh.getObjectPtr<cloud>(cloudName);
-        if (!cloudPtr)
-        {
-            WarningInFunction
-                << "Cloud '" << cloudName << "' not found in mesh registry"
-                << endl;
-            continue;
-        }
-
-        cloud& c = *cloudPtr;
-        label nRelocated = 0;
-        label nLost = 0;
-        bool handled = false;
-
-        // Try intermediate cloud types (most derived first)
-        RELOCATE_KINEMATIC_PARCELS(basicReactingMultiphaseCloud, basicReactingMultiphaseParcel)
-        else RELOCATE_KINEMATIC_PARCELS(basicReactingCloud, basicReactingParcel)
-        else RELOCATE_KINEMATIC_PARCELS(basicThermoCloud, basicThermoParcel)
-        else RELOCATE_KINEMATIC_PARCELS(basicKinematicCollidingCloud, basicKinematicCollidingParcel)
-        else RELOCATE_KINEMATIC_PARCELS(basicKinematicMPPICCloud, basicKinematicMPPICParcel)
-        else RELOCATE_KINEMATIC_PARCELS(basicKinematicCloud, basicKinematicParcel)
-
-        if (!handled)
-        {
-            WarningInFunction
-                << "Unknown cloud type for '" << cloudName
-                << "' - cannot create parcels" << endl;
-        }
-
-        const label globalRelocated = returnReduce(nRelocated, sumOp<label>());
-        const label globalLost = returnReduce(nLost, sumOp<label>());
-
-        Info<< "    Cloud '" << cloudName
-            << "': relocated " << globalRelocated << " parcels";
-
-        if (globalLost > 0)
-        {
-            Info<< " (" << globalLost << " lost)";
-        }
-        Info<< endl;
     }
 
-    // Process passive particle clouds (positions only)
-    forAllIter(HashTable<DynamicList<point>>, pendingPositions_, iter)
-    {
-        const word& cloudName = iter.key();
-        DynamicList<point>& positions = iter();
-
-        // Skip if already handled as kinematic cloud
-        if (pendingParcelDataFull_.found(cloudName))
-        {
-            continue;
-        }
-
-        if (cloudSupportDebug)
-        {
-            Pout<< "    Processing " << positions.size()
-                << " positions for passive cloud '" << cloudName << "'" << endl;
-        }
-
-        // Find the cloud in the registry
-        auto* cloudPtr = mesh.getObjectPtr<cloud>(cloudName);
-        if (!cloudPtr)
-        {
-            WarningInFunction
-                << "Cloud '" << cloudName << "' not found in mesh registry"
-                << endl;
-            continue;
-        }
-
-        cloud& c = *cloudPtr;
-        label nRelocated = 0;
-        label nLost = 0;
-
-        // passiveParticleCloud (base case)
-        if (auto* ptr = dynamic_cast<Cloud<passiveParticle>*>(&c))
-        {
-            for (const point& pos : positions)
-            {
-                const label celli = mesh.findCell(pos);
-                if (celli >= 0)
-                {
-                    ptr->addParticle(new passiveParticle(mesh, pos, celli));
-                    nRelocated++;
-                }
-                else
-                {
-                    nLost++;
-                }
-            }
-        }
-
-        const label globalRelocated = returnReduce(nRelocated, sumOp<label>());
-        const label globalLost = returnReduce(nLost, sumOp<label>());
-
-        Info<< "    Cloud '" << cloudName
-            << "': relocated " << globalRelocated << " parcels";
-
-        if (globalLost > 0)
-        {
-            Info<< " (" << globalLost << " lost)";
-        }
-        Info<< endl;
-    }
-
-    pendingParcelDataFull_.clear();
-    pendingPositions_.clear();
-    pendingParcelData_.clear();
+    // Clear any remaining handler caches (mesh topology changed)
+    handlerCache_.clear();
 }
-
-#undef RELOCATE_KINEMATIC_PARCELS
 
 
 Foam::label Foam::cloudSupport::countParticles(const fvMesh& mesh)
@@ -654,7 +326,7 @@ Foam::tmp<Foam::labelField> Foam::cloudSupport::particlesPerCell
     const fvMesh& mesh
 )
 {
-    tmp<labelField> tppCell(new labelField(mesh.nCells(), 0));
+    auto tppCell = tmp<labelField>::New(mesh.nCells(), Zero);
     labelField& ppCell = tppCell.ref();
 
     UPtrList<const cloud> allClouds = mesh.csorted<cloud>();
@@ -663,29 +335,11 @@ Foam::tmp<Foam::labelField> Foam::cloudSupport::particlesPerCell
     {
         cloud& c = const_cast<cloud&>(constCloud);
 
-        // Need type-specific iteration to access cell()
-        #define COUNT_PER_CELL(CloudType)                                     \
-            if (auto* ptr = dynamic_cast<CloudType*>(&c))                     \
-            {                                                                 \
-                for (const auto& p : *ptr)                                    \
-                {                                                             \
-                    const label celli = p.cell();                             \
-                    if (celli >= 0 && celli < ppCell.size())                  \
-                    {                                                         \
-                        ppCell[celli]++;                                      \
-                    }                                                         \
-                }                                                             \
-            }
-
-        COUNT_PER_CELL(basicReactingMultiphaseCloud)
-        else COUNT_PER_CELL(basicReactingCloud)
-        else COUNT_PER_CELL(basicThermoCloud)
-        else COUNT_PER_CELL(basicKinematicCollidingCloud)
-        else COUNT_PER_CELL(basicKinematicMPPICCloud)
-        else COUNT_PER_CELL(basicKinematicCloud)
-        else COUNT_PER_CELL(Cloud<passiveParticle>)
-
-        #undef COUNT_PER_CELL
+        autoPtr<cloudHandler>& handler = getHandler(c, mesh);
+        if (handler)
+        {
+            handler->countPerCell(c, ppCell);
+        }
     }
 
     return tppCell;

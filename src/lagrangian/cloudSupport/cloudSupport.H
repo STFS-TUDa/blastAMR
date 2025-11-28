@@ -28,11 +28,7 @@ Description
     Utility functions for Lagrangian cloud handling during mesh refinement
     and load balancing operations.
 
-    This module provides generic support for ALL OpenFOAM cloud types during
-    mesh topology changes (refinement/unrefinement) and load balancing
-    (processor redistribution).
-
-    Supported cloud types:
+    Built-in support includes:
     - passiveParticleCloud (basic tracking particles)
     - basicKinematicCloud (kinematic particles with forces)
     - basicKinematicCollidingCloud (with DEM collisions)
@@ -47,8 +43,8 @@ Description
     - distributeClouds() - Redistribute particles during load balancing
     - relocateClouds() - Recreate particles after mesh redistribution
 
-    dynamic_casts to detect cloud types at runtime and call
-    the appropriate storeGlobalPositions() method on each cloud.
+See Also
+    Foam::cloudHandler
 
 SourceFiles
     cloudSupport.C
@@ -73,29 +69,14 @@ namespace cloudSupport
 
 // NOTE: There is an "expected" order of operations:
 // storeGlobalPositions -> distributClouds -> mesh.distribute -> relocateClouds
-// so, might be better to be called in preDistribute/postDistribute routines 
-
-__attribute__((constructor))
-static void onCloudSupportload() {
-    if (!Pstream::master()) return;
-    Info<< "This library supports a specific set of OpenFOAM cloud types. "
-        << "Generic support is unfortunately not possible." << nl
-        << "Supported cloud types: ("
-        << "    basicReactingMultiphaseCloud" << nl
-        << "    basicReactingCloud" << nl
-        << "    basicThermoCloud" << nl
-        << "    basicKinematicCollidingCloud" << nl
-        << "    basicKinematicMPPICCloud" << nl
-        << "    basicKinematicCloud" << nl
-        << ")" << endl;
-}
+// so, might be better to be called in preDistribute/postDistribute routines
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-//- Store global positions for all passiveParticle clouds in the mesh
+//- Store global positions for all clouds in the mesh
 void storeGlobalPositions(const fvMesh& mesh);
 
-//- AutoMap all passiveParticle clouds after mesh topology changes
+//- AutoMap all clouds after mesh topology changes
 void autoMapClouds
 (
     const fvMesh& mesh,
