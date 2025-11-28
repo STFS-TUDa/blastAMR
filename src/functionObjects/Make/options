@@ -6,6 +6,7 @@ EXE_INC = $(DEBUG_FLAGS) \
     -I$(LIB_SRC)/parallel/decompose/decompositionMethods/lnInclude \
     -I$(LIB_SRC)/lagrangian/basic/lnInclude \
     -I../dynamicMesh/lnInclude \
+    -I../loadPolicies/lnInclude \
     -I../errorEstimators/lnInclude \
     -I../lagrangian/lnInclude
 
@@ -18,6 +19,7 @@ LIB_LIBS = \
     -llagrangian \
     -L$(FOAM_USER_LIBBIN) \
     -lamrDynamicMesh \
+    -lamrLoadPolicies \
     -lamrIndicators \
     -lamrLagrangian \
     -L$(FOAM_LIBBIN)/dummy -lptscotchDecomp -lscotchDecomp

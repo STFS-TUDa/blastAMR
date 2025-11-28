@@ -222,4 +222,16 @@ Foam::label Foam::passiveCloudHandler::countPerCell
 }
 
 
+void Foam::passiveCloudHandler::updateMesh(cloud& c)
+{
+    // Passive particle clouds have no injection models or other mesh-dependent
+    // data that needs updating after redistribution. This is a no-op.
+    if (cloudSupportDebug)
+    {
+        Pout<< "    Cloud '" << c.name()
+            << "': no mesh-dependent data to update (passive)" << endl;
+    }
+}
+
+
 // ************************************************************************* //

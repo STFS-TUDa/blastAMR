@@ -136,6 +136,9 @@ public:
         //- Count particles per cell
         virtual label countPerCell(cloud& c, labelField& ppCell) const override;
 
+        //- Update mesh-dependent data (injection cell indices, cell occupancy)
+        virtual void updateMesh(cloud& c) override;
+
 
     // Static Member Functions
 

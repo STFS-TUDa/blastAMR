@@ -301,6 +301,22 @@ void Foam::cloudSupport::relocateClouds(const fvMesh& mesh)
         }
     }
 
+    // Update mesh-dependent data (injection cell indices, cell occupancy, etc.)
+    // This is essential for injection models like ManualInjection that cache
+    // cell indices - those indices become invalid after mesh redistribution.
+    Info<< "cloudSupport: Updating mesh-dependent data after redistribution" << endl;
+
+    for (const cloud& constCloud : allClouds)
+    {
+        cloud& c = const_cast<cloud&>(constCloud);
+
+        autoPtr<cloudHandler>& handler = getHandler(c, mesh);
+        if (handler)
+        {
+            handler->updateMesh(c);
+        }
+    }
+
     // Clear any remaining handler caches (mesh topology changed)
     handlerCache_.clear();
 }

@@ -330,4 +330,27 @@ Foam::label Foam::kinematicCloudHandler::countPerCell
 }
 
 
+void Foam::kinematicCloudHandler::updateMesh(cloud& c)
+{
+    // Helper macro to call updateMesh on the correct cloud type
+    #define UPDATE_CLOUD_MESH(CloudType)                                      \
+        if (auto* ptr = dynamic_cast<CloudType*>(&c))                         \
+        {                                                                     \
+            ptr->updateMesh();                                                \
+            Info<< "    Cloud '" << c.name()                                  \
+                << "': mesh-dependent data updated" << endl;                  \
+            return;                                                           \
+        }
+
+    UPDATE_CLOUD_MESH(basicReactingMultiphaseCloud)
+    else UPDATE_CLOUD_MESH(basicReactingCloud)
+    else UPDATE_CLOUD_MESH(basicThermoCloud)
+    else UPDATE_CLOUD_MESH(basicKinematicCollidingCloud)
+    else UPDATE_CLOUD_MESH(basicKinematicMPPICCloud)
+    else UPDATE_CLOUD_MESH(basicKinematicCloud)
+
+    #undef UPDATE_CLOUD_MESH
+}
+
+
 // ************************************************************************* //

@@ -139,6 +139,12 @@ public:
         //- Count particles per cell for this cloud
         //  Returns total count for this cloud
         virtual label countPerCell(cloud& c, labelField& ppCell) const = 0;
+
+        //- Update mesh-dependent data (e.g., injection cell indices)
+        //  Called after mesh redistribution to refresh cached cell lookups.
+        //  This is essential for injection models that cache cell indices,
+        //  as those indices become invalid after mesh topology changes.
+        virtual void updateMesh(cloud& c) = 0;
 };
 
 
