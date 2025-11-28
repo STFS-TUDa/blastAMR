@@ -21,6 +21,9 @@ refiner         polyRefiner;
 errorEstimator  coded;
 name            movingBox;
 
+// optional but recommended, auto-discovered if not provided
+cloudHandler    kinematicCloudHandler;
+
 code
 #{
     // Domain: 0.1 x 0.1 x 0.01
