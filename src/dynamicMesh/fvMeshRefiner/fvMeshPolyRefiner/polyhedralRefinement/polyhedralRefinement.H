@@ -202,7 +202,8 @@ public:
         (
             const polyMesh& mesh,
             const dictionary& dict,
-            const bool read = true
+            const bool read = true,
+            const bool hexRefinementHistory = false
         );
 
 

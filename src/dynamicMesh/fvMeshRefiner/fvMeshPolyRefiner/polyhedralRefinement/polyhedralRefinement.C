@@ -2056,13 +2056,9 @@ void Foam::polyhedralRefinement::setUnrefinement
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::polyhedralRefinement::polyhedralRefinement
-(
-    const polyMesh& mesh,
-    const dictionary& dict,
-    const bool read
-)
+(const polyMesh& mesh, const dictionary& dict, const bool read, const bool hexRefinementHistory)
 :
-    refinement(mesh, dict, read)
+    refinement(mesh, dict, read, hexRefinementHistory)
 {}
 
 

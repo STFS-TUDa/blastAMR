@@ -144,6 +144,8 @@ protected:
         //- Protected patches
         wordList protectedPatches_;
 
+        //- Protect cells with refinement history from refinement/unrefinement
+        bool protectRefinementHistory_;
 
         //- Dump cellLevel for postprocessing
         Switch dumpLevel_;

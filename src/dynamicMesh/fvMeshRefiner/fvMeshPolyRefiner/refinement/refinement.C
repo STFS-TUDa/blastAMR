@@ -33,6 +33,7 @@ License
 #include "syncTools.H"
 #include "meshTools.H"
 #include "hexRef.H"
+#include "hexRefRefinementHistory.H"
 #include "dynMeshTools.H"
 #include "mapPolyMesh.H"
 #include "mapDistributePolyMesh.H"
@@ -653,7 +654,8 @@ Foam::refinement::refinement
 (
     const polyMesh& mesh,
     const dictionary& dict,
-    const bool read
+    const bool read,
+    const bool hexRefinementHistory
 )
 :
     mesh_(mesh),
@@ -705,10 +707,95 @@ Foam::refinement::refinement
 {
     if (!parentCells_.headerOk())
     {
-        globalIndex gI(mesh_.nCells());
-        forAll(parentCells_, celli)
+        if (hexRefinementHistory)
         {
-            parentCells_[celli] = gI.toGlobal(parentCells_[celli]);
+            IOobject historyIO
+            (
+                "refinementHistory",
+                mesh_.facesInstance(),
+                polyMesh::meshSubDir,
+                mesh_,
+                IOobject::READ_IF_PRESENT,
+                IOobject::NO_WRITE
+            );
+
+            if (historyIO.typeHeaderOk<hexRefRefinementHistory>(true))
+            {
+                Info<< "Reading hex refinementHistory and converting to parentCells"
+                    << endl;
+
+                // Read the hex refinement history
+                hexRefRefinementHistory history(historyIO);
+
+                // Convert to parentCells format
+                // Strategy: Find the root splitCell for each cell, and use that
+                // as a cluster ID. All cells from the same root get the same ID.
+
+                const labelList& visibleCells = history.visibleCells();
+                const DynamicList<hexRefRefinementHistory::splitCell8>& splitCells =
+                    history.splitCells();
+
+                // First pass: map each splitCell index to its root
+                labelList splitCellRoot(splitCells.size(), -1);
+                forAll(splitCells, sci)
+                {
+                    label rootIdx = sci;
+                    label currentIdx = sci;
+
+                    // Traverse up to find root
+                    while (currentIdx >= 0 && splitCells[currentIdx].parent_ >= 0)
+                    {
+                        currentIdx = splitCells[currentIdx].parent_;
+                        rootIdx = currentIdx;
+                    }
+                    splitCellRoot[sci] = rootIdx;
+                }
+
+                // Second pass: assign cluster IDs to cells
+                // Use the root splitCell index directly as cluster ID
+                // These IDs must be globally consistent (not processor-dependent)
+                globalIndex gI(mesh_.nCells());
+
+                forAll(parentCells_, celli)
+                {
+                    label splitIdx = visibleCells[celli];
+
+                    if (splitIdx >= 0)
+                    {
+                        // Cell has refinement history - use root splitCell as cluster ID
+                        // Use negative values to distinguish from regular cell IDs
+                        // and ensure global consistency
+                        label rootIdx = splitCellRoot[splitIdx];
+                        parentCells_[celli] = -(rootIdx + 1);
+                    }
+                    else
+                    {
+                        // Unrefined cell - it is its own parent (use global cell ID)
+                        parentCells_[celli] = gI.toGlobal(celli);
+                    }
+                }
+
+                Info<< "Converted hex refinementHistory to parentCells format" << nl
+                    << "  Found " << splitCells.size() << " splitCells" << nl
+                    << "  Mapped to " << mesh_.nCells() << " current cells" << endl;
+            }
+            else
+            {
+                // No history found, use identity mapping
+                globalIndex gI(mesh_.nCells());
+                forAll(parentCells_, celli)
+                {
+                    parentCells_[celli] = gI.toGlobal(parentCells_[celli]);
+                }
+            }
+        }
+        else
+        {
+            globalIndex gI(mesh_.nCells());
+            forAll(parentCells_, celli)
+            {
+                parentCells_[celli] = gI.toGlobal(parentCells_[celli]);
+            }
         }
     }
     DebugInfo<< "Created pointLevel and cellLevel" << endl;

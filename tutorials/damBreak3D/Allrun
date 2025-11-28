@@ -33,6 +33,6 @@ runApplication decomposePar -cellDist
 #cp -rT 0/polyMesh constant/polyMesh
 #cp 0/polyMesh/cellLevel 0/cellLevel
 #cp 0/polyMesh/pointLevel 0/pointLevel
-#runParallel interFoam
+runParallel interFoam
 
 #------------------------------------------------------------------------------

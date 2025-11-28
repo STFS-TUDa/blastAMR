@@ -2710,10 +2710,11 @@ Foam::prismatic2DRefinement::prismatic2DRefinement
 (
     const polyMesh& mesh,
     const dictionary& dict,
-    const bool read
+    const bool read,
+    const bool hexRefinementHistory
 )
 :
-    refinement(mesh, dict, read)
+    refinement(mesh, dict, read, hexRefinementHistory)
 {}
 
 
