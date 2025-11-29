@@ -1954,7 +1954,7 @@ Foam::labelList Foam::hexRef2D::consistentUnrefinement
     // maxSet = true: select edges to refine
 
     // Maintain boolList for edgesToUnrefine and cellsToUnrefine
-    boolList unrefineEdge(mesh_.nEdges());
+    boolList unrefineEdge(mesh_.nEdges(), false);
 
     forAll(edgesToUnrefine, i)
     {
@@ -1970,7 +1970,7 @@ Foam::labelList Foam::hexRef2D::consistentUnrefinement
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~
         const labelListList& edgeCells = mesh_.edgeCells();
 
-        boolList unrefineCell(mesh_.nCells());
+        boolList unrefineCell(mesh_.nCells(), false);
 
         forAll(unrefineEdge, edgei)
         {
@@ -2417,7 +2417,13 @@ void Foam::hexRef2D::setUnrefinement
 
             forAll(eFaces, j)
             {
-                splitFaces.insert(eFaces[j]);
+                label facei = eFaces[j];
+                // Only include internal faces - boundary faces cannot be
+                // removed by faceRemover
+                if (mesh_.isInternalFace(facei))
+                {
+                    splitFaces.insert(facei);
+                }
             }
         }
 
