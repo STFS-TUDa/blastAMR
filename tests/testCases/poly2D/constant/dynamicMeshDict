@@ -10,35 +10,41 @@ FoamFile
     version     2.0;
     format      ascii;
     arch        "LSB;label=32;scalar=64";
-    class       polyBoundaryMesh;
-    location    "constant/polyMesh";
-    object      boundary;
+    class       dictionary;
+    location    "constant";
+    object      dynamicMeshDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-3
-(
-    movingWall
-    {
-        type            wall;
-        inGroups        1(wall);
-        nFaces          20;
-        startFace       760;
-    }
-    fixedWalls
-    {
-        type            wall;
-        inGroups        1(wall);
-        nFaces          60;
-        startFace       780;
-    }
-    frontAndBack
-    {
-        type            empty;
-        inGroups        1(empty);
-        nFaces          800;
-        startFace       840;
-    }
-)
+dynamicFvMesh   adaptiveFvMesh;
+
+errorEstimator  fieldValue;
+
+fieldName       test;
+
+balance         no;
+
+refiner         polyRefiner;
+
+refineInterval  1;
+
+unrefineInterval 1;
+
+balanceInterval 1;
+
+lowerRefineLevel 0.01;
+
+unrefineLevel   0.01;
+
+nBufferLayers   2;
+
+maxRefinement   3;
+
+dumpLevel       false;
+
+protectedPatches ( );
+
+nPatchesBuffers 1;
+
 
 // ************************************************************************* //

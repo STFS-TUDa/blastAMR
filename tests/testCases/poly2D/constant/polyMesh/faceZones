@@ -10,35 +10,12 @@ FoamFile
     version     2.0;
     format      ascii;
     arch        "LSB;label=32;scalar=64";
-    class       polyBoundaryMesh;
+    class       regIOobject;
     location    "constant/polyMesh";
-    object      boundary;
+    object      faceZones;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-3
-(
-    movingWall
-    {
-        type            wall;
-        inGroups        1(wall);
-        nFaces          20;
-        startFace       760;
-    }
-    fixedWalls
-    {
-        type            wall;
-        inGroups        1(wall);
-        nFaces          60;
-        startFace       780;
-    }
-    frontAndBack
-    {
-        type            empty;
-        inGroups        1(empty);
-        nFaces          800;
-        startFace       840;
-    }
-)
+0()
 
 // ************************************************************************* //

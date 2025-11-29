@@ -1,41 +1,65 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
-| \\      /  F ield         | foam-extend: Open Source CFD                    |
-|  \\    /   O peration     | Version:     5.0                                |
-|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2506                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
     version     2.0;
-    format      binary;
+    format      ascii;
+    arch        "LSB;label=32;scalar=64";
     class       polyBoundaryMesh;
     location    "constant/polyMesh";
     object      boundary;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-3
+6
 (
-    sides
+    back
     {
         type            patch;
-        nFaces          160;
-        startFace       1771;
+        physicalType    patch;
+        nFaces          946;
+        startFace       1379;
     }
-    originalPatch
+    front
     {
-        type            empty;
-        nFaces          670;
-        startFace       1931;
+        type            patch;
+        physicalType    patch;
+        nFaces          946;
+        startFace       2325;
     }
-    otherSide
+    left
     {
-        type            empty;
-        nFaces          670;
-        startFace       2601;
+        type            patch;
+        physicalType    patch;
+        nFaces          20;
+        startFace       3271;
+    }
+    top
+    {
+        type            patch;
+        physicalType    patch;
+        nFaces          20;
+        startFace       3291;
+    }
+    right
+    {
+        type            patch;
+        physicalType    patch;
+        nFaces          20;
+        startFace       3311;
+    }
+    bottom
+    {
+        type            patch;
+        physicalType    patch;
+        nFaces          20;
+        startFace       3331;
     }
 )
-
 
 // ************************************************************************* //
