@@ -48,6 +48,7 @@ SourceFiles
 #include "fvMesh.H"
 #include "PstreamBuffers.H"
 #include "runTimeSelectionTables.H"
+#include "mapPolyMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -145,6 +146,14 @@ public:
         //  This is essential for injection models that cache cell indices,
         //  as those indices become invalid after mesh topology changes.
         virtual void updateMesh(cloud& c) = 0;
+
+        //- Remap particles after mesh refinement/unrefinement
+        //  Called after topology changes (via mapPolyMesh).
+        //  Default implementation calls the cloud's virtual autoMap method.
+        //  Override for custom error handling (e.g., to gracefully handle
+        //  particles that cannot be relocated after topology changes).
+        //  I hate that this is a virtual with default implmentation
+        virtual void autoMap(cloud& c, const mapPolyMesh& map);
 };
 
 

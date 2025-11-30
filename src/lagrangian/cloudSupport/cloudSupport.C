@@ -197,8 +197,15 @@ void Foam::cloudSupport::autoMapClouds
         cloud& c = const_cast<cloud&>(constCloud);
         const label oldSize = c.nParcels();
 
-        // autoMap is virtual in base class - call polymorphically
-        c.autoMap(map);
+        autoPtr<cloudHandler>& handler = getHandler(c, mesh);
+        if (handler)
+        {
+            handler->autoMap(c, map);
+        }
+        else
+        {
+            c.autoMap(map);
+        }
 
         Info<< "    Cloud '" << c.name()
             << "': " << oldSize << " -> " << c.nParcels()
@@ -226,17 +233,10 @@ void Foam::cloudSupport::distributeClouds
     {
         cloud& c = const_cast<cloud&>(constCloud);
         const word& cloudName = c.name();
-        const label oldSize = c.nParcels();
-        const label globalOldSize = returnReduce(oldSize, sumOp<label>());
-
-        if (globalOldSize == 0)
-        {
-            Info<< "    Cloud '" << cloudName << "': empty, skipping" << endl;
-            continue;
-        }
 
         if (cloudSupportDebug)
         {
+            const label oldSize = c.nParcels();
             Pout<< "    Cloud '" << cloudName << "' on proc "
                 << UPstream::myProcNo() << ": " << oldSize << " parcels" << endl;
         }
@@ -254,10 +254,11 @@ void Foam::cloudSupport::distributeClouds
         PstreamBuffers pBufs(UPstream::commsTypes::nonBlocking);
 
         // Use handler to distribute
+        // NOTE: cloud may appear empty if storePositions() cleared it,
+        // but handler has stored positions to distribute
         handler->distribute(c, mesh, distribution, pBufs);
 
-        Info<< "    Cloud '" << cloudName
-            << "': distributed from " << globalOldSize << " parcels" << endl;
+        Info<< "    Cloud '" << cloudName << "': distributed" << endl;
     }
 }
 

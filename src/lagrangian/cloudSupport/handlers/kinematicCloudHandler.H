@@ -90,6 +90,10 @@ private:
         //  Key: cloudName, Value: list of parcel data
         static HashTable<DynamicList<ParcelData>> pendingParcelData_;
 
+        //- Storage for parcel data during autoMap (mesh topology changes)
+        //  Key: cloudName, Value: list of parcel data
+        static HashTable<DynamicList<ParcelData>> autoMapParcelData_;
+
 
 public:
 
@@ -138,6 +142,9 @@ public:
 
         //- Update mesh-dependent data (injection cell indices, cell occupancy)
         virtual void updateMesh(cloud& c) override;
+
+        //- Remap parcels after mesh topology change (refinement/unrefinement)
+        virtual void autoMap(cloud& c, const mapPolyMesh& map) override;
 
 
     // Static Member Functions

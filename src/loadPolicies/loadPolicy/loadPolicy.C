@@ -52,9 +52,7 @@ Foam::loadPolicy::loadPolicy
     allowedImbalance_(dict.lookupOrDefault<scalar>("allowableImbalance", 0.2)),
     myLoad_(-1),
     myLoadHistory_()
-{
-    Info<< "---- Attempt at creating load Policy..." << endl;
-}
+{}
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //

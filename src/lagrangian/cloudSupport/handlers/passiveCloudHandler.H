@@ -63,6 +63,10 @@ private:
         //  Key: cloudName, Value: list of positions
         static HashTable<DynamicList<point>> pendingPositions_;
 
+        //- Storage for global positions during autoMap
+        //  Key: cloudName, Value: list of positions (stored before topology change)
+        static HashTable<DynamicList<point>> autoMapPositions_;
+
 
 public:
 
@@ -111,6 +115,10 @@ public:
 
         //- Update mesh-dependent data (no-op for passive clouds)
         virtual void updateMesh(cloud& c) override;
+
+        //- Remap particles after mesh refinement/unrefinement
+        //  Override to gracefully handle particles that cannot be located
+        virtual void autoMap(cloud& c, const mapPolyMesh& map) override;
 
 
     // Static Member Functions

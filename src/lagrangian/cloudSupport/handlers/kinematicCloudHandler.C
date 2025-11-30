@@ -57,6 +57,11 @@ namespace Foam
     // Static storage for pending parcel data
     HashTable<DynamicList<kinematicCloudHandler::ParcelData>>
         kinematicCloudHandler::pendingParcelData_;
+
+    // Static storage for autoMap parcel data; this seems necessary even though
+    // it is a bit inefficient; cannot reuse pendingParcelData for this...
+    HashTable<DynamicList<kinematicCloudHandler::ParcelData>>
+        kinematicCloudHandler::autoMapParcelData_;
 }
 
 
@@ -80,15 +85,89 @@ bool Foam::kinematicCloudHandler::canHandle(cloud& c) const
 
 void Foam::kinematicCloudHandler::storePositions(cloud& c)
 {
-    // Use dynamic_cast chain from most derived to least derived
-    // to get accurate particle count reporting
+    const word& cloudName = c.name();
 
+    // Check if we already have stored data for this cloud
+    // (this prevents overwriting when storePositions is called multiple times
+    // before autoMap has a chance to run)
+    if (autoMapParcelData_.found(cloudName) && autoMapParcelData_[cloudName].size() > 0)
+    {
+        if (cloudSupportDebug)
+        {
+            Info<< "kinematicCloudHandler::storePositions: already have "
+                << autoMapParcelData_[cloudName].size()
+                << " parcels stored for cloud '" << cloudName
+                << "', skipping" << endl;
+        }
+
+        // Still need to ensure OpenFOAM's internal autoMap doesn't fail
+        // Use macro to clear the cloud and reset globalPositionsPtr_
+        #define CLEAR_CLOUD(CloudType)                                        \
+            if (auto* ptr = dynamic_cast<CloudType*>(&c))                     \
+            {                                                                 \
+                ptr->storeGlobalPositions();                                  \
+                ptr->clear();                                                 \
+                ptr->storeGlobalPositions();                                  \
+                return;                                                       \
+            }
+
+        CLEAR_CLOUD(basicReactingMultiphaseCloud)
+        else CLEAR_CLOUD(basicReactingCloud)
+        else CLEAR_CLOUD(basicThermoCloud)
+        else CLEAR_CLOUD(basicKinematicCollidingCloud)
+        else CLEAR_CLOUD(basicKinematicMPPICCloud)
+        else CLEAR_CLOUD(basicKinematicCloud)
+
+        #undef CLEAR_CLOUD
+        return;
+    }
+
+    // Store parcel data and clear cloud for autoMap safety
     #define TRY_STORE(CloudType)                                              \
         if (auto* ptr = dynamic_cast<CloudType*>(&c))                         \
         {                                                                     \
-            ptr->storeGlobalPositions();                                      \
+            DynamicList<ParcelData> parcelDataList;                           \
+            for (const auto& p : *ptr)                                        \
+            {                                                                 \
+                ParcelData pd;                                                \
+                pd.position = p.position();                                   \
+                pd.U = p.U();                                                 \
+                pd.d = p.d();                                                 \
+                pd.rho = p.rho();                                             \
+                pd.nParticle = p.nParticle();                                 \
+                pd.age = p.age();                                             \
+                pd.dTarget = p.dTarget();                                     \
+                pd.typeId = p.typeId();                                       \
+                pd.active = p.active();                                       \
+                parcelDataList.append(pd);                                    \
+            }                                                                 \
+                                                                              \
+            /* Always store entry (even if empty) to ensure all processors */  \
+            /* take the same code path in autoMap and hit returnReduce */     \
+            /* collectively */                                                \
+            autoMapParcelData_.set(cloudName, parcelDataList);                \
+                                                                              \
+            if (cloudSupportDebug)                                            \
+            {                                                                 \
+                Info<< "kinematicCloudHandler::storePositions: stored "       \
+                    << parcelDataList.size() << " parcels for cloud '"        \
+                    << cloudName << "'" << endl;                              \
+            }                                                                 \
+                                                                              \
             Info<< "    Cloud '" << c.name() << "' (" << #CloudType           \
                 << "): " << ptr->nParcels() << " particles" << endl;          \
+                                                                              \
+            /* Call storeGlobalPositions for OpenFOAM's internal tracking */  \
+            ptr->storeGlobalPositions();                                      \
+                                                                              \
+            /* Clear the cloud so OpenFOAM's internal Cloud::autoMap */       \
+            /* (called via regIOobject callback) has no particles to */       \
+            /* process. This prevents "Particle mapped to a location */       \
+            /* outside of the mesh" errors. */                                \
+            ptr->clear();                                                     \
+                                                                              \
+            /* Reset globalPositionsPtr_ for empty cloud */                   \
+            ptr->storeGlobalPositions();                                      \
             return;                                                           \
         }
 
@@ -120,23 +199,54 @@ void Foam::kinematicCloudHandler::distribute
             /* Lists of parcel data to be transferred to each processor */    \
             List<DynamicList<ParcelData>> dataTransferLists(UPstream::nProcs()); \
                                                                               \
-            /* Extract parcel data and sort by destination processor */       \
-            for (const auto& p : *ptr)                                        \
+            /* Check if cloud was cleared by storePositions() */              \
+            /* If so, use autoMapParcelData_ instead */                       \
+            if (ptr->nParcels() == 0 && autoMapParcelData_.found(cloudName))  \
             {                                                                 \
-                const label celli = p.cell();                                 \
-                if (celli >= 0 && celli < distribution.size())                \
+                /* Use stored data (cloud was cleared for autoMap safety) */  \
+                const DynamicList<ParcelData>& storedData =                   \
+                    autoMapParcelData_[cloudName];                            \
+                                                                              \
+                if (cloudSupportDebug)                                        \
                 {                                                             \
-                    ParcelData pd;                                            \
-                    pd.position = p.position();                               \
-                    pd.U = p.U();                                             \
-                    pd.d = p.d();                                             \
-                    pd.rho = p.rho();                                         \
-                    pd.nParticle = p.nParticle();                             \
-                    pd.age = p.age();                                         \
-                    pd.dTarget = p.dTarget();                                 \
-                    pd.typeId = p.typeId();                                   \
-                    pd.active = p.active();                                   \
-                    dataTransferLists[distribution[celli]].append(pd);        \
+                    Pout<< "kinematicCloudHandler::distribute: using "        \
+                        << storedData.size() << " stored parcels for cloud '" \
+                        << cloudName << "'" << endl;                          \
+                }                                                             \
+                                                                              \
+                /* For each stored parcel, find its cell and dest proc */     \
+                for (const ParcelData& pd : storedData)                       \
+                {                                                             \
+                    const label celli = mesh.findCell(pd.position);           \
+                    if (celli >= 0 && celli < distribution.size())            \
+                    {                                                         \
+                        dataTransferLists[distribution[celli]].append(pd);    \
+                    }                                                         \
+                }                                                             \
+                                                                              \
+                /* Clear autoMapParcelData_ since we're distributing now */   \
+                autoMapParcelData_.erase(cloudName);                          \
+            }                                                                 \
+            else                                                              \
+            {                                                                 \
+                /* Extract parcel data and sort by destination processor */   \
+                for (const auto& p : *ptr)                                    \
+                {                                                             \
+                    const label celli = p.cell();                             \
+                    if (celli >= 0 && celli < distribution.size())            \
+                    {                                                         \
+                        ParcelData pd;                                        \
+                        pd.position = p.position();                           \
+                        pd.U = p.U();                                         \
+                        pd.d = p.d();                                         \
+                        pd.rho = p.rho();                                     \
+                        pd.nParticle = p.nParticle();                         \
+                        pd.age = p.age();                                     \
+                        pd.dTarget = p.dTarget();                             \
+                        pd.typeId = p.typeId();                               \
+                        pd.active = p.active();                               \
+                        dataTransferLists[distribution[celli]].append(pd);    \
+                    }                                                         \
                 }                                                             \
             }                                                                 \
                                                                               \
@@ -350,6 +460,103 @@ void Foam::kinematicCloudHandler::updateMesh(cloud& c)
     else UPDATE_CLOUD_MESH(basicKinematicCloud)
 
     #undef UPDATE_CLOUD_MESH
+}
+
+
+void Foam::kinematicCloudHandler::autoMap(cloud& c, const mapPolyMesh& map)
+{
+    const word& cloudName = c.name();
+
+    if (cloudSupportDebug)
+    {
+        Info<< "kinematicCloudHandler::autoMap: cloud '" << cloudName << "'"
+            << ", autoMapParcelData_ has " << autoMapParcelData_.size() << " entries"
+            << ", found=" << autoMapParcelData_.found(cloudName) << endl;
+    }
+
+    // Check if we have stored data for this cloud
+    if (!autoMapParcelData_.found(cloudName))
+    {
+        // No stored data - fall back to default behavior
+        if (cloudSupportDebug)
+        {
+            Info<< "kinematicCloudHandler::autoMap: no stored data for '"
+                << cloudName << "', falling back to default" << endl;
+        }
+        cloudHandler::autoMap(c, map);
+        return;
+    }
+
+    // Get stored parcel data
+    const DynamicList<ParcelData>& dataList = autoMapParcelData_[cloudName];
+
+    // Helper macro to recreate parcels from stored data
+    #define AUTOMAP_CLOUD(CloudType, ParcelType)                              \
+        if (auto* ptr = dynamic_cast<CloudType*>(&c))                         \
+        {                                                                     \
+            const fvMesh& mesh = dynamic_cast<const fvMesh&>(ptr->pMesh());   \
+                                                                              \
+            /* Trigger tet base point calculation on all processors */        \
+            (void)mesh.tetBasePtIs();                                         \
+            (void)mesh.oldCellCentres();                                      \
+                                                                              \
+            /* Clear the cloud */                                             \
+            ptr->clear();                                                     \
+                                                                              \
+            label nRelocated = 0;                                             \
+            label nLost = 0;                                                  \
+                                                                              \
+            for (const ParcelData& pd : dataList)                             \
+            {                                                                 \
+                const label celli = mesh.findCell(pd.position);               \
+                if (celli >= 0)                                               \
+                {                                                             \
+                    auto* p = new ParcelType(mesh, pd.position, celli);       \
+                    p->U() = pd.U;                                            \
+                    p->d() = pd.d;                                            \
+                    p->rho() = pd.rho;                                        \
+                    p->nParticle() = pd.nParticle;                            \
+                    p->age() = pd.age;                                        \
+                    p->dTarget() = pd.dTarget;                                \
+                    p->typeId() = pd.typeId;                                  \
+                    ptr->addParticle(p);                                      \
+                    nRelocated++;                                             \
+                }                                                             \
+                else                                                          \
+                {                                                             \
+                    nLost++;                                                  \
+                }                                                             \
+            }                                                                 \
+                                                                              \
+            const label globalRelocated = returnReduce(nRelocated, sumOp<label>()); \
+            const label globalLost = returnReduce(nLost, sumOp<label>());     \
+                                                                              \
+            Info<< "    Cloud '" << cloudName                                 \
+                << "': " << dataList.size() << " -> " << globalRelocated      \
+                << " particles";                                              \
+            if (globalLost > 0)                                               \
+            {                                                                 \
+                Info<< " (" << globalLost << " lost)";                        \
+            }                                                                 \
+            Info<< endl;                                                      \
+                                                                              \
+            /* Clear stored data for this cloud */                            \
+            autoMapParcelData_.erase(cloudName);                              \
+            return;                                                           \
+        }
+
+    // Try each cloud type (most derived first)
+    AUTOMAP_CLOUD(basicReactingMultiphaseCloud, basicReactingMultiphaseParcel)
+    else AUTOMAP_CLOUD(basicReactingCloud, basicReactingParcel)
+    else AUTOMAP_CLOUD(basicThermoCloud, basicThermoParcel)
+    else AUTOMAP_CLOUD(basicKinematicCollidingCloud, basicKinematicCollidingParcel)
+    else AUTOMAP_CLOUD(basicKinematicMPPICCloud, basicKinematicMPPICParcel)
+    else AUTOMAP_CLOUD(basicKinematicCloud, basicKinematicParcel)
+
+    #undef AUTOMAP_CLOUD
+
+    // If we get here, cloud type not recognized - clear stored data
+    autoMapParcelData_.erase(cloudName);
 }
 
 

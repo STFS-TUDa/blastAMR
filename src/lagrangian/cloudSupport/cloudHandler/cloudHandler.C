@@ -158,4 +158,13 @@ Foam::autoPtr<Foam::cloudHandler> Foam::cloudHandler::tryNew
 }
 
 
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+void Foam::cloudHandler::autoMap(cloud& c, const mapPolyMesh& map)
+{
+    // Default implementation: just call the cloud's virtual autoMap
+    c.autoMap(map);
+}
+
+
 // ************************************************************************* //

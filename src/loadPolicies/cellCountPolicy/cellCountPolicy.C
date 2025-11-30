@@ -65,8 +65,6 @@ Foam::cellCountPolicy::~cellCountPolicy()
 
 bool Foam::cellCountPolicy::canBalance()
 {
-    Info<< "--- Running cellCountPolicy::canBalance()" << endl;
-
     label nParticles = cloudSupport::countParticles(mesh_);
     myLoad_ = mesh_.nCells() + particleCoeff_ * nParticles;
 

@@ -42,6 +42,9 @@ namespace Foam
 
     // Static storage for pending positions
     HashTable<DynamicList<point>> passiveCloudHandler::pendingPositions_;
+
+    // Static storage for autoMap positions
+    HashTable<DynamicList<point>> passiveCloudHandler::autoMapPositions_;
 }
 
 
@@ -58,9 +61,65 @@ void Foam::passiveCloudHandler::storePositions(cloud& c)
 {
     if (auto* ptr = dynamic_cast<Cloud<passiveParticle>*>(&c))
     {
-        ptr->storeGlobalPositions();
+        const word& cloudName = c.name();
+
+        // Check if we already have stored positions for this cloud
+        // (this prevents overwriting when storePositions is called multiple times
+        // before autoMap has a chance to run)
+        if (autoMapPositions_.found(cloudName) && autoMapPositions_[cloudName].size() > 0)
+        {
+            if (cloudSupportDebug)
+            {
+                Info<< "passiveCloudHandler::storePositions: already have "
+                    << autoMapPositions_[cloudName].size()
+                    << " positions stored for cloud '" << cloudName
+                    << "', skipping" << endl;
+            }
+            // Still need to ensure OpenFOAM's internal autoMap doesn't fail
+            ptr->storeGlobalPositions();
+            ptr->clear();
+            ptr->storeGlobalPositions();
+            return;
+        }
+
+        // Store positions for our graceful autoMap handling
+        DynamicList<point> positions;
+        for (const passiveParticle& p : *ptr)
+        {
+            positions.append(p.position());
+        }
+
+        // Always store entry (even if empty) to ensure all processors take
+        // the same code path in autoMap and hit returnReduce collectively
+        autoMapPositions_.set(cloudName, positions);
+
+        if (cloudSupportDebug)
+        {
+            Info<< "passiveCloudHandler::storePositions: stored "
+                << positions.size() << " positions for cloud '" << cloudName
+                << "', autoMapPositions_ now has " << autoMapPositions_.size()
+                << " entries" << endl;
+        }
+
         Info<< "    Cloud '" << c.name() << "' (passiveParticleCloud): "
             << ptr->size() << " particles" << endl;
+
+        // Call storeGlobalPositions to set the internal globalPositionsPtr_
+        // This is required by OpenFOAM's internal Cloud::autoMap
+        ptr->storeGlobalPositions();
+
+        // Clear the cloud so OpenFOAM's internal Cloud::autoMap (called via
+        // regIOobject callback during mesh topology changes) has no particles
+        // to process. This works around "Particle mapped to a location outside
+        // of the mesh" errors from OpenFOAM's particle.autoMap().
+        // Our handler's autoMap will recreate particles from stored positions
+        // using mesh.findCell().
+        ptr->clear();
+
+        // Also reset globalPositionsPtr_ to work around OpenFOAM's autoMap from
+        // failing with "size mismatch" since the cloud is now empty but
+        // globalPositionsPtr_ still has the old positions.
+        ptr->storeGlobalPositions();
     }
 }
 
@@ -84,13 +143,41 @@ void Foam::passiveCloudHandler::distribute
     // Lists of positions to be transferred to each processor
     List<DynamicList<point>> posTransferLists(UPstream::nProcs());
 
-    // Extract positions and sort by destination processor
-    for (const auto& p : *ptr)
+    // Check if cloud was cleared by storePositions() - if so, use autoMapPositions_
+    if (ptr->size() == 0 && autoMapPositions_.found(cloudName))
     {
-        const label celli = p.cell();
-        if (celli >= 0 && celli < distribution.size())
+        // Use stored positions (cloud was cleared for autoMap safety)
+        const DynamicList<point>& storedPositions = autoMapPositions_[cloudName];
+
+        if (cloudSupportDebug)
         {
-            posTransferLists[distribution[celli]].append(p.position());
+            Pout<< "passiveCloudHandler::distribute: using "
+                << storedPositions.size() << " stored positions for cloud '"
+                << cloudName << "'" << endl;
+        }
+
+        // For each stored position, find its cell and determine destination processor
+        for (const point& pos : storedPositions)
+        {
+            const label celli = mesh.findCell(pos);
+            if (celli >= 0 && celli < distribution.size())
+            {
+                posTransferLists[distribution[celli]].append(pos);
+            }
+        }
+
+        // Clear autoMapPositions_ since we're distributing now
+        autoMapPositions_.erase(cloudName);
+    }
+    else
+    {
+        for (const auto& p : *ptr)
+        {
+            const label celli = p.cell();
+            if (celli >= 0 && celli < distribution.size())
+            {
+                posTransferLists[distribution[celli]].append(p.position());
+            }
         }
     }
 
@@ -231,6 +318,85 @@ void Foam::passiveCloudHandler::updateMesh(cloud& c)
         Pout<< "    Cloud '" << c.name()
             << "': no mesh-dependent data to update (passive)" << endl;
     }
+}
+
+
+void Foam::passiveCloudHandler::autoMap(cloud& c, const mapPolyMesh& map)
+{
+    const word& cloudName = c.name();
+
+    if (cloudSupportDebug)
+    {
+        Info<< "passiveCloudHandler::autoMap: cloud '" << cloudName << "'"
+            << ", autoMapPositions_ has " << autoMapPositions_.size() << " entries"
+            << ", found=" << autoMapPositions_.found(cloudName) << endl;
+    }
+
+    if (!autoMapPositions_.found(cloudName))
+    {
+        if (cloudSupportDebug)
+        {
+            Info<< "passiveCloudHandler::autoMap: no stored positions for '"
+                << cloudName << "', falling back to default" << endl;
+        }
+        cloudHandler::autoMap(c, map);
+        return;
+    }
+
+    auto* ptr = dynamic_cast<Cloud<passiveParticle>*>(&c);
+    if (!ptr)
+    {
+        cloudHandler::autoMap(c, map);
+        autoMapPositions_.erase(cloudName);
+        return;
+    }
+
+    const fvMesh& mesh = dynamic_cast<const fvMesh&>(ptr->pMesh());
+
+    // Trigger tet base point calculation on all processors
+    (void)mesh.tetBasePtIs();
+    (void)mesh.oldCellCentres();
+
+    // Get our stored positions (from before topology change)
+    const DynamicList<point>& positions = autoMapPositions_[cloudName];
+
+    // Clear the cloud
+    ptr->clear();
+
+    label nRelocated = 0;
+    label nLost = 0;
+
+    // Try to relocate each particle using stored positions
+    for (const point& pos : positions)
+    {
+        const label celli = mesh.findCell(pos);
+        if (celli >= 0)
+        {
+            ptr->addParticle(new passiveParticle(mesh, pos, celli));
+            nRelocated++;
+        }
+        else
+        {
+            nLost++;
+        }
+    }
+
+    const label globalRelocated = returnReduce(nRelocated, sumOp<label>());
+    const label globalLost = returnReduce(nLost, sumOp<label>());
+
+    if (globalLost > 0 || cloudSupportDebug)
+    {
+        Info<< "    Cloud '" << cloudName
+            << "': autoMap relocated " << globalRelocated << " particles";
+        if (globalLost > 0)
+        {
+            Info<< " (" << globalLost << " lost)";
+        }
+        Info<< endl;
+    }
+
+    // Clear stored positions for this cloud
+    autoMapPositions_.erase(cloudName);
 }
 
 
