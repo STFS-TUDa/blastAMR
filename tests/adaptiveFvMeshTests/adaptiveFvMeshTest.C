@@ -11,53 +11,11 @@
 #include "boxToCell.H"
 #include "cellSet.H"
 #include "stringOps.H"
-
-#include <csetjmp>
-#include <csignal>
-#include <cstdlib>
-#include <functional>
+#include "abortHandle.H"
 
 using namespace Foam;
 extern Time* timePtr;
 extern argList* argsPtr;
-
-// This is to make sure OpenFOAM doesn't bail on us at any point
-// Typically, some functions with abort even if you set throwExceptions; which is not cool
-// also, code might run into deadlocks or infinite loops, timeout will kill try to kill the process
-// This section protects against these scenatios
-// ********************************************************************************************** //
-jmp_buf amr_env;
-void onSigabrt(int signum)
-{
-  signal (signum, SIG_DFL);
-  longjmp (amr_env, 1);
-}
-void tryAndCatchAbortingCode(std::function<void(void)> func)
-{
-    FatalError.dontThrowExceptions();
-    if (setjmp (amr_env) == 0) {
-        signal(SIGUSR1, &onSigabrt);
-        signal(SIGUSR2, &onSigabrt);
-        signal(SIGABRT, &onSigabrt);
-        signal(SIGTERM, &onSigabrt);
-        signal(SIGQUIT, &onSigabrt);
-        func();
-        signal(SIGQUIT, SIG_DFL);
-        signal(SIGUSR1, SIG_DFL);
-        signal(SIGUSR2, SIG_DFL);
-        signal(SIGABRT, SIG_DFL);
-        signal(SIGTERM, SIG_DFL);
-    }
-    else {
-        Pout<< "Either this code tried to abort or there was"
-            " an attempt to terminate it (e.g. with a timeout) on " <<
-            Pstream::myProcNo() << "..." << endl;
-        // Need to fail the test case now
-        bool abortedOrTerminated = true;
-        REQUIRE(abortedOrTerminated == false);
-    }
-}
-// ********************************************************************************************** //
 
 TEST_CASE
 (
@@ -67,7 +25,6 @@ TEST_CASE
 {
     FatalError.throwExceptions();
     Time& runTime = *timePtr;
-    argList& args = *argsPtr;
 
     // Refinement box
     const word boxString = "(0.02 0.025 -1) (0.04 0.035 1)";
@@ -239,12 +196,11 @@ TEST_CASE
 TEST_CASE
 (
     "Check boundary protection for adaptiveFvMesh",
-    "[hex2D][hex3D][poly2D][serial][parallel]"
+    "[hex2D][hex3D][poly2D][poly3D][serial][parallel]"
 )
 {
     FatalError.throwExceptions();
     Time& runTime = *timePtr;
-    argList& args = *argsPtr;
 
     // Tested variables' matrix 
     word refiner = GENERATE("polyRefiner");
@@ -255,7 +211,7 @@ TEST_CASE
 
     word caseName = runTime.caseName();
     word patchName =
-        caseName.starts_with("hex") ? "fixedWalls" : "sides";
+        caseName.contains("poly2D") ? "left" : "fixedWalls";
 
     // Supported constant/dynamicMeshDict entries
     IStringStream is

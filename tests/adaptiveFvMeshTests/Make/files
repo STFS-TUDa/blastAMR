@@ -1,7 +1,10 @@
 /home/fadeli/repos/foamUT/tests/testDriver.C
 
+abortHandle.C
 adaptiveFvMeshTest.C
+cloudSupportTest.C
 adaptiveFvMeshCloudTest.C
-adaptiveFvMeshIntermediateCloudTest.C
+adaptiveFvMeshKinematicCloudTest.C
+adaptiveFvMeshInjectionModelTest.C
 
 EXE = ./testDriver

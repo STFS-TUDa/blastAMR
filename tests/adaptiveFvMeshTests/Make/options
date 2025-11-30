@@ -26,6 +26,7 @@ EXE_INC = -std=c++17 \
     -I../../src/lagrangian/lnInclude \
     -I../../src/errorEstimators/lnInclude \
     -I../../src/dynamicFvMesh/lnInclude \
+    -I../../src/loadPolicies/lnInclude \
 
 EXE_LIBS = \
     -lfiniteVolume \
