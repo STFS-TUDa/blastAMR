@@ -70,10 +70,10 @@ enum class TimeUnit {
     Milli
 };
 
-// Runtime-configurable time unit (default: microseconds)
+// Runtime-configurable time unit (default: milliseconds)
 // Can be set via dictionary in cpuLoadPolicy
 inline TimeUnit& profilerTimeUnit() {
-    static TimeUnit unit = TimeUnit::Micro;
+    static TimeUnit unit = TimeUnit::Milli;
     return unit;
 }
 
@@ -209,7 +209,10 @@ Ret mpiCallProfiler
     long long elapsed = std::chrono::duration_cast<Duration>(end - start).count();
 
     std::lock_guard<std::mutex> lock(mpiCommsStatsMutex);
-    if constexpr (Level == MPITypeLevel::P2PRecv) {
+    if constexpr (Level == MPITypeLevel::P2PSend) {
+        mpiCommsStats.p2pSendTime += elapsed;
+        mpiCommsStats.nP2PSends++;
+    } else if constexpr (Level == MPITypeLevel::P2PRecv) {
         mpiCommsStats.p2pRecvTime += elapsed;
         mpiCommsStats.nP2PRecvs++;
     } else if constexpr (Level == MPITypeLevel::Collective) {

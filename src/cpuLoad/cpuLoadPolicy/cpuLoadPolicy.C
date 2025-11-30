@@ -41,11 +41,13 @@ namespace Foam
 
     __attribute__((constructor))
     void onCPULoadLib() {
-        WarningInFunction
-            << "'libamrCPULoad.so' library loaded. Some MPI calls are overrided just by loading this library!"
-            << nl << tab << "This is the case even if you don't use cpuLoad for load-balancing..."
-            << nl << tab << "Of course this is possible only when this library is loaded before real MPI libs."
-            << nl << endl;
+        if (Pstream::master()) {
+            WarningInFunction
+                << "'libamrCPULoad.so' library loaded. Some MPI calls are overriden just by loading this library!"
+                << nl << tab << "This is the case even if you don't use cpuLoad for load-balancing..."
+                << nl << tab << "Of course this is possible only when this library is loaded before real MPI libs."
+                << nl << endl;
+        }
     }
 }
 
@@ -290,7 +292,7 @@ Foam::cpuLoadPolicy::cpuLoadPolicy
     loadPolicy(mesh, dict),
     maxCycleLength_(dict.lookupOrDefault("maxLBCycleLength", 5*readLabel(dict.lookup("refineInterval")))),
     isActive_(true),
-    timeUnit_(parseTimeUnit(dict.getOrDefault<word>("timeUnit", "micro")))
+    timeUnit_(parseTimeUnit(dict.getOrDefault<word>("timeUnit", "milli")))
 {
     // Set the global time unit for output formatting
     profilerTimeUnit() = timeUnit_;
@@ -311,6 +313,7 @@ Foam::cpuLoadPolicy::~cpuLoadPolicy()
 
 bool Foam::cpuLoadPolicy::canBalance()
 {
+    Info<< "--- executing canBalance()" << endl;
     if (isActive_ && mesh_.time().timeIndex() > 5) {
         // check that MPI calls where intercepted
         // it's highly unlikely that after 5 iterations, no measuremants were picked up!

@@ -95,12 +95,18 @@ bool Foam::functionObjects::loadBalancedAMR::read(const dictionary& dict)
 {
     fvMeshFunctionObject::read(dict);
 
-    // Initialize AMR with settings from dictionary
-    // (same format as adaptiveFvMesh dynamicMeshDict)
-    amrCore_.initializeAMR(dict);
+    bool doRefine = dict.getOrDefault("refine", true);
+    bool doUnrefine = dict.getOrDefault("unrefine", true);
+    bool doBalance = dict.getOrDefault("balance", false);
+
+    // Only initialize AMR if refinement/unrefinement is enabled
+    if (doRefine || doUnrefine)
+    {
+        amrCore_.initializeAMR(dict);
+    }
 
     // Initialize load balancing if balance is enabled
-    if (dict.getOrDefault("balance", false))
+    if (doBalance)
     {
         amrCore_.initializeLB(dict);
     }
