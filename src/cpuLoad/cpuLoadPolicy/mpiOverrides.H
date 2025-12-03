@@ -152,6 +152,7 @@ struct MPICommsStats {
         p2pSendTime = 0;
         p2pRecvTime = 0;
         collectiveTime = 0;
+        otherTime = 0;
         nP2PSends = 0;
         nP2PRecvs = 0;
         nCollectives = 0;
@@ -192,8 +193,9 @@ inline Ostream& operator<<(Ostream& os, const MPICommsStats& stats) {
     return stats.operator<<(os);
 }
 
-static MPICommsStats mpiCommsStats;
-std::mutex mpiCommsStatsMutex; // for safer future
+// Use inline to ensure single definition across translation units (C++17)
+inline MPICommsStats mpiCommsStats;
+inline std::mutex mpiCommsStatsMutex;
 
 enum class MPITypeLevel { P2PSend, P2PRecv, Collective, Other };
 
