@@ -47,7 +47,8 @@ Foam::amrCore::amrCore(fvMesh& mesh, const dictionary& dict)
     mesh_(mesh),
     error_(nullptr),
     refiner_(nullptr),
-    correctFluxes_()
+    correctFluxes_(),
+    expireSampledSurfacesOnLB_(false)
 {
     initializeAMR(dict);
 }
@@ -58,7 +59,8 @@ Foam::amrCore::amrCore(fvMesh& mesh)
     mesh_(mesh),
     error_(nullptr),
     refiner_(nullptr),
-    correctFluxes_()
+    correctFluxes_(),
+    expireSampledSurfacesOnLB_(false)
 {}
 
 
@@ -76,6 +78,10 @@ void Foam::amrCore::initializeAMR(const dictionary& dict)
 
     // Read flux correction settings
     readCorrectFluxes(dict);
+
+    // Read sampledSurface expiration setting (opt-in, default false)
+    expireSampledSurfacesOnLB_ =
+        dict.getOrDefault("expireSampledSurfacesOnLB", false);
 }
 
 
@@ -134,6 +140,10 @@ void Foam::amrCore::readDict(const dictionary& dict)
         error_->read(dict);
     }
     readCorrectFluxes(dict);
+
+    // Re-read sampledSurface expiration setting (allows runtime changes)
+    expireSampledSurfacesOnLB_ =
+        dict.getOrDefault("expireSampledSurfacesOnLB", false);
 }
 
 

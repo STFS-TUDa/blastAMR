@@ -79,6 +79,10 @@ protected:
         //  for flux correction after topology changes
         HashTable<word> correctFluxes_;
 
+        //- Enable expiration of sampledSurface caches after mesh topology changes
+        //  This is opt-in (default false) because it uses private member access
+        bool expireSampledSurfacesOnLB_;
+
 
     // Protected Member Functions
 
@@ -173,6 +177,12 @@ public:
             bool lbInitialized() const
             {
                 return refiner_.valid();
+            }
+
+            //- Return if sampledSurface cache expiration is enabled
+            bool expireSampledSurfacesOnLB() const
+            {
+                return expireSampledSurfacesOnLB_;
             }
 
 

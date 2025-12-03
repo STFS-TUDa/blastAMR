@@ -1672,11 +1672,8 @@ bool Foam::fvMeshHexRefiner::refine
         }
 
         reduce(hasChanged, orOp<bool>());
-        if (balance())
-        {
-            hasChanged = true;
-        }
-
+        // Note: balance() is now called independently in adaptiveFvMesh::update()
+        // to allow balanceInterval to differ from refineInterval
         mesh_.topoChanging(hasChanged);
         if (hasChanged)
         {

@@ -32,6 +32,7 @@ License
 #include "singleProcessorFaceSetsConstraint.H"
 #include "preservePatchesConstraint.H"
 #include "preserveBafflesConstraint.H"
+#include "sampledSurfaceWorkaround.H"
 
 using namespace Foam::decompositionConstraints;
 
@@ -91,7 +92,8 @@ Foam::fvMeshBalance::fvMeshBalance(fvMesh& mesh)
     //preservePatchesDict_(nullptr),
     //preserveBafflesDict_(nullptr),
     distributor_(mesh_),
-    loadPolicy_(loadPolicy::New(mesh_, dictionary{}))
+    loadPolicy_(nullptr),  // Will be set by read() with proper dict
+    expireSampledSurfacesOnLB_(false)
 {
     if (!constraintsDict_)
     {
@@ -161,7 +163,8 @@ Foam::fvMeshBalance::fvMeshBalance
     //preservePatchesDict_(nullptr),
     //preserveBafflesDict_(nullptr),
     distributor_(mesh_),
-    loadPolicy_(dict.lookupOrDefault<Switch>("balance", false) ? loadPolicy::New(mesh, dict) : nullptr)
+    loadPolicy_(dict.lookupOrDefault<Switch>("balance", false) ? loadPolicy::New(mesh, dict) : nullptr),
+    expireSampledSurfacesOnLB_(dict.getOrDefault("expireSampledSurfacesOnLB", false))
 {
     if (!constraintsDict_)
     {
@@ -220,7 +223,21 @@ void Foam::fvMeshBalance::read(const dictionary& balanceDict)
         return;
     }
 
-    loadPolicy_ = balanceDict.lookupOrDefault("balance", true) ? loadPolicy::New(mesh_, balanceDict) : nullptr;
+    // Only create/update loadPolicy if:
+    // 1. We don't have one yet, OR
+    // 2. The dict explicitly specifies a loadPolicy type
+    // This prevents overwriting a configured loadPolicy with the default
+    // when re-reading from a dict that doesn't have loadPolicy entry
+    if (!loadPolicy_ || balanceDict.found("loadPolicy"))
+    {
+        loadPolicy_ = balanceDict.lookupOrDefault("balance", true)
+            ? loadPolicy::New(mesh_, balanceDict)
+            : nullptr;
+    }
+
+    // Read sampledSurface expiration setting (opt-in, allows runtime changes)
+    expireSampledSurfacesOnLB_ =
+        balanceDict.getOrDefault("expireSampledSurfacesOnLB", false);
 
     if (!loadPolicy_)
     {
@@ -559,6 +576,13 @@ Foam::fvMeshBalance::distribute()
     }
 
     blastMeshObject::distribute<fvMesh>(mesh_, map());
+
+    // Expire sampled surfaces in surfaceFieldValue function objects.
+    // OpenFOAM's surfaceFieldValue::updateMesh() doesn't properly expire
+    // its internal sampledPtr_ cache, leading to stale face indices after
+    // mesh redistribution. This workaround accesses the private member
+    // directly to force expiration.
+    expireSampledSurfaces(mesh_.time(), expireSampledSurfacesOnLB_);
 
     // Relocate particles to their new cells after mesh distribution
     cloudSupport::relocateClouds(mesh_);

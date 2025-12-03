@@ -31,6 +31,7 @@ License
 #include "adaptiveFvMesh.H"
 #include "addToRunTimeSelectionTable.H"
 #include "cloudSupport.H"
+#include "sampledSurfaceWorkaround.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -109,6 +110,12 @@ void Foam::adaptiveFvMesh::updateMesh(const mapPolyMesh& map)
     // triggers mesh_.V() which reconstructs volumes. If done before,
     // the volume size check in fvMesh::updateMesh would fail.
     cloudSupport::autoMapClouds(*this, map);
+
+    // Expire sampled surfaces in surfaceFieldValue function objects.
+    // OpenFOAM's surfaceFieldValue::updateMesh() doesn't properly expire
+    // its internal sampledPtr_ cache, leading to stale face indices after
+    // mesh topology changes (refinement/unrefinement).
+    expireSampledSurfaces(time(), amrCore_.expireSampledSurfacesOnLB());
 }
 
 
@@ -184,6 +191,16 @@ bool Foam::adaptiveFvMesh::update()
     bool changed =
         (amrCore_.refiner().canRefine(true) || amrCore_.refiner().canUnrefine(true))
      && refine();
+
+    // Check for load balancing independently of refinement
+    // This allows balanceInterval to differ from refineInterval
+    if (amrCore_.lbInitialized() && Pstream::parRun())
+    {
+        if (amrCore_.balance())
+        {
+            changed = true;
+        }
+    }
 
     reduce(changed, orOp<bool>());
 

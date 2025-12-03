@@ -95,6 +95,10 @@ protected:
         //- Distribution
         mutable labelList distribution_;
 
+        //- Enable expiration of sampledSurface caches after mesh redistribution
+        //  This is opt-in (default false) because it uses private member access
+        bool expireSampledSurfacesOnLB_;
+
 
     // Private member functions
 

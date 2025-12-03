@@ -345,29 +345,26 @@ bool Foam::fvMeshRefiner::canBalance(const bool incr) const
 
     const Time& t = mesh_.time();
 
-    //if (force_)
-    //{}
-    //else if
-    //(
-    //    nRefinementIterations_ <= 0
-    // || t.value() < beginBalance_
-    // || t.value() > endBalance_
-    //)
-    //{
-    //    return false;
-    //}
-    //else if
-    //(
-    //    (
-    //        max(nRefinementIterations_, nUnrefinementIterations_)
-    //      % balanceInterval_
-    //    ) > 0
-    //)
-    //{
-    //    return false;
-    //}
+    // Check time window constraints
+    if (!force_)
+    {
+        if (t.value() < beginBalance_ || t.value() > endBalance_)
+        {
+            return false;
+        }
 
-    // only check if the mesh is unbalanced if everything else is ok
+        // Only check every balanceInterval_ timesteps
+        if ((nBalanceIterations_ % balanceInterval_) != 0)
+        {
+            if (incr)
+            {
+                nBalanceIterations_++;
+            }
+            return false;
+        }
+    }
+
+    // Only check if the mesh is unbalanced if everything else is ok
     if (incr)
     {
         nBalanceIterations_++;
