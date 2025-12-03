@@ -1,10 +1,3 @@
-/*--------------------------------*- C++ -*----------------------------------*\
-| =========                 |                                                 |
-| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  v2506                                 |
-|   \\  /    A nd           | Website:  www.openfoam.com                      |
-|    \\/     M anipulation  |                                                 |
-\*---------------------------------------------------------------------------*/
 FoamFile
 {
     version     2.0;
@@ -12,16 +5,6 @@ FoamFile
     class       dictionary;
     object      dynamicMeshDict;
 }
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-// Uses staticFvMesh for testing AMR without mesh motion
-// Note: dynamicMotionSolverFvMesh is incompatible with the functionObject
-// approach because the motion solver's internal point data becomes stale
-// after mesh topology changes. For combined mesh motion + AMR, use
-// adaptiveFvMesh or a custom mesh type.
-//
-// AMR/LB is handled by the loadBalancedAMR functionObject in controlDict
+// Static mesh (no motion) for testing load balancing
 dynamicFvMesh   staticFvMesh;
-
-
-// ************************************************************************* //

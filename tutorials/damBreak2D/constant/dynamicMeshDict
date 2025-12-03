@@ -66,11 +66,15 @@ code
 
 balance         yes;
 
-loadPolicy cpuLoad;
+expireSampledSurfacesOnLB yes;
+
+loadPolicy cellCount;
 
 refineInterval  50;
 
 unrefineInterval 250;
+
+balanceInterval  50;
 
 maxRefinement   2;
 

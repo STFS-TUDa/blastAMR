@@ -18,7 +18,7 @@ export FOAM_CODE_TEMPLATES=$AMRLB_PROJECT/etc/codeTemplates/dynamicCode
 if [ "$1" = "-parallel" ]; then
     runApplication decomposePar -cellDist
     runParallel $(getApplication)
-    reconstructParMesh -cellDist
+    runApplication reconstructParMesh -cellDist
     runParallel redistributePar -reconstruct -parallel
 else
     runApplication $(getApplication)

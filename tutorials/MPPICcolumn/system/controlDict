@@ -49,67 +49,55 @@ runTimeModifiable yes;
 
 functions
 {
-    // loadBalancedAMR functionObject: AMR + Load Balancing
-    // This demonstrates using AMR/LB as a functionObject with a mesh
-    // that has its own dynamic mesh type (dynamicMotionSolverFvMesh)
+    // loadBalancedAMR functionObject: Mesh Motion + Load Balancing
+    // This tutorial demonstrates:
+    // 1. Solid body mesh motion (oscillating column) via dynamicMotionSolverFvMesh
+    // 2. Particle-aware load balancing using the cellCount policy
+    // The oscillating mesh combined with moving particles creates load imbalance
+    // that triggers redistribution.
     loadBalancedAMR
     {
         type            loadBalancedAMR;
         libs            (amrFunctionObjects);
 
         // Error estimator: return 0 everywhere (no refinement/unrefinement)
-        // This simplifies testing to focus on load balancing
         errorEstimator  coded;
         name            zeroError;
-
-        // cloudHandler is auto-discovered but can be explicitly set
-        cloudHandler    kinematicCloudHandler;
-
         code
         #{
-            // Refine the lower half of the column where particles settle
-            volScalarField& err = error();
-            const vectorField& C = mesh().C();
-            forAll(err, celli)
-            {
-                if (C[celli].z() < 0.15)
-                {
-                    err[celli] = 1.0;  // Refine in lower region
-                }
-                else
-                {
-                    err[celli] = -1.0;  // Unrefine in upper region
-                }
-            }
+            // Return zero error everywhere - no refinement
+            error() = dimensionedScalar("zero", dimless, 0);
         #};
 
         // Enable load balancing (only active in parallel)
+        // updateMesh() is now called after redistribution to refresh
+        // injection model cell caches.
         balance         yes;
 
-        // Enable AMR refinement/unrefinement
-        refine          true;
-        unrefine        true;
+        // Disable AMR refinement/unrefinement - only do load balancing
+        refine          false;
+        unrefine        false;
 
-        // AMR settings (same format as adaptiveFvMesh)
+        // Load balancing settings
+        // Low interval to test load balancing frequently
+        balanceInterval 10;
+
+        // Use cellCount policy with particle-aware load calculation
+        // load = cellCount + particleCoeff * particleCount
+        loadPolicy      cellCount;
+        particleCoeff   100.0;      // Weight of each particle relative to a cell
+        allowedImbalance 0.01;      // Trigger rebalancing at 1% imbalance
+
+        // AMR settings (not used but some are required by the refiner)
         refiner         hexRefiner;
-
-        refineInterval  5;
-        unrefineInterval 5;
-        balanceInterval 5;
-
-        maxRefinement   2;
-
+        refineInterval  100;
+        maxRefinement   1;
         nBufferLayers   1;
-        nRefinementBufferLayers 1;
-        nUnrefinementBufferLayers 2;
-
-        // Thresholds (not used when refine/unrefine are false, but required)
         lowerRefineLevel 0.5;
         upperRefineLevel 1e10;
         unrefineLevel   0.5;
-        upperUnrefineLevel 1e10;
 
-        dumpLevel       no;
+        dumpLevel       yes;
     }
 }
 

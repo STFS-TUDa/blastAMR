@@ -61,5 +61,9 @@ maxAlphaCo      1;
 maxDeltaT       1;
 
 //#sinclude   "sampling"
+functions
+{
+    #include "sampling"
+}
 
 // ************************************************************************* //
