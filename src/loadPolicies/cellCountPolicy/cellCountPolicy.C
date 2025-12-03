@@ -107,7 +107,7 @@ Foam::scalarField Foam::cellCountPolicy::cellWeights()
 
 bool Foam::cellCountPolicy::willBeBeneficial
 (
-    const labelList distribution
+    const labelList& distribution
 ) {
     // Get cell weights including particle contributions
     scalarField weights = cellWeights();
