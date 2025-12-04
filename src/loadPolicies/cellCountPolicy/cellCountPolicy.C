@@ -49,9 +49,11 @@ Foam::cellCountPolicy::cellCountPolicy
 )
 :
     loadPolicy(mesh, dict),
-    particleCoeff_(dict.getOrDefault<scalar>("particleCoeff", 1.0))
+    particleCoeff_(dict.getOrDefault<scalar>("particleCoeff", 1.0)),
+    minCellsPerProc_(dict.getOrDefault<label>("minCellsPerProc", 5))
 {
     Info<< "    particleCoeff: " << particleCoeff_ << endl;
+    Info<< "    minCellsPerProc: " << minCellsPerProc_ << endl;
 }
 
 
@@ -112,18 +114,31 @@ bool Foam::cellCountPolicy::willBeBeneficial
     // Get cell weights including particle contributions
     scalarField weights = cellWeights();
 
-    // Calculate new load per processor based on the proposed distribution
+    // Calculate new load and cell count per processor
     scalarList procLoadNew(Pstream::nProcs(), 0.0);
+    labelList procCellsNew(Pstream::nProcs(), 0);
     forAll(distribution, celli)
     {
         procLoadNew[distribution[celli]] += weights[celli];
+        procCellsNew[distribution[celli]]++;
     }
     reduce(procLoadNew, sumOp<scalarList>());
+    reduce(procCellsNew, sumOp<labelList>());
 
     if (min(procLoadNew) < SMALL)
     {
         DebugInfo
             << "New distribution results in a load of ~0. Skipping" << endl;
+        return false;
+    }
+
+    label minCells = min(procCellsNew);
+    if (minCells < minCellsPerProc_)
+    {
+        Info<< "    Not balancing because distribution would leave"
+            << " processor with only " << minCells << " cells"
+            << " (minimum: " << minCellsPerProc_ << ")" << nl
+            << "    Cells per proc: " << procCellsNew << endl;
         return false;
     }
 

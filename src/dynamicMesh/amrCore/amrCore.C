@@ -221,16 +221,11 @@ bool Foam::amrCore::balance()
             << exit(FatalError);
     }
 
-    // Check if balancing is needed
-    if (!refiner_->canBalance(true))
-    {
-        return false;
-    }
-
-    // Store cloud positions before redistribution
-    cloudSupport::storeGlobalPositions(mesh_);
-
-    // Perform balance
+    // Perform balance (includes canBalance check internally)
+    // Note: Do NOT call canBalance(true) here separately as that would
+    // double-increment the balance iteration counter and cause the second
+    // call inside refiner_->balance() to fail the interval check.
+    // The storeGlobalPositions is called inside fvMeshBalance::distribute().
     bool changed = refiner_->balance();
     reduce(changed, orOp<bool>());
 

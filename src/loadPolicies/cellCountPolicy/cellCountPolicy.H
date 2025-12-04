@@ -62,6 +62,11 @@ class cellCountPolicy
         //  load = cellCount + particleCoeff * particleCount
         scalar particleCoeff_;
 
+        //- Minimum number of cells per processor to avoid degenerate meshes
+        //  If a proposed distribution would leave any processor with fewer
+        //  cells than this, the distribution is rejected
+        label minCellsPerProc_;
+
 public:
 
     //- Runtime type information
