@@ -38,17 +38,26 @@ jobs:
         with:
           detached: true
 
-      - name: Compile and Test
+      - name: Compile
         run: |
           source /usr/lib/openfoam/openfoam2506/etc/bashrc
           mkdir -p $FOAM_USER_LIBBIN
           ./Allwmake
+
+      - name: Test in serial
+        run: |
+          source /usr/lib/openfoam/openfoam2506/etc/bashrc
           git clone https://github.com/FoamScience/foamUT $FOAM_FOAMUT
-          sed -i 's/mpirun/mpirun --oversubscribe/g' $FOAM_FOAMUT/Alltest
           ln -s "$PWD"/tests/adaptiveFvMeshTests "$FOAM_FOAMUT/tests/adaptiveFvMeshTests"
           rm -rf "$FOAM_FOAMUT/cases"
           cp -r tests/testCases "$FOAM_FOAMUT/cases"
           cd $FOAM_FOAMUT || exit 1
           rm -rf tests/exampleTests
-          ./Alltest "$@"
+          ./foamut
           if [ -f $FOAM_FOAMUT/tests/adaptiveFvMeshTests/log.wmake ]; then cat $FOAM_FOAMUT/tests/adaptiveFvMeshTests/log.wmake; fi 
+
+      - name: Test in parallel
+        run: |
+          source /usr/lib/openfoam/openfoam2506/etc/bashrc
+          cd $FOAM_FOAMUT || exit 1
+          ./foamut --parallel --mpirun-options oversubscribe,use-hwthread-cpus

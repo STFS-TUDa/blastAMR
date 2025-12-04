@@ -1,4 +1,4 @@
-/home/fadeli/repos/foamUT/tests/testDriver.C
+$(FOAM_FOAMUT)/tests/testDriver.C
 
 abortHandle.C
 adaptiveFvMeshTest.C
