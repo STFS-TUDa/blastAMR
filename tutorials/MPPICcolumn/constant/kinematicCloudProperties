@@ -67,12 +67,10 @@ subModels
             type            manualInjection;
             massTotal       0;
             parcelBasisType fixed;
-            nParticle       750;
+            nParticle       100;
             SOI             0;
             positionsFile   "kinematicCloudPositions";
             U0              (0 0 0);
-            // Allow positions that end up on other processors after LB
-            // to be silently ignored (each proc handles its own positions)
             ignoreOutOfBounds true;
             sizeDistribution
             {

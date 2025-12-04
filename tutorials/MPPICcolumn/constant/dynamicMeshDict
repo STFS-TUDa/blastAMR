@@ -6,5 +6,9 @@ FoamFile
     object      dynamicMeshDict;
 }
 
-// Static mesh (no motion) for testing load balancing
-dynamicFvMesh   staticFvMesh;
+dynamicFvMesh   dynamicMotionSolverFvMesh;
+
+motionSolver    solidBody;
+solidBodyMotionFunction  oscillatingLinearMotion;
+amplitude       (0.3 0 0);
+omega           0.1; // rad/s  (.5 rps)

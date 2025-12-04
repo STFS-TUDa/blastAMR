@@ -49,55 +49,24 @@ runTimeModifiable yes;
 
 functions
 {
-    // loadBalancedAMR functionObject: Mesh Motion + Load Balancing
-    // This tutorial demonstrates:
-    // 1. Solid body mesh motion (oscillating column) via dynamicMotionSolverFvMesh
-    // 2. Particle-aware load balancing using the cellCount policy
-    // The oscillating mesh combined with moving particles creates load imbalance
-    // that triggers redistribution.
     loadBalancedAMR
     {
         type            loadBalancedAMR;
         libs            (amrFunctionObjects);
-
-        // Error estimator: return 0 everywhere (no refinement/unrefinement)
-        errorEstimator  coded;
-        name            zeroError;
-        code
-        #{
-            // Return zero error everywhere - no refinement
-            error() = dimensionedScalar("zero", dimless, 0);
-        #};
-
-        // Enable load balancing (only active in parallel)
-        // updateMesh() is now called after redistribution to refresh
-        // injection model cell caches.
         balance         yes;
-
-        // Disable AMR refinement/unrefinement - only do load balancing
         refine          false;
         unrefine        false;
 
-        // Load balancing settings
-        // Low interval to test load balancing frequently
-        balanceInterval 10;
+        allowedImbalance 0.10;      // Trigger rebalancing at 50% imbalance
+        balanceInterval 100;
+        minCellsPerProc 4;
 
         // Use cellCount policy with particle-aware load calculation
         // load = cellCount + particleCoeff * particleCount
         loadPolicy      cellCount;
-        particleCoeff   100.0;      // Weight of each particle relative to a cell
-        allowedImbalance 0.01;      // Trigger rebalancing at 1% imbalance
+        particleCoeff   1000.0;      // Weight of each particle relative to a cell
 
-        // AMR settings (not used but some are required by the refiner)
-        refiner         hexRefiner;
-        refineInterval  100;
-        maxRefinement   1;
-        nBufferLayers   1;
-        lowerRefineLevel 0.5;
-        upperRefineLevel 1e10;
-        unrefineLevel   0.5;
-
-        dumpLevel       yes;
+        dumpLevel       no;
     }
 }
 
