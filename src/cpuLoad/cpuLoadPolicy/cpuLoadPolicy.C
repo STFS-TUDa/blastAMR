@@ -41,11 +41,13 @@ namespace Foam
 
     __attribute__((constructor))
     void onCPULoadLib() {
-        WarningInFunction
-            << "'libamrCPULoad.so' library loaded. Some MPI calls are overrided just by loading this library!"
-            << nl << tab << "This is the case even if you don't use cpuLoad for load-balancing..."
-            << nl << tab << "Of course this is possible only when this library is loaded before real MPI libs."
-            << nl << endl;
+        if (Pstream::master()) {
+            WarningInFunction
+                << "'libamrCPULoad.so' library loaded. Some MPI calls are overriden just by loading this library!"
+                << nl << tab << "This is the case even if you don't use cpuLoad for load-balancing..."
+                << nl << tab << "Of course this is possible only when this library is loaded before real MPI libs."
+                << nl << endl;
+        }
     }
 }
 
@@ -263,6 +265,24 @@ WRAP_MPI_FUNCTION(
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
+namespace
+{
+    // Helper to parse time unit from string
+    Foam::TimeUnit parseTimeUnit(const Foam::word& unitStr)
+    {
+        if (unitStr == "nano" || unitStr == "nanoseconds" || unitStr == "ns")
+        {
+            return Foam::TimeUnit::Nano;
+        }
+        else if (unitStr == "milli" || unitStr == "milliseconds" || unitStr == "ms")
+        {
+            return Foam::TimeUnit::Milli;
+        }
+        // Default to microseconds
+        return Foam::TimeUnit::Micro;
+    }
+}
+
 Foam::cpuLoadPolicy::cpuLoadPolicy
 (
     const fvMesh& mesh,
@@ -270,9 +290,21 @@ Foam::cpuLoadPolicy::cpuLoadPolicy
 )
 :
     loadPolicy(mesh, dict),
-    maxCycleLength_(dict.lookupOrDefault("maxLBCycleLength", 5*readLabel(dict.lookup("refineInterval")))),
-    isActive_(true)
+    maxCycleLength_(dict.getOrDefault<label>("maxLBCycleLength", 50)),
+    lastResetTimeIndex_(0),
+    isActive_(true),
+    timeUnit_(parseTimeUnit(dict.getOrDefault<word>("timeUnit", "milli")))
 {
+    // Set the global time unit for output formatting
+    profilerTimeUnit() = timeUnit_;
+
+    Info<< "    maxLBCycleLength: " << maxCycleLength_ << " timesteps" << nl
+        << "    timeUnit: " << timeUnitSuffix(timeUnit_) << endl;
+
+    // Synchronize all processors before resetting cycleStart
+    // This ensures all processors start measurement from approximately
+    // the same wall-clock time, even if construction happens at different times
+    UPstream::barrier(UPstream::worldComm);
     mpiCommsStats.reset();
 }
 
@@ -287,65 +319,142 @@ Foam::cpuLoadPolicy::~cpuLoadPolicy()
 
 bool Foam::cpuLoadPolicy::canBalance()
 {
-    if (isActive_ && mesh_.time().timeIndex() > 5) {
-        // check that MPI calls where intercepted
-        // it's highly unlikely that after 5 iterations, no measuremants were picked up!
-        if (
-            returnReduce(mpiCommsStats.nP2PSends, sumOp<int>()) == 0 &&
-            returnReduce(mpiCommsStats.nP2PRecvs, sumOp<int>()) == 0 &&
-            returnReduce(mpiCommsStats.nCollectives, sumOp<int>()) == 0 &&
-            returnReduce(mpiCommsStats.nOthers, sumOp<int>()) == 0
-        ) {
+    const label currentTimeIndex = mesh_.time().timeIndex();
+
+    // Increment timestep counter in cycle
+    mpiCommsStats.nTSInCycle++;
+
+    // Compute elapsed wall-clock time since last reset
+    auto now = std::chrono::high_resolution_clock::now();
+    long long elapsed = std::chrono::duration_cast<Duration>(now - mpiCommsStats.cycleStart).count();
+
+    if (elapsed == 0)
+    {
+        return false;
+    }
+
+    // Total MPI communication time (waiting/transferring, not computing)
+    long long totalMPITime = mpiCommsStats.p2pSendTime
+                           + mpiCommsStats.p2pRecvTime
+                           + mpiCommsStats.collectiveTime
+                           + mpiCommsStats.otherTime;
+
+    // Computational load = wall-clock time - MPI communication time
+    // This represents time spent actually computing (not waiting on MPI)
+    // Ensure non-negative (edge case protection)
+    myLoad_ = std::max(0LL, elapsed - totalMPITime);
+
+    // Check if we should reset stats (every maxCycleLength timesteps)
+    // Use synchronized decision across all processors to avoid cycleStart drift
+    const label stepsSinceReset = currentTimeIndex - lastResetTimeIndex_;
+    const bool localShouldReset = (stepsSinceReset >= maxCycleLength_)
+                               || (mpiCommsStats.nTSInCycle > maxCycleLength_);
+
+    // Synchronize reset decision - if ANY processor needs reset, ALL reset
+    const bool shouldReset = returnReduce(localShouldReset, orOp<bool>());
+
+    if (shouldReset)
+    {
+        // Report in the configured time unit
+        long long divisor = timeUnitDivisor(timeUnit_);
+        Pout<< "Load measurement for interval [" << lastResetTimeIndex_
+            << ", " << currentTimeIndex << "] (" << stepsSinceReset << " timesteps):"
+            << nl << "  Wall-clock time: " << label(elapsed/divisor) << " " << timeUnitSuffix(timeUnit_)
+            << nl << "  MPI comm time:   " << label(totalMPITime/divisor) << " " << timeUnitSuffix(timeUnit_)
+            << nl << "  Compute load:    " << label(myLoad_/divisor) << " " << timeUnitSuffix(timeUnit_)
+            << nl << mpiCommsStats << endl;
+
+        // Synchronize all processors before resetting cycleStart
+        // This ensures all processors start their new measurement interval
+        // at approximately the same wall-clock time
+        UPstream::barrier(UPstream::worldComm);
+
+        // Reset stats and start new measurement interval
+        mpiCommsStats.reset();
+        lastResetTimeIndex_ = currentTimeIndex;
+    }
+
+    // Check MPI interception is working (after enough timesteps)
+    // Once verified, disable this check to avoid repeated overhead
+    if (isActive_ && currentTimeIndex > 5)
+    {
+        bool hasMPIActivity =
+            returnReduce(mpiCommsStats.nP2PSends, sumOp<int>()) > 0 ||
+            returnReduce(mpiCommsStats.nP2PRecvs, sumOp<int>()) > 0 ||
+            returnReduce(mpiCommsStats.nCollectives, sumOp<int>()) > 0 ||
+            returnReduce(mpiCommsStats.nOthers, sumOp<int>()) > 0;
+
+        if (hasMPIActivity)
+        {
+            // MPI interception is working, no need to check again
+            isActive_ = false;
+        }
+        else if (currentTimeIndex > lastResetTimeIndex_ + 2)
+        {
+            // Give a few timesteps after reset before failing
             FatalErrorInFunction
                 << "Seems like MPI call interception is not working. Make sure to preload the intercepting libraries:"
                 << nl << nl << "LD_PRELOAD=\"$FOAM_USER_LIBBIN/libamrLoadPolicies.so $FOAM_USER_LIBBIN/libamrCPULoad.so\" <your-solver-command>"
-                << nl << nl<< "Library loading order is important, libamrCPULoad.so must load before MPI libs."
+                << nl << nl << "Library loading order is important, libamrCPULoad.so must load before MPI libs."
                 << nl << "So, no point in continuing..."
                 << abort(FatalError);
         }
     }
-    // Stat a new measuring cycle when LB is viable, bound by maxCycleLength_ of
-    // time steps
-    bool newCycle = !returnReduce(stillSameCycle(), orOp<bool>());
-    if (mpiCommsStats.nTSInCycle > maxCycleLength_) newCycle = true;
-    auto now = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration_cast<Duration>(now-mpiCommsStats.cycleStart).count();
-    if (elapsed == 0) return false;
-    if (newCycle) myLoad_ = 0;
-    myLoad_ += elapsed
-        - mpiCommsStats.p2pSendTime - mpiCommsStats.p2pRecvTime
-        - mpiCommsStats.collectiveTime - mpiCommsStats.otherTime;
-    scalar idealLoad = returnReduce(myLoad_, sumOp<scalar>()) / scalar(Pstream::nProcs());
+
+    // Calculate imbalance across processors
+    scalar totalLoad = returnReduce(myLoad_, sumOp<scalar>());
+    scalar idealLoad = totalLoad / scalar(Pstream::nProcs());
+
+    // Protect against division by zero (e.g., at simulation start or after reset)
+    if (idealLoad < SMALL)
+    {
+        Pout<< "Maximum imbalance found = 0 % (no meaningful load yet)" << endl;
+        return false;
+    }
+
     scalar maxImbalance = returnReduce(mag(myLoad_ - idealLoad) / idealLoad, maxOp<scalar>());
+
     Pout<< "Maximum imbalance found = " << 100*maxImbalance << " %" << endl;
-    Pout<< "Current processor load stats:" << nl << mpiCommsStats << endl;
+
     if (maxImbalance < allowedImbalance_)
     {
         return false;
     }
-    // start new cylce only if rebalancing...
-    mpiCommsStats.reset();
-    myLoadHistory_.set(mesh_.time().timeIndex(), myLoad_);
-    //Pout << "Last history datapoint: " << myLoadHistory_.toc() << tab << myLoadHistory_[myLoadHistory_.toc().last()] << endl;
-    if (!myLoadHistory_.empty()) {
-        Pout<< "Current processor load computed from Time index = "
-        << myLoadHistory_.toc().last()
-        << " to Time index = " << mesh_.time().timeIndex() << "s"
-        << nl;
-    }
+
+    // Record load history
+    myLoadHistory_.set(currentTimeIndex, myLoad_);
+
+    long long divisor = timeUnitDivisor(timeUnit_);
+    Pout<< "Load balancing triggered at Time index = " << currentTimeIndex
+        << ", myLoad = " << label(myLoad_/divisor) << " " << timeUnitSuffix(timeUnit_) << nl;
+
     return true;
 }
 
 Foam::scalarField Foam::cpuLoadPolicy::cellWeights() {
-    label idealLoad = returnReduce(myLoad_, sumOp<scalar>()) / scalar(Pstream::nProcs());
+    scalar totalLoad = returnReduce(myLoad_, sumOp<scalar>());
+    scalar idealLoad = totalLoad / scalar(Pstream::nProcs());
+
+    // Protect against division by zero
+    if (idealLoad < SMALL || myLoad_ < SMALL)
+    {
+        return scalarField(mesh_.nCells(), 1.0);
+    }
+
     scalar imbalance = mag(myLoad_ - idealLoad) / idealLoad;
-    if (myLoad_ > idealLoad) imbalance = 1.0/imbalance;
-    return scalarField(mesh_.nCells(), myLoad_ != 0 ? imbalance : 1.0);
+
+    // Protect against division by zero when inverting imbalance
+    if (myLoad_ > idealLoad && imbalance > SMALL)
+    {
+        imbalance = 1.0/imbalance;
+    }
+
+    return scalarField(mesh_.nCells(), imbalance > SMALL ? imbalance : 1.0);
 }
 
 bool Foam::cpuLoadPolicy::willBeBeneficial
 (
-    const labelList distribution
+    const labelList& distribution
 ) {
     // WARN: hard to know beforehand which cells will be beneficial
     // to move; it's a very dynamic property anyway, so no attempt

@@ -3,16 +3,28 @@ EXE_INC = $(DEBUG_FLAGS) \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/dynamicMesh/lnInclude \
     -I$(LIB_SRC)/dynamicFvMesh/lnInclude \
+    -I$(LIB_SRC)/lagrangian/basic/lnInclude \
+    -I$(LIB_SRC)/sampling/lnInclude \
+    -I$(LIB_SRC)/surfMesh/lnInclude \
+    -I$(LIB_SRC)/fileFormats/lnInclude \
+    -I$(LIB_SRC)/functionObjects/field/lnInclude \
     -I../loadPolicies/lnInclude \
     -I../dynamicMesh/lnInclude \
-    -I../errorEstimators/lnInclude
+    -I../dynamicMesh/sampledSurfaceWorkaround \
+    -I../errorEstimators/lnInclude \
+    -I../lagrangian/lnInclude
 
 LIB_LIBS = \
     -lmeshTools \
     -lfiniteVolume \
     -ldynamicMesh \
     -ldynamicFvMesh \
+    -llagrangian \
+    -lsampling \
+    -lsurfMesh \
+    -lfieldFunctionObjects \
     -L$(FOAM_USER_LIBBIN) \
     -lamrLoadPolicies \
     -lamrDynamicMesh \
-    -lamrIndicators
+    -lamrIndicators \
+    -lamrLagrangian

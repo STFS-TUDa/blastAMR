@@ -42,7 +42,6 @@ License
 #include "cellSet.H"
 #include "wedgePolyPatch.H"
 #include "hexRef3D.H"
-//#include "parcelCloud.H"
 #include "hexRefRefinementHistoryConstraint.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -188,6 +187,11 @@ Foam::fvMeshHexRefiner::refine
     // Play refinement commands into mesh changer.
     meshCutter_->setRefinement(cellsToRefine, meshMod);
 
+    // Clear moving flag. This is required since geometry calculation
+    // might get triggered when doing processor patches.
+    // (same as dynamicRefineFvMesh::refine)
+    mesh_.moving(false);
+
     // Create mesh (with inflation), return map from old to new mesh.
     //autoPtr<mapPolyMesh> map = meshMod.changeMesh(mesh_, true);
     autoPtr<mapPolyMesh> map = meshMod.changeMesh(mesh_, false);
@@ -220,6 +224,9 @@ Foam::fvMeshHexRefiner::refine
     //    cellTreePtr_.clear();
 
     // Update fields
+    // Note: mesh_.updateMesh(map) internally calls mapClouds() which handles
+    // cloud remapping. We do NOT call fvMeshRefiner::updateMesh here as that
+    // would result in double cloud remapping.
     mesh_.updateMesh(map);
 
     // Update numbering of protectedCell_
@@ -263,6 +270,10 @@ Foam::fvMeshHexRefiner::unrefine
     Map<label> faceToSplitPoint(0);
     meshCutter_->calcFaceToSplitPoint(splitElems, faceToSplitPoint);
 
+    // Clear moving flag. This is required since geometry calculation
+    // might get triggered when doing processor patches.
+    // (same as dynamicRefineFvMesh::unrefine)
+    mesh_.moving(false);
 
     // Change mesh and generate map.
     //autoPtr<mapPolyMesh> map = meshMod.changeMesh(mesh_, true);
@@ -274,6 +285,9 @@ Foam::fvMeshHexRefiner::unrefine
         << endl;
 
     // Update fields
+    // Note: mesh_.updateMesh(map) internally calls mapClouds() which handles
+    // cloud remapping. We do NOT call fvMeshRefiner::updateMesh here as that
+    // would result in double cloud remapping.
     mesh_.updateMesh(map);
 
     // Update numbering of protectedCell_
@@ -1658,11 +1672,8 @@ bool Foam::fvMeshHexRefiner::refine
         }
 
         reduce(hasChanged, orOp<bool>());
-        if (balance())
-        {
-            hasChanged = true;
-        }
-
+        // Note: balance() is now called independently in adaptiveFvMesh::update()
+        // to allow balanceInterval to differ from refineInterval
         mesh_.topoChanging(hasChanged);
         if (hasChanged)
         {

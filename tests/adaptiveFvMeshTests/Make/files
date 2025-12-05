@@ -1,5 +1,10 @@
 $(FOAM_FOAMUT)/tests/testDriver.C
 
+abortHandle.C
 adaptiveFvMeshTest.C
+cloudSupportTest.C
+adaptiveFvMeshCloudTest.C
+adaptiveFvMeshKinematicCloudTest.C
+adaptiveFvMeshInjectionModelTest.C
 
 EXE = ./testDriver

@@ -49,7 +49,8 @@ License
 #include "wedgePolyPatch.H"
 #include "hexRef3D.H"
 #include "RefineBalanceMeshObject.H"
-//#include "parcelCloud.H"
+#include "cloudSupport.H"
+#include "fvMeshBalance.H"
 #include "extrapolatedCalculatedFvPatchField.H"
 #include "DDD.H"
 
@@ -256,19 +257,12 @@ void Foam::fvMeshRefiner::setMaxCellLevel(labelList& maxCellLevel) const
 
 bool Foam::fvMeshRefiner::preUpdate()
 {
-    //if (canRefine() || canUnrefine())
-    //{
-    //    HashTable<parcelCloud*> clouds
-    //    (
-    //        mesh_.lookupClass<parcelCloud>()
-    //    );
-    //    forAllIter(HashTable<parcelCloud*>, clouds, iter)
-    //    {
-    //        iter()->storeGlobalPositions();
-    //    }
-    //    return true;
-    //}
-    return canRefine() || canUnrefine();
+    if (canRefine() || canUnrefine())
+    {
+        cloudSupport::storeGlobalPositions(mesh_);
+        return true;
+    }
+    return false;
 }
 
 
@@ -351,29 +345,26 @@ bool Foam::fvMeshRefiner::canBalance(const bool incr) const
 
     const Time& t = mesh_.time();
 
-    //if (force_)
-    //{}
-    //else if
-    //(
-    //    nRefinementIterations_ <= 0
-    // || t.value() < beginBalance_
-    // || t.value() > endBalance_
-    //)
-    //{
-    //    return false;
-    //}
-    //else if
-    //(
-    //    (
-    //        max(nRefinementIterations_, nUnrefinementIterations_)
-    //      % balanceInterval_
-    //    ) > 0
-    //)
-    //{
-    //    return false;
-    //}
+    // Check time window constraints
+    if (!force_)
+    {
+        if (t.value() < beginBalance_ || t.value() > endBalance_)
+        {
+            return false;
+        }
 
-    // only check if the mesh is unbalanced if everything else is ok
+        // Only check every balanceInterval_ timesteps
+        if ((nBalanceIterations_ % balanceInterval_) != 0)
+        {
+            if (incr)
+            {
+                nBalanceIterations_++;
+            }
+            return false;
+        }
+    }
+
+    // Only check if the mesh is unbalanced if everything else is ok
     if (incr)
     {
         nBalanceIterations_++;
@@ -626,7 +617,6 @@ bool Foam::fvMeshRefiner::balance()
     balancer_.read(balanceDict);
 
     // Part 2 - Load Balancing
-    Info << "---------------- CAN I BALANCE? " << canBalance() << endl;
     if (canBalance(true))
     {
         isBalancing_ = true;
@@ -695,6 +685,18 @@ void Foam::fvMeshRefiner::updateMesh(const mapPolyMesh& mpm)
     {
         mesh_.clearGeomNotOldVol();
     }
+
+    // Note: Cloud remapping is NOT done here because this callback is invoked
+    // during fvMesh::updateMesh, before volume fields are properly sized.
+    // Calling cloud.autoMap would trigger mesh_.V() which reconstructs volumes
+    // with the NEW mesh size, causing the check in fvMesh::updateMesh to fail
+    // ("V:newSize not equal to the number of old cells oldSize").
+    //
+    // Cloud remapping is handled by:
+    // - adaptiveFvMesh route: adaptiveFvMesh::updateMesh calls amrCore_.updateMesh
+    //   BEFORE fvMesh::updateMesh, which correctly sequences the operations
+    // - loadBalancedAMR route: amrCore::refine() calls autoMapClouds AFTER
+    //   the refiner finishes and mesh_.updateMesh has completed
 }
 
 

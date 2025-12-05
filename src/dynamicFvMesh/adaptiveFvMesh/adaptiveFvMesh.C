@@ -30,13 +30,8 @@ License
 
 #include "adaptiveFvMesh.H"
 #include "addToRunTimeSelectionTable.H"
-#include "dimensionSets.H"
-#include "surfaceInterpolate.H"
-#include "volFields.H"
-#include "surfaceFields.H"
-#include "sigFpe.H"
-#include "fvMeshPolyRefiner.H"
-#include "fvMeshHexRefiner.H"
+#include "cloudSupport.H"
+#include "sampledSurfaceWorkaround.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -96,217 +91,31 @@ void Foam::adaptiveFvMesh::readDict()
     (
         dynamicMeshDict().optionalSubDict(typeName + "Coeffs")
     );
-    refiner_->readDict(refineDict);
-    error_->read(refineDict);
 
-    if (!refineDict.found("correctFluxes"))
-    {
-        return;
-    }
-
-    List<Pair<word>> fluxVelocities = List<Pair<word>>
-    (
-        refineDict.lookup("correctFluxes")
-    );
-    // Rework into hashtable.
-    correctFluxes_.resize(fluxVelocities.size());
-    forAll(fluxVelocities, i)
-    {
-        correctFluxes_.insert(fluxVelocities[i][0], fluxVelocities[i][1]);
-    }
+    // Delegate to amrCore
+    amrCore_.readDict(refineDict);
 }
 
 
 void Foam::adaptiveFvMesh::updateMesh(const mapPolyMesh& map)
 {
-    // Update fluxes
-    {
-        const labelList& faceMap = map.faceMap();
-        const labelList& reverseFaceMap = map.reverseFaceMap();
+    // Delegate flux correction and refiner update to amrCore
+    amrCore_.updateMesh(map);
 
-        // Storage for any master faces. These will be the original faces
-        // on the coarse cell that get split into four (or rather the
-        // master face gets modified and three faces get added from the master)
-        labelHashSet masterFaces;
-
-        forAll(faceMap, facei)
-        {
-            label oldFacei = faceMap[facei];
-
-            if (oldFacei >= 0)
-            {
-                label masterFacei = reverseFaceMap[oldFacei];
-
-                if (masterFacei < 0)
-                {
-                    FatalErrorInFunction
-                        << "Problem: should not have removed faces"
-                        << " when refining."
-                        << nl << "face:" << facei << abort(FatalError);
-                }
-                else if (masterFacei != facei)
-                {
-                    masterFaces.insert(masterFacei);
-                }
-            }
-        }
-        if (debug)
-        {
-            Pout<< "Found " << masterFaces.size() << " split faces " << endl;
-        }
-
-        // Check if it's a flux field through dims
-        auto isFlux = [&](const surfaceScalarField& df)
-        {
-            return
-                df.dimensions() == dimArea*dimVelocity
-             || df.dimensions() == dimArea*dimVelocity*dimDensity;
-        };
-        HashTable<surfaceScalarField*> fluxes
-        (
-            lookupClass<surfaceScalarField>()
-        );
-        forAllIter(HashTable<surfaceScalarField*>, fluxes, iter)
-        {
-
-            if (!isFlux(*iter()))
-            {
-                continue;
-            }
-            if (!correctFluxes_.found(iter.key()))
-            {
-                continue;
-            }
-
-            const word& UName = correctFluxes_[iter.key()];
-
-            if (UName == "none")
-            {
-                continue;
-            }
-
-            if (UName == "NaN")
-            {
-                Pout<< "Setting surfaceScalarField " << iter.key()
-                    << " to NaN" << endl;
-
-                surfaceScalarField& phi = *iter();
-
-                sigFpe::fillNan(phi.primitiveFieldRef());
-
-                continue;
-            }
-
-            if (debug)
-            {
-                Pout<< "Mapping flux " << iter.key()
-                    << " using interpolated flux " << UName
-                    << endl;
-            }
-
-            surfaceScalarField& phi = *iter();
-            const surfaceScalarField phiU
-            (
-                fvc::interpolate
-                (
-                    lookupObject<volVectorField>(UName)
-                )
-              & Sf()
-            );
-
-            // Recalculate new internal faces.
-            for (label facei = 0; facei < nInternalFaces(); facei++)
-            {
-                label oldFacei = faceMap[facei];
-
-                if (oldFacei == -1)
-                {
-                    // Inflated/appended
-                    phi[facei] = phiU[facei];
-                }
-                else if (reverseFaceMap[oldFacei] != facei)
-                {
-                    // face-from-masterface
-                    phi[facei] = phiU[facei];
-                }
-            }
-
-            // Recalculate new boundary faces.
-            surfaceScalarField::Boundary& phiBf =
-                phi.boundaryFieldRef();
-            forAll(phiBf, patchi)
-            {
-                fvsPatchScalarField& patchPhi = phiBf[patchi];
-                const fvsPatchScalarField& patchPhiU =
-                    phiU.boundaryField()[patchi];
-
-                label facei = patchPhi.patch().start();
-
-                forAll(patchPhi, i)
-                {
-                    label oldFacei = faceMap[facei];
-
-                    if (oldFacei == -1)
-                    {
-                        // Inflated/appended
-                        patchPhi[i] = patchPhiU[i];
-                    }
-                    else if (reverseFaceMap[oldFacei] != facei)
-                    {
-                        // face-from-masterface
-                        patchPhi[i] = patchPhiU[i];
-                    }
-
-                    facei++;
-                }
-            }
-
-            // Update master faces
-            forAllConstIter(labelHashSet, masterFaces, iter)
-            {
-                label facei = iter.key();
-
-                if (isInternalFace(facei))
-                {
-                    phi[facei] = phiU[facei];
-                }
-                else
-                {
-                    label patchi = boundaryMesh().whichPatch(facei);
-
-                    if (!isA<emptyPolyPatch>(boundaryMesh()[patchi]))
-                    {
-                        label i = facei - boundaryMesh()[patchi].start();
-
-                        const fvsPatchScalarField& patchPhiU =
-                            phiU.boundaryField()[patchi];
-
-                        fvsPatchScalarField& patchPhi = phiBf[patchi];
-
-                        patchPhi[i] = patchPhiU[i];
-                    }
-                }
-            }
-        }
-    }
-
+    // Call parent updateMesh
     fvMesh::updateMesh(map);
 
-    // Bugfix: update refiner object manually.
-    if (refiner_.valid())
-    {
-        //fvMeshPolyRefiner* polyRefiner = dynamic_cast<fvMeshPolyRefiner*>(refiner_.get());
-        //fvMeshHexRefiner* hexRefiner = dynamic_cast<fvMeshHexRefiner*>(refiner_.get());
-        //if(polyRefiner != nullptr){
-        //    polyRefiner->fvMeshPolyRefiner::updateMesh(map);
-        //} else if (hexRefiner != nullptr){
-        //    hexRefiner->fvMeshHexRefiner::updateMesh(map);
-        //} else {
-        //    FatalErrorInFunction
-        //        << "fvMeshRefiner type " << refiner_->type() << " is not supported." << endl;
-        //}
-        refiner_->updateMesh(map);
-    }
+    // Remap clouds AFTER fvMesh::updateMesh completes.
+    // This must happen after fvMesh::updateMesh because cloud.autoMap
+    // triggers mesh_.V() which reconstructs volumes. If done before,
+    // the volume size check in fvMesh::updateMesh would fail.
+    cloudSupport::autoMapClouds(*this, map);
+
+    // Expire sampled surfaces in surfaceFieldValue function objects.
+    // OpenFOAM's surfaceFieldValue::updateMesh() doesn't properly expire
+    // its internal sampledPtr_ cache, leading to stale face indices after
+    // mesh topology changes (refinement/unrefinement).
+    expireSampledSurfaces(time(), amrCore_.expireSampledSurfacesOnLB());
 }
 
 
@@ -315,8 +124,8 @@ void Foam::adaptiveFvMesh::distribute
     const mapDistributePolyMesh& map
 )
 {
-    refiner_->distribute(map);
-
+    // Delegate to amrCore
+    amrCore_.distribute(map);
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -325,13 +134,22 @@ Foam::adaptiveFvMesh::adaptiveFvMesh(const IOobject& io)
 :
     dynamicFvMesh(io),
     dynamicMeshDict_(dynamicMeshDictIOobject(io)),
-    //dynamicBlastFvMesh(io),
-    error_(errorEstimator::New(*this, dynamicMeshDict())),
-    refiner_(fvMeshRefiner::New(*this, dynamicMeshDict())),
+    amrCore_(*this),
     currentTimeIndex_(-1)
 {
-    // Read static part of dictionary
-    readDict();
+    // Read dictionary and initialize amrCore
+    const dictionary refineDict
+    (
+        dynamicMeshDict().optionalSubDict(typeName + "Coeffs")
+    );
+
+    amrCore_.initializeAMR(refineDict);
+
+    // Initialize load balancing if enabled
+    if (refineDict.getOrDefault("balance", false))
+    {
+        amrCore_.initializeLB(refineDict);
+    }
 }
 
 
@@ -369,7 +187,21 @@ bool Foam::adaptiveFvMesh::firstUpdate()
 bool Foam::adaptiveFvMesh::update()
 {
     if (!firstUpdate()) return false;
-    bool changed = (refiner_->canRefine(true) || refiner_->canUnrefine(true)) && refine();
+
+    bool changed =
+        (amrCore_.refiner().canRefine(true) || amrCore_.refiner().canUnrefine(true))
+     && refine();
+
+    // Check for load balancing independently of refinement
+    // This allows balanceInterval to differ from refineInterval
+    if (amrCore_.lbInitialized() && Pstream::parRun())
+    {
+        if (amrCore_.balance())
+        {
+            changed = true;
+        }
+    }
+
     reduce(changed, orOp<bool>());
 
     return changed;
@@ -378,18 +210,11 @@ bool Foam::adaptiveFvMesh::update()
 
 bool Foam::adaptiveFvMesh::refine()
 {
-    // Re-read dictionary. Chosen since usually -small so trivial amount
-    // of time compared to actual refinement. Also very useful to be able
-    // to modify on-the-fly.
+    // Re-read dictionary for on-the-fly modifications
     readDict();
 
-    //- Update error
-    error_->update();
-    error_->error().correctBoundaryConditions();
-    label nProtected = error_->protectPatches();
-    Info << "Protecting " << returnReduce(nProtected, sumOp<label>())
-        << " cells next to requested boundary patches." << endl;
-    return refiner_->refine(error_->error(), error_->maxRefinement());
+    // Delegate to amrCore
+    return amrCore_.refine();
 }
 
 
@@ -399,9 +224,7 @@ bool Foam::adaptiveFvMesh::writeObject
     const bool valid
 ) const
 {
-    return
-        dynamicFvMesh::writeObject(streamOpt, valid);
-     //&& refiner_->write();
+    return dynamicFvMesh::writeObject(streamOpt, valid);
 }
 
 

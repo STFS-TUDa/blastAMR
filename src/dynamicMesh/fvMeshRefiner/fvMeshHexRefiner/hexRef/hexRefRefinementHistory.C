@@ -1274,11 +1274,6 @@ void Foam::hexRefRefinementHistory::distribute(const mapDistributePolyMesh& map)
     // Remove unreferenced history.
     compact();
 
-    //Pout<< nl << "--BEFORE:" << endl;
-    //writeDebug();
-    //Pout<< "---------" << nl << endl;
-
-
     // Distribution is only partially functional.
     // If all 8 cells resulting from a single parent are sent across in one
     // go it will also send across that part of the refinement history.
@@ -1341,8 +1336,6 @@ void Foam::hexRefRefinementHistory::distribute(const mapDistributePolyMesh& map)
     // move in their whole to other processor.
     for (label proci = 0; proci < Pstream::nProcs(); proci++)
     {
-        //Pout<< "-- Subetting for processor " << proci << endl;
-
         // From uncompacted to compacted splitCells.
         labelList oldToNew(splitCells_.size(), -1);
 
@@ -1426,11 +1419,6 @@ void Foam::hexRefRefinementHistory::distribute(const mapDistributePolyMesh& map)
             }
         }
 
-        //Pout<< nl << "--Subset for domain:" << proci << endl;
-        //writeDebug(newVisibleCells, newSplitCells);
-        //Pout<< "---------" << nl << endl;
-
-
         // Send to neighbours
         OPstream toNbr(Pstream::commsTypes::blocking, proci);
         toNbr << newSplitCells << newVisibleCells;
@@ -1451,11 +1439,6 @@ void Foam::hexRefRefinementHistory::distribute(const mapDistributePolyMesh& map)
         IPstream fromNbr(Pstream::commsTypes::blocking, proci);
         List<splitCell8> newSplitCells(fromNbr);
         labelList newVisibleCells(fromNbr);
-
-        //Pout<< nl << "--Received from domain:" << proci << endl;
-        //writeDebug(newVisibleCells, newSplitCells);
-        //Pout<< "---------" << nl << endl;
-
 
         // newSplitCells contain indices only into newSplitCells so
         // renumbering can be done here.
@@ -1501,10 +1484,6 @@ void Foam::hexRefRefinementHistory::distribute(const mapDistributePolyMesh& map)
         }
     }
     splitCells_.shrink();
-
-    //Pout<< nl << "--AFTER:" << endl;
-    //writeDebug();
-    //Pout<< "---------" << nl << endl;
 }
 
 

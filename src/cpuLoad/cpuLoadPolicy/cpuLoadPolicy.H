@@ -61,10 +61,17 @@ class cpuLoadPolicy
 :   public loadPolicy
 {
 protected:
-    // Maximum number of time steps to resut MPI data
+    // Maximum cycle length (load is tracked over this many timesteps)
     label maxCycleLength_;
+
+    // Time index when stats were last reset
+    label lastResetTimeIndex_;
+
     // Is MPI call interception active
     bool isActive_;
+
+    // Time unit for reporting (nano, micro, milli)
+    TimeUnit timeUnit_;
 
 public:
 
@@ -98,7 +105,7 @@ public:
         //- Predict if LB would be viable
         virtual bool willBeBeneficial
         (
-            const labelList distribution
+            const labelList& distribution
         );
 
         inline bool stillSameCycle() const {

@@ -153,7 +153,7 @@ public:
         //- Predict if LB would be viable
         virtual bool willBeBeneficial
         (
-            const labelList distribution
+            const labelList& distribution
         ) = 0;
 
     // Member Operators

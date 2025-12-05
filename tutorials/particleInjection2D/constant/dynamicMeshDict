@@ -1,0 +1,89 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      dynamicMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dynamicFvMesh   adaptiveFvMesh;
+
+refiner         polyRefiner;
+
+errorEstimator  coded;
+name            movingBox;
+
+// optional but recommended, auto-discovered if not provided
+cloudHandler    kinematicCloudHandler;
+
+code
+#{
+    // Domain: 0.1 x 0.1 x 0.01
+    // Box moves from left to right over endTime (0.1s)
+
+    const scalar t = mesh().time().value();
+
+    // Box dimensions
+    const scalar boxWidth = 0.03;
+    const scalar boxHeight = 0.08;
+
+    // Start at x=0, end at x=0.07 (so box stays in domain)
+    const scalar xMin = t * 0.7;
+    const scalar xMax = xMin + boxWidth;
+    const scalar yMin = 0.01;
+    const scalar yMax = yMin + boxHeight;
+    const scalar zMin = 0.0;
+    const scalar zMax = 0.01;
+
+    volScalarField& err = error();
+    forAll(err, celli)
+    {
+        const vector& C = mesh().C()[celli];
+        if (C.x() >= xMin && C.x() <= xMax &&
+            C.y() >= yMin && C.y() <= yMax &&
+            C.z() >= zMin && C.z() <= zMax)
+        {
+            err[celli] = 1.0;  // Refine inside box
+        }
+        else
+        {
+            err[celli] = -1.0;  // Unrefine outside box
+        }
+    }
+#};
+
+balance         yes;
+
+refineInterval  1;
+
+unrefineInterval 1;
+
+balanceInterval 1;
+
+maxRefinement   2;
+
+nBufferLayers   1;
+
+nRefinementBufferLayers 1;
+
+nUnrefinementBufferLayers 2;
+
+lowerRefineLevel 0.5;
+
+upperRefineLevel 1e10;
+
+unrefineLevel   0.5;
+
+upperUnrefineLevel 1e10;
+
+dumpLevel       no;
+
+// ************************************************************************* //

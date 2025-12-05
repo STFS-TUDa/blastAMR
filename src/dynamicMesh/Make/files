@@ -32,4 +32,6 @@ fvMeshRefiner/fvMeshPolyRefiner/polyRefinementConstraint.C
 
 meshTools/dynMeshTools.C
 
+amrCore/amrCore.C
+
 LIB = $(FOAM_USER_LIBBIN)/libamrDynamicMesh

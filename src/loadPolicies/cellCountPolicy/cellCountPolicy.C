@@ -30,6 +30,8 @@ License
 
 #include "cellCountPolicy.H"
 #include "addToRunTimeSelectionTable.H"
+#include "cloudSupport.H"
+#include "messageStream.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -47,8 +49,12 @@ Foam::cellCountPolicy::cellCountPolicy
     const dictionary& dict
 )
 :
-    loadPolicy(mesh, dict)
+    loadPolicy(mesh, dict),
+    particleCoeff_(dict.getOrDefault<scalar>("particleCoeff", 1.0)),
+    minCellsPerProc_(dict.getOrDefault<label>("minCellsPerProc", 5))
 {
+    Info<< "    particleCoeff: " << particleCoeff_ << endl;
+    Info<< "    minCellsPerProc: " << minCellsPerProc_ << endl;
 }
 
 
@@ -62,13 +68,19 @@ Foam::cellCountPolicy::~cellCountPolicy()
 
 bool Foam::cellCountPolicy::canBalance()
 {
-    Info<< "--- Running cellCountPolicy::canBalance()" << endl;
-    myLoad_ = mesh_.nCells();
+    label nParticles = cloudSupport::countParticles(mesh_);
+    myLoad_ = mesh_.nCells() + particleCoeff_ * nParticles;
+
+    DebugPout<< "    cells: " << mesh_.nCells()
+        << ", particles: " << nParticles
+        << ", load: " << myLoad_ << endl;
+
     myLoadHistory_.set(mesh_.time().timeIndex(), myLoad_);
-    label nGlobalCells = returnReduce(mesh_.nCells(), sumOp<label>());
-    scalar idealNCells =
-        scalar(nGlobalCells)/scalar(Pstream::nProcs());
-    scalar maxImbalance = returnReduce(mag(scalar(mesh_.nCells()) - idealNCells) / idealNCells, maxOp<scalar>());
+
+    scalar globalLoad = returnReduce(myLoad_, sumOp<scalar>());
+    scalar idealLoad = globalLoad / scalar(Pstream::nProcs());
+    scalar maxImbalance = returnReduce(mag(myLoad_ - idealLoad) / idealLoad, maxOp<scalar>());
+
     Info<< "Maximum imbalance found = " << 100*maxImbalance << " %" << endl;
     if (maxImbalance < allowedImbalance_)
     {
@@ -77,37 +89,73 @@ bool Foam::cellCountPolicy::canBalance()
     return true;
 }
 
-Foam::scalarField Foam::cellCountPolicy::cellWeights() {
-    return scalarField(mesh_.nCells(), 1.0);
+Foam::scalarField Foam::cellCountPolicy::cellWeights()
+{
+    // Base weight of 1 per cell + particle contribution
+    scalarField weights(mesh_.nCells(), 1.0);
+
+    if (particleCoeff_ > SMALL)
+    {
+        tmp<labelField> tParticlesPerCell = cloudSupport::particlesPerCell(mesh_);
+        const labelField& ppc = tParticlesPerCell();
+
+        forAll(weights, celli)
+        {
+            weights[celli] += particleCoeff_ * ppc[celli];
+        }
+    }
+
+    return weights;
 }
 
 bool Foam::cellCountPolicy::willBeBeneficial
 (
-    const labelList distribution
+    const labelList& distribution
 ) {
-    labelList procLoadNew(Pstream::nProcs(), 0);
+    // Get cell weights including particle contributions
+    scalarField weights = cellWeights();
+
+    // Calculate new load and cell count per processor
+    scalarList procLoadNew(Pstream::nProcs(), 0.0);
+    labelList procCellsNew(Pstream::nProcs(), 0);
     forAll(distribution, celli)
     {
-        procLoadNew[distribution[celli]]++;
+        procLoadNew[distribution[celli]] += weights[celli];
+        procCellsNew[distribution[celli]]++;
     }
-    reduce(procLoadNew, sumOp<labelList>());
-    if (min(procLoadNew) == 0)
+    reduce(procLoadNew, sumOp<scalarList>());
+    reduce(procCellsNew, sumOp<labelList>());
+
+    if (min(procLoadNew) < SMALL)
     {
         DebugInfo
-            << "New distribtion results in a load of 0. Skipping" << endl;
+            << "New distribution results in a load of ~0. Skipping" << endl;
         return false;
     }
-    scalar averageLoadNew
-    (
-        scalar(sum(procLoadNew))/scalar(Pstream::nProcs())
-    );
-    scalar maxDevNew(max(mag(procLoadNew - averageLoadNew))/averageLoadNew);
 
-    // TODO: A bit of repetition here, maybe factor out the imbalance logic from canBalance
-    scalar nGlobalCells = returnReduce(myLoad_, sumOp<scalar>());
-    scalar idealNCells = nGlobalCells/Pstream::nProcs();
-    scalar maxImbalance = returnReduce(mag(myLoad_ - idealNCells)/idealNCells, maxOp<scalar>());
-    if (maxDevNew > maxImbalance*0.99)
+    label minCells = min(procCellsNew);
+    if (minCells < minCellsPerProc_)
+    {
+        Info<< "    Not balancing because distribution would leave"
+            << " processor with only " << minCells << " cells"
+            << " (minimum: " << minCellsPerProc_ << ")" << nl
+            << "    Cells per proc: " << procCellsNew << endl;
+        return false;
+    }
+
+    scalar averageLoadNew = sum(procLoadNew) / scalar(Pstream::nProcs());
+    scalar maxDevNew = 0;
+    forAll(procLoadNew, proci)
+    {
+        maxDevNew = max(maxDevNew, mag(procLoadNew[proci] - averageLoadNew) / averageLoadNew);
+    }
+
+    // Calculate current imbalance using myLoad_ (already includes particles)
+    scalar nGlobalLoad = returnReduce(myLoad_, sumOp<scalar>());
+    scalar idealLoad = nGlobalLoad / Pstream::nProcs();
+    scalar maxImbalance = returnReduce(mag(myLoad_ - idealLoad) / idealLoad, maxOp<scalar>());
+
+    if (maxDevNew > maxImbalance * 0.99)
     {
         Info
             << "    Not balancing because the new distribution does" << nl

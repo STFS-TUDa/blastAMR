@@ -27,7 +27,6 @@ License
 #include "dimensionedScalarFwd.H"
 #include "fvMeshPolyRefiner.H"
 #include "polyTopoChange.H"
-//#include "parcelCloud.H"
 #include "prismatic2DRefinement.H"
 #include "polyhedralRefinement.H"
 #include "polyRefinementConstraint.H"
@@ -542,11 +541,8 @@ bool Foam::fvMeshPolyRefiner::refine
         }
 
         reduce(hasChanged, orOp<bool>());
-        if (balance())
-        {
-            hasChanged = true;
-        }
-        reduce(hasChanged, orOp<bool>());
+        // Note: balance() is now called independently in adaptiveFvMesh::update()
+        // to allow balanceInterval to differ from refineInterval
         mesh_.topoChanging(hasChanged);
 
         if (hasChanged)

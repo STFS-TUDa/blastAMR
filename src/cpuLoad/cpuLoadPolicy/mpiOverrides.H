@@ -69,24 +69,38 @@ enum class TimeUnit {
     Micro,
     Milli
 };
-#ifndef MPI_PROFILER_UNIT
-    constexpr TimeUnit profilerUnit = TimeUnit::Micro;
-#else
-    constexpr TimeUnit profilerUnit = static_cast<TimeUnit>(MPI_PROFILER_UNIT);
-#endif
-template<TimeUnit Unit>
-struct DurationSelector;
-template<> struct DurationSelector<TimeUnit::Nano>  { using type = std::chrono::nanoseconds; };
-template<> struct DurationSelector<TimeUnit::Micro> { using type = std::chrono::microseconds; };
-template<> struct DurationSelector<TimeUnit::Milli> { using type = std::chrono::milliseconds; };
-using Duration = typename DurationSelector<profilerUnit>::type;
-constexpr const char* timeUnitSuffix(TimeUnit unit = profilerUnit) {
+
+// Runtime-configurable time unit (default: milliseconds)
+// Can be set via dictionary in cpuLoadPolicy
+inline TimeUnit& profilerTimeUnit() {
+    static TimeUnit unit = TimeUnit::Milli;
+    return unit;
+}
+
+// Always measure in nanoseconds internally, convert on output
+using Duration = std::chrono::nanoseconds;
+
+// Conversion factor from nanoseconds to the selected time unit
+inline long long timeUnitDivisor(TimeUnit unit) {
+    switch (unit) {
+        case TimeUnit::Milli: return 1000000LL;
+        case TimeUnit::Micro: return 1000LL;
+        case TimeUnit::Nano:  return 1LL;
+        default:              return 1000LL;
+    }
+}
+
+inline const char* timeUnitSuffix(TimeUnit unit) {
     switch (unit) {
         case TimeUnit::Milli: return "ms";
         case TimeUnit::Micro: return "us";
         case TimeUnit::Nano:  return "ns";
-        default:             return "ns";
+        default:              return "us";
     }
+}
+
+inline const char* timeUnitSuffix() {
+    return timeUnitSuffix(profilerTimeUnit());
 }
 
 struct MPICommsStats {
@@ -138,6 +152,7 @@ struct MPICommsStats {
         p2pSendTime = 0;
         p2pRecvTime = 0;
         collectiveTime = 0;
+        otherTime = 0;
         nP2PSends = 0;
         nP2PRecvs = 0;
         nCollectives = 0;
@@ -161,10 +176,11 @@ struct MPICommsStats {
 
     Ostream& operator<<(Ostream& os) const {
         const char* unit = timeUnitSuffix();
-        os << "P2P Send Time: " << label(p2pSendTime) << " " << unit << ", "
-           << "P2P Recv Time: " << label(p2pRecvTime) << " " << unit << ", "
-           << "Collective Time: " << label(collectiveTime) << " " << unit << ", "
-           << "Other Time: " << label(otherTime) << " " << unit << "," << nl
+        long long divisor = timeUnitDivisor(profilerTimeUnit());
+        os << "P2P Send Time: " << label(p2pSendTime/divisor) << " " << unit << ", "
+           << "P2P Recv Time: " << label(p2pRecvTime/divisor) << " " << unit << ", "
+           << "Collective Time: " << label(collectiveTime/divisor) << " " << unit << ", "
+           << "Other Time: " << label(otherTime/divisor) << " " << unit << "," << nl
            << "nP2PSends: " << nP2PSends << ", "
            << "nP2PRecvs: " << nP2PRecvs << ", "
            << "nCollectives: " << nCollectives << ", "
@@ -177,8 +193,9 @@ inline Ostream& operator<<(Ostream& os, const MPICommsStats& stats) {
     return stats.operator<<(os);
 }
 
-static MPICommsStats mpiCommsStats;
-std::mutex mpiCommsStatsMutex; // for safer future
+// Use inline to ensure single definition across translation units (C++17)
+inline MPICommsStats mpiCommsStats;
+inline std::mutex mpiCommsStatsMutex;
 
 enum class MPITypeLevel { P2PSend, P2PRecv, Collective, Other };
 
@@ -194,7 +211,10 @@ Ret mpiCallProfiler
     long long elapsed = std::chrono::duration_cast<Duration>(end - start).count();
 
     std::lock_guard<std::mutex> lock(mpiCommsStatsMutex);
-    if constexpr (Level == MPITypeLevel::P2PRecv) {
+    if constexpr (Level == MPITypeLevel::P2PSend) {
+        mpiCommsStats.p2pSendTime += elapsed;
+        mpiCommsStats.nP2PSends++;
+    } else if constexpr (Level == MPITypeLevel::P2PRecv) {
         mpiCommsStats.p2pRecvTime += elapsed;
         mpiCommsStats.nP2PRecvs++;
     } else if constexpr (Level == MPITypeLevel::Collective) {

@@ -27,11 +27,14 @@ License
 #include "decompositionMethod.H"
 #include "addToRunTimeSelectionTable.H"
 #include "RefineBalanceMeshObject.H"
-//#include "parcelCloud.H"
+#include "cloudSupport.H"
 #include "preserveFaceZonesConstraint.H"
 #include "singleProcessorFaceSetsConstraint.H"
 #include "preservePatchesConstraint.H"
 #include "preserveBafflesConstraint.H"
+#include "sampledSurfaceWorkaround.H"
+#include "dynamicMotionSolverFvMesh.H"
+#include "pointIOField.H"
 
 using namespace Foam::decompositionConstraints;
 
@@ -91,7 +94,8 @@ Foam::fvMeshBalance::fvMeshBalance(fvMesh& mesh)
     //preservePatchesDict_(nullptr),
     //preserveBafflesDict_(nullptr),
     distributor_(mesh_),
-    loadPolicy_(loadPolicy::New(mesh_, dictionary{}))
+    loadPolicy_(nullptr),  // Will be set by read() with proper dict
+    expireSampledSurfacesOnLB_(false)
 {
     if (!constraintsDict_)
     {
@@ -161,7 +165,8 @@ Foam::fvMeshBalance::fvMeshBalance
     //preservePatchesDict_(nullptr),
     //preserveBafflesDict_(nullptr),
     distributor_(mesh_),
-    loadPolicy_(dict.lookupOrDefault<Switch>("balance", false) ? loadPolicy::New(mesh, dict) : nullptr)
+    loadPolicy_(dict.lookupOrDefault<Switch>("balance", false) ? loadPolicy::New(mesh, dict) : nullptr),
+    expireSampledSurfacesOnLB_(dict.getOrDefault("expireSampledSurfacesOnLB", false))
 {
     if (!constraintsDict_)
     {
@@ -220,7 +225,21 @@ void Foam::fvMeshBalance::read(const dictionary& balanceDict)
         return;
     }
 
-    loadPolicy_ = balanceDict.lookupOrDefault("balance", true) ? loadPolicy::New(mesh_, balanceDict) : nullptr;
+    // Only create/update loadPolicy if:
+    // 1. We don't have one yet, OR
+    // 2. The dict explicitly specifies a loadPolicy type
+    // This prevents overwriting a configured loadPolicy with the default
+    // when re-reading from a dict that doesn't have loadPolicy entry
+    if (!loadPolicy_ || balanceDict.found("loadPolicy"))
+    {
+        loadPolicy_ = balanceDict.lookupOrDefault("balance", true)
+            ? loadPolicy::New(mesh_, balanceDict)
+            : nullptr;
+    }
+
+    // Read sampledSurface expiration setting (opt-in, allows runtime changes)
+    expireSampledSurfacesOnLB_ =
+        balanceDict.getOrDefault("expireSampledSurfacesOnLB", false);
 
     if (!loadPolicy_)
     {
@@ -449,7 +468,6 @@ Foam::decompositionMethod& Foam::fvMeshBalance::decomposer() const
 
 bool Foam::fvMeshBalance::canBalance() const
 {
-    Info<< "Is balancing set up? " << loadPolicy_.valid() << endl;
     if (!loadPolicy_)
     {
         return false;
@@ -457,7 +475,6 @@ bool Foam::fvMeshBalance::canBalance() const
 
     if(!loadPolicy_->canBalance()) return false;
 
-    Info << "Should balance" << endl;
     // Decompose the mesh with uniform weights
     // The refinementHistory constraint is applied internally
     distribution_ = decomposer().decompose
@@ -506,20 +523,52 @@ bool Foam::fvMeshBalance::canBalance() const
 Foam::autoPtr<Foam::mapDistributePolyMesh>
 Foam::fvMeshBalance::distribute()
 {
-    //Correct values on all coupled patches
-    correctBoundaries<volScalarField>();
-    correctBoundaries<volVectorField>();
-    correctBoundaries<volSphericalTensorField>();
-    correctBoundaries<volSymmTensorField>();
-    correctBoundaries<volTensorField>();
-
-    correctBoundaries<pointScalarField>();
-    correctBoundaries<pointVectorField>();
-    correctBoundaries<pointSphericalTensorField>();
-    correctBoundaries<pointSymmTensorField>();
-    correctBoundaries<pointTensorField>();
+    // Synchronize oldTime fields across processors before distribution.
+    // Different processors may end up with different fields after mesh changes
+    // (e.g., U_0 from particle-wall interactions in kinematicCloud).
+    // Hence forcing oldTime on any field that has "oldTime" on any processor
+    syncOldTimeFields<volScalarField>();
+    syncOldTimeFields<volVectorField>();
+    syncOldTimeFields<volSphericalTensorField>();
+    syncOldTimeFields<volSymmTensorField>();
+    syncOldTimeFields<volTensorField>();
+    syncOldTimeFields<surfaceScalarField>();
+    syncOldTimeFields<surfaceVectorField>();
+    syncOldTimeFields<surfaceSphericalTensorField>();
+    syncOldTimeFields<surfaceSymmTensorField>();
+    syncOldTimeFields<surfaceTensorField>();
 
     blastMeshObject::preDistribute<fvMesh>(mesh_);
+
+    // Check if mesh uses a motion solver - special handling is required
+    auto* motionMeshPtr = dynamic_cast<dynamicMotionSolverFvMesh*>(&mesh_);
+    bool oldMoving = false;
+
+    if (motionMeshPtr)
+    {
+        // Temporarily disable mesh motion to prevent oldPointsPtr_ recreation.
+        // The oldPoints() getter creates oldPointsPtr_ on-demand when moving_ is true.
+        // If any code below (cloud operations, distribute) calls oldPoints() while
+        // moving_ is true, it would recreate oldPointsPtr_ after we clear it.
+        // This follows the same pattern used in fvMeshDistribute::distribute().
+        oldMoving = mesh_.moving(false);
+
+        // Clear motion data BEFORE distribution.
+        // Motion solvers store oldPoints and oldCellCentres for mesh motion.
+        // During fvMeshAdder::add() -> polyMesh::updateMesh(), these are mapped
+        // using pointMap(), but this can fail with invalid data during redistribution.
+        // resetMotion() clears these pointers, preventing the mapping crash.
+        // The moving(false) above prevents oldPoints() from recreating oldPointsPtr_.
+        mesh_.resetMotion();
+    }
+
+    // Store global positions for all clouds before distribution
+    // -- this is unified externally for all cloud types
+    cloudSupport::storeGlobalPositions(mesh_);
+
+    // Distribute clouds to new processors BEFORE mesh distribution
+    // This transfers particles based on which processor their cell is going to
+    cloudSupport::distributeClouds(mesh_, distribution_);
 
     Info<< "Distributing the mesh ..." << endl;
     balancing = true;
@@ -527,29 +576,78 @@ Foam::fvMeshBalance::distribute()
         distributor_.distribute(distribution_);
     balancing = false;
 
-    Info << "Successfully distributed mesh" << endl;
-    label procLoadNew(mesh_.nCells());
-    label overallLoadNew(returnReduce(procLoadNew, sumOp<label>()));
-    scalar averageLoadNew(overallLoadNew/scalar(Pstream::nProcs()));
-
-    scalar maxDevNew
-    (
-        returnReduce(mag(procLoadNew - averageLoadNew), maxOp<scalar>())
-    );
-
-    Info << "New max imbalance: " << maxDevNew/averageLoadNew*100.0 << "%"
-        << endl;
-
-    if (debug)
+    if (motionMeshPtr)
     {
-        Pout<< " localImbalance = "
-            << mag(procLoadNew - averageLoadNew)*100.0/averageLoadNew << "%, "
-            << "Cells = " << procLoadNew
-             << endl;
+        // Restore mesh motion state after distribution
+        mesh_.moving(oldMoving);
+
+        // Reinitialize motion solver after redistribution.
+        // The motion solver's points0_ field has the wrong size after redistribution
+        // because it's a pointIOField (not a pointVectorField) and is not automatically
+        // mapped during mesh redistribution. Calling init(false) recreates the motion
+        // solver with the correct mesh topology without reinitializing the base mesh.
+        // Before reinitializing, we must write the current mesh points as "points0"
+        // because the motion solver constructor reads from files, and the old files
+        // have the pre-redistribution point count.
+        DebugInfo << "Reinitializing motion solver after redistribution" << endl;
+
+        // Write current mesh points as "points0" so the motion solver
+        // constructor can read the correct redistributed points.
+        // Use the current time instance so findInstance() finds it.
+        pointIOField points0
+        (
+            IOobject
+            (
+                "points0",
+                mesh_.time().timeName(),
+                polyMesh::meshSubDir,
+                mesh_,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                IOobject::NO_REGISTER
+            ),
+            mesh_.points()
+        );
+        points0.write();
+
+        // Now reinitialize the motion solver - it will read the correct points
+        motionMeshPtr->init(false);
+
+        // Clean up the temporary points0 file to prevent interference
+        // with subsequent mesh operations (e.g., refinement)
+        Foam::rm(points0.objectPath());
     }
+
+    Info << "Successfully distributed mesh" << endl;
+
+    //label procLoadNew(mesh_.nCells());
+    //label overallLoadNew(returnReduce(procLoadNew, sumOp<label>()));
+    //scalar averageLoadNew(overallLoadNew/scalar(Pstream::nProcs()));
+    //scalar maxDevNew
+    //(
+    //    returnReduce(mag(procLoadNew - averageLoadNew), maxOp<scalar>())
+    //);
+    //Info << "New max imbalance: " << maxDevNew/averageLoadNew*100.0 << "%"
+    //    << endl;
+    //if (debug)
+    //{
+    //    Pout<< " localImbalance = "
+    //        << mag(procLoadNew - averageLoadNew)*100.0/averageLoadNew << "%, "
+    //        << "Cells = " << procLoadNew
+    //         << endl;
+    //}
 
     blastMeshObject::distribute<fvMesh>(mesh_, map());
 
+    // Expire sampled surfaces in surfaceFieldValue function objects.
+    // OpenFOAM's surfaceFieldValue::updateMesh() doesn't properly expire
+    // its internal sampledPtr_ cache, leading to stale face indices after
+    // mesh redistribution. This workaround accesses the private member
+    // directly to force expiration.
+    expireSampledSurfaces(mesh_.time(), expireSampledSurfacesOnLB_);
+
+    // Relocate particles to their new cells after mesh distribution
+    cloudSupport::relocateClouds(mesh_);
 
     //Correct values on all coupled patches
     correctBoundaries<volScalarField>();

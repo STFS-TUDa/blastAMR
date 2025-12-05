@@ -95,6 +95,10 @@ protected:
         //- Distribution
         mutable labelList distribution_;
 
+        //- Enable expiration of sampledSurface caches after mesh redistribution
+        //  This is opt-in (default false) because it uses private member access
+        bool expireSampledSurfacesOnLB_;
+
 
     // Private member functions
 
@@ -128,6 +132,10 @@ public:
 
         //- Template to update all volField boundaries
         template<class GeoField> void correctBoundaries();
+
+        //- Synchronize oldTime fields across processors before distribution
+        //  This ensures all processors have the same fields registered
+        template<class GeoField> void syncOldTimeFields();
 
         //- Is balancing enabled
         bool balance() const

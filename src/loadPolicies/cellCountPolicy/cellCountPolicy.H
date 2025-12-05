@@ -56,6 +56,17 @@ namespace Foam
 class cellCountPolicy
 :   public loadPolicy
 {
+    // Private data
+
+        //- Coefficient for particle contribution to load
+        //  load = cellCount + particleCoeff * particleCount
+        scalar particleCoeff_;
+
+        //- Minimum number of cells per processor to avoid degenerate meshes
+        //  If a proposed distribution would leave any processor with fewer
+        //  cells than this, the distribution is rejected
+        label minCellsPerProc_;
+
 public:
 
     //- Runtime type information
@@ -88,7 +99,7 @@ public:
         //- Predict if LB would be viable
         virtual bool willBeBeneficial
         (
-            const labelList distribution
+            const labelList& distribution
         );
 
     // Member Operators

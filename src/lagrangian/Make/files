@@ -1,0 +1,6 @@
+cloudSupport/cloudSupport.C
+cloudSupport/cloudHandler/cloudHandler.C
+cloudSupport/handlers/kinematicCloudHandler.C
+cloudSupport/handlers/passiveCloudHandler.C
+
+LIB = $(FOAM_USER_LIBBIN)/libamrLagrangian

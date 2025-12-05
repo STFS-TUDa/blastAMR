@@ -20,6 +20,11 @@ ddtSchemes
     default         Euler;
 }
 
+d2dt2Schemes
+{
+    default         Euler;
+}
+
 gradSchemes
 {
     default         cellLimited Gauss linear 1.0;
@@ -27,6 +32,7 @@ gradSchemes
 
 divSchemes
 {
+    default         Gauss linear;
     div(rho*phi,U)  Gauss limitedLinearV 1;
     div(phi,alpha)  Gauss vanLeer01;
     div(phirb,alpha) Gauss interfaceCompression;
@@ -45,6 +51,11 @@ interpolationSchemes
 snGradSchemes
 {
     default         corrected;
+}
+
+fluxRequired
+{
+    default         no;
 }
 
 

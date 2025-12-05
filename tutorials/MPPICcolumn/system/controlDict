@@ -1,0 +1,74 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Load the AMR function object library
+libs            (amrFunctionObjects);
+
+application     MPPICDyMFoam;
+
+startFrom       startTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         0.5;
+
+deltaT          2e-4;
+
+writeControl    runTime;
+
+writeInterval   0.05;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+writePrecision  8;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable yes;
+
+functions
+{
+    loadBalancedAMR
+    {
+        type            loadBalancedAMR;
+        libs            (amrFunctionObjects);
+        balance         yes;
+        refine          false;
+        unrefine        false;
+
+        allowedImbalance 0.10;      // Trigger rebalancing at 50% imbalance
+        balanceInterval 100;
+        minCellsPerProc 4;
+
+        // Use cellCount policy with particle-aware load calculation
+        // load = cellCount + particleCoeff * particleCount
+        loadPolicy      cellCount;
+        particleCoeff   1000.0;      // Weight of each particle relative to a cell
+
+        dumpLevel       no;
+    }
+}
+
+
+// ************************************************************************* //

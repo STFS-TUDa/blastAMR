@@ -29,11 +29,13 @@ fi
 
 #------------------------------------------------------------------------------
 
+wmake src/lagrangian
 wmake src/loadPolicies
 wmake src/cpuLoad
 wmake src/errorEstimators
 wmake src/dynamicMesh
 wmake src/dynamicFvMesh
+wmake src/functionObjects
 
 wmake applications/utilities/updateMesh
 wmake applications/solvers/combustion/reactingDyMFoam

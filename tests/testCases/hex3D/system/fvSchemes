@@ -18,34 +18,42 @@ FoamFile
 
 ddtSchemes
 {
+    default         Euler;
 }
 
 d2dt2Schemes
 {
+    default         Euler;
 }
 
 interpolationSchemes
 {
+    default         linear;
 }
 
 divSchemes
 {
+    default         Gauss linear;
 }
 
 gradSchemes
 {
+    default         Gauss linear;
 }
 
 snGradSchemes
 {
+    default         corrected;
 }
 
 laplacianSchemes
 {
+    default         Gauss linear corrected;
 }
 
 fluxRequired
 {
+    default         no;
 }
 
 
