@@ -468,7 +468,6 @@ Foam::decompositionMethod& Foam::fvMeshBalance::decomposer() const
 
 bool Foam::fvMeshBalance::canBalance() const
 {
-    Info<< "Is balancing set up? " << loadPolicy_.valid() << endl;
     if (!loadPolicy_)
     {
         return false;
@@ -476,7 +475,6 @@ bool Foam::fvMeshBalance::canBalance() const
 
     if(!loadPolicy_->canBalance()) return false;
 
-    Info << "Should balance" << endl;
     // Decompose the mesh with uniform weights
     // The refinementHistory constraint is applied internally
     distribution_ = decomposer().decompose
@@ -621,25 +619,23 @@ Foam::fvMeshBalance::distribute()
     }
 
     Info << "Successfully distributed mesh" << endl;
-    label procLoadNew(mesh_.nCells());
-    label overallLoadNew(returnReduce(procLoadNew, sumOp<label>()));
-    scalar averageLoadNew(overallLoadNew/scalar(Pstream::nProcs()));
 
-    scalar maxDevNew
-    (
-        returnReduce(mag(procLoadNew - averageLoadNew), maxOp<scalar>())
-    );
-
-    Info << "New max imbalance: " << maxDevNew/averageLoadNew*100.0 << "%"
-        << endl;
-
-    if (debug)
-    {
-        Pout<< " localImbalance = "
-            << mag(procLoadNew - averageLoadNew)*100.0/averageLoadNew << "%, "
-            << "Cells = " << procLoadNew
-             << endl;
-    }
+    //label procLoadNew(mesh_.nCells());
+    //label overallLoadNew(returnReduce(procLoadNew, sumOp<label>()));
+    //scalar averageLoadNew(overallLoadNew/scalar(Pstream::nProcs()));
+    //scalar maxDevNew
+    //(
+    //    returnReduce(mag(procLoadNew - averageLoadNew), maxOp<scalar>())
+    //);
+    //Info << "New max imbalance: " << maxDevNew/averageLoadNew*100.0 << "%"
+    //    << endl;
+    //if (debug)
+    //{
+    //    Pout<< " localImbalance = "
+    //        << mag(procLoadNew - averageLoadNew)*100.0/averageLoadNew << "%, "
+    //        << "Cells = " << procLoadNew
+    //         << endl;
+    //}
 
     blastMeshObject::distribute<fvMesh>(mesh_, map());
 

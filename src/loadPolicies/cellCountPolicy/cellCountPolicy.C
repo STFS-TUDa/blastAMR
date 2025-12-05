@@ -31,6 +31,7 @@ License
 #include "cellCountPolicy.H"
 #include "addToRunTimeSelectionTable.H"
 #include "cloudSupport.H"
+#include "messageStream.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -70,7 +71,7 @@ bool Foam::cellCountPolicy::canBalance()
     label nParticles = cloudSupport::countParticles(mesh_);
     myLoad_ = mesh_.nCells() + particleCoeff_ * nParticles;
 
-    Info<< "    cells: " << mesh_.nCells()
+    DebugPout<< "    cells: " << mesh_.nCells()
         << ", particles: " << nParticles
         << ", load: " << myLoad_ << endl;
 

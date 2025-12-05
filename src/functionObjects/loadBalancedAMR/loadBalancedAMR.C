@@ -55,15 +55,8 @@ Foam::dynamicFvMesh& Foam::functionObjects::loadBalancedAMR::validateDynamicMesh
             << "The loadBalancedAMR functionObject requires a dynamicFvMesh type."
             << nl << nl
             << "Your current mesh type is: " << mesh.polyMesh::type() << nl << nl
-            << "To use the loadBalancedAMR functionObject, you must set "
-            << "dynamicFvMesh in constant/dynamicMeshDict. For example:" << nl << nl
-            << "    dynamicFvMesh   dynamicRefineFvMesh;" << nl << nl
-            << "Or use any other dynamicFvMesh-derived type such as:" << nl
-            << "    - dynamicMotionSolverFvMesh (for mesh motion)" << nl
-            << "    - dynamicRefineFvMesh (for standard AMR)" << nl
-            << nl
-            << "Note: staticFvMesh cannot be used with loadBalancedAMR "
-            << "because mesh topology changes require dynamic mesh support."
+            << "To use the loadBalancedAMR functionObject, you must run "
+            << "a solver that has a dynamicFvMesh (not a fvMesh one)" << nl
             << exit(FatalError);
     }
 
@@ -133,7 +126,7 @@ bool Foam::functionObjects::loadBalancedAMR::execute()
 
         if (amrCore_.refine())
         {
-            Info<< type() << " " << name()
+            Info<< name()
                 << ": Mesh topology changed (refinement)" << endl;
         }
     }
@@ -143,7 +136,7 @@ bool Foam::functionObjects::loadBalancedAMR::execute()
     {
         if (amrCore_.balance())
         {
-            Info<< type() << " " << name()
+            Info<< name()
                 << ": Mesh redistributed across processors" << endl;
         }
     }
@@ -172,7 +165,7 @@ bool Foam::functionObjects::loadBalancedAMR::write()
         scalar avgCells = scalar(nTotalCells) / Pstream::nProcs();
         scalar imbalance = mag(nLocalCells - avgCells) / max(avgCells, SMALL);
 
-        Pout<< type() << " " << name()
+        Pout<< name()
             << ": Local cells = " << nLocalCells
             << ", avg = " << avgCells
             << ", imbalance = " << 100*imbalance << "%" << endl;
