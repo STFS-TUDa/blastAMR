@@ -10,6 +10,6 @@ LIB_LIBS = \
     $(PLIBS) \
     -lmeshTools \
     -lfiniteVolume \
-    -L$(FOAM_USER_LIBBIN) -lamrLoadPolicies
+    -L$(USER_FOAM_LIBBIN) -lamrLoadPolicies
 
 EXE_CXXFLAGS += -DMPI_PROFILER_UNIT=Foam::TimeUnit::Milli
