@@ -1026,13 +1026,6 @@ void Foam::refinement::updateMesh(const mapPolyMesh& map)
             // Assume it is after hexRef that this routine is called.
             hexRef::reorder(reversePointMap, mesh_.nPoints(), -1,  pointLevel_);
         }
-        else if (pointLevel_.size() == mesh_.nPoints())
-        {
-            // pointLevel_ was already updated to the new mesh size
-            // by setRefinement() with correct levels for new midpoints.
-            // No remapping needed since changeMesh preserves the
-            // polyTopoChange ordering.
-        }
         else
         {
             // Map data
