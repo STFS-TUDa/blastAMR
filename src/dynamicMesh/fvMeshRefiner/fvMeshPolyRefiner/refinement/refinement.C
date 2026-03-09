@@ -564,11 +564,16 @@ Foam::label Foam::refinement::edgeConsistentUnrefinement
                     {
                         if (!unrefineCell.get(cellI))
                         {
-                            FatalErrorInFunction
-                                << "problem" << abort(FatalError);
+                            // cellI is not marked for unrefinement
+                            // (e.g. its split point was excluded at a
+                            // processor boundary after redistribution).
+                            // Protect cellJ instead to maintain 2:1.
+                            nChanged += unrefineCell.unset(cellJ);
                         }
-
-                        nChanged += unrefineCell.unset(cellI);
+                        else
+                        {
+                            nChanged += unrefineCell.unset(cellI);
+                        }
                     }
                 }
                 else if (cellJLevel < (cellILevel - 1))
@@ -581,10 +586,16 @@ Foam::label Foam::refinement::edgeConsistentUnrefinement
                     {
                         if (!unrefineCell.get(cellJ))
                         {
-                            FatalErrorInFunction
-                                << "problem" << abort(FatalError);
+                            // cellJ is not marked for unrefinement
+                            // (e.g. its split point was excluded at a
+                            // processor boundary after redistribution).
+                            // Protect cellI instead to maintain 2:1.
+                            nChanged += unrefineCell.unset(cellI);
                         }
-                        nChanged += unrefineCell.unset(cellJ);
+                        else
+                        {
+                            nChanged += unrefineCell.unset(cellJ);
+                        }
                     }
                 }
             }
