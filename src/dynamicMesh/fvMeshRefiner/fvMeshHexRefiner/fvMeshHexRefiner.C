@@ -242,6 +242,38 @@ Foam::fvMeshHexRefiner::refine
         protectedCell_.transfer(newProtectedCell);
     }
 
+    // Update baseCellLevel_ mapping: children inherit parent's base level
+    if (baseCellLevel_.size())
+    {
+        labelList newBaseCellLevel(mesh_.nCells(), 0);
+
+        forAll(newBaseCellLevel, celli)
+        {
+            label oldCelli = map().cellMap()[celli];
+            if (oldCelli >= 0)
+            {
+                newBaseCellLevel[celli] = baseCellLevel_[oldCelli];
+            }
+        }
+        baseCellLevel_.transfer(newBaseCellLevel);
+    }
+
+    // Update basePointLevel_ mapping: new points inherit parent's base level
+    if (basePointLevel_.size())
+    {
+        labelList newBasePointLevel(mesh_.nPoints(), 0);
+
+        forAll(newBasePointLevel, pointi)
+        {
+            label oldPointi = map().pointMap()[pointi];
+            if (oldPointi >= 0 && oldPointi < basePointLevel_.size())
+            {
+                newBasePointLevel[pointi] = basePointLevel_[oldPointi];
+            }
+        }
+        basePointLevel_.transfer(newBasePointLevel);
+    }
+
     // Debug: Check refinement levels (across faces only)
     meshCutter_->checkRefinementLevels(-1, labelList(0));
 
@@ -304,6 +336,38 @@ Foam::fvMeshHexRefiner::unrefine
             }
         }
         protectedCell_.transfer(newProtectedCell);
+    }
+
+    // Update baseCellLevel_ mapping after unrefinement
+    if (baseCellLevel_.size())
+    {
+        labelList newBaseCellLevel(mesh_.nCells(), 0);
+
+        forAll(newBaseCellLevel, celli)
+        {
+            label oldCelli = map().cellMap()[celli];
+            if (oldCelli >= 0)
+            {
+                newBaseCellLevel[celli] = baseCellLevel_[oldCelli];
+            }
+        }
+        baseCellLevel_.transfer(newBaseCellLevel);
+    }
+
+    // Update basePointLevel_ mapping: new points inherit parent's base level
+    if (basePointLevel_.size())
+    {
+        labelList newBasePointLevel(mesh_.nPoints(), 0);
+
+        forAll(newBasePointLevel, pointi)
+        {
+            label oldPointi = map().pointMap()[pointi];
+            if (oldPointi >= 0 && oldPointi < basePointLevel_.size())
+            {
+                newBasePointLevel[pointi] = basePointLevel_[oldPointi];
+            }
+        }
+        basePointLevel_.transfer(newBasePointLevel);
     }
 
     // Debug: Check refinement levels (across faces only)
@@ -577,6 +641,17 @@ void Foam::fvMeshHexRefiner::distribute
         }
     }
 
+    // Distribute baseCellLevel_ across processors
+    if (baseCellLevel_.size())
+    {
+        map.distributeCellData(baseCellLevel_);
+    }
+
+    // Distribute basePointLevel_ across processors
+    if (basePointLevel_.size())
+    {
+        map.distributePointData(basePointLevel_);
+    }
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -588,7 +663,34 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner(fvMesh& mesh)
     meshCutter_(hexRef::New(mesh_)),
 
     nProtected_(0.0),
-    protectedCell_(mesh_.nCells(), false)
+    protectedCell_(mesh_.nCells(), false),
+
+    baseCellLevel_
+    (
+        IOobject
+        (
+            "baseCellLevel",
+            mesh_.facesInstance(),
+            polyMesh::meshSubDir,
+            mesh_,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        meshCutter_->cellLevel()
+    ),
+    basePointLevel_
+    (
+        IOobject
+        (
+            "basePointLevel",
+            mesh_.facesInstance(),
+            polyMesh::meshSubDir,
+            mesh_,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        meshCutter_->pointLevel()
+    )
 {
     // Added refinement history decomposition constraint to keep all
     // cells with the same parent together
@@ -1018,6 +1120,11 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner(fvMesh& mesh)
         Info<< "Detected " << returnReduce(nProtected_, sumOp<label>())
             << " cells that are protected from refinement." << endl;
     }
+
+    Info<< "Base cell levels for unrefinement floor."
+        << " Min: " << gMin(baseCellLevel_)
+        << " Max: " << gMax(baseCellLevel_)
+        << endl;
 }
 
 
@@ -1039,7 +1146,34 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner
     ),
 
     nProtected_(0),
-    protectedCell_(mesh_.nCells(), false)
+    protectedCell_(mesh_.nCells(), false),
+
+    baseCellLevel_
+    (
+        IOobject
+        (
+            "baseCellLevel",
+            mesh_.facesInstance(),
+            polyMesh::meshSubDir,
+            mesh_,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        meshCutter_->cellLevel()
+    ),
+    basePointLevel_
+    (
+        IOobject
+        (
+            "basePointLevel",
+            mesh_.facesInstance(),
+            polyMesh::meshSubDir,
+            mesh_,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        meshCutter_->pointLevel()
+    )
 {
     // Added refinement history decomposition constraint to keep all
     // cells with the same parent together
@@ -1472,6 +1606,11 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner
         Info<< "Detected " << returnReduce(nProtected_, sumOp<label>())
             << " cells that are protected from refinement." << endl;
     }
+
+    Info<< "Base cell levels for unrefinement floor."
+        << " Min: " << gMin(baseCellLevel_)
+        << " Max: " << gMax(baseCellLevel_)
+        << endl;
 }
 
 
@@ -1629,6 +1768,18 @@ bool Foam::fvMeshHexRefiner::refine
                 {
                     label own = mesh_.faceOwner()[facei + p.start()];
                     refineCell.set(own, true);
+                }
+            }
+
+            // Prevent unrefinement below initial mesh (e.g. SHM) level
+            {
+                const labelList& curLevel = meshCutter_->cellLevel();
+                forAll(curLevel, celli)
+                {
+                    if (curLevel[celli] <= baseCellLevel_[celli])
+                    {
+                        refineCell.set(celli, true);
+                    }
                 }
             }
 

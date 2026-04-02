@@ -56,6 +56,14 @@ class fvMeshPolyRefiner
     //- Refiner
     autoPtr<refinement> refiner_;
 
+    //- Initial cell level from base mesh (e.g. snappyHexMesh).
+    //  Unrefinement is not allowed below this level.
+    //  Registered as IOList for AUTO_WRITE persistence.
+    labelIOList baseCellLevel_;
+
+    //- Initial point level from base mesh (e.g. snappyHexMesh).
+    labelIOList basePointLevel_;
+
     // Private member functions
 
         //- Select points to unrefine

@@ -100,7 +100,34 @@ Foam::fvMeshPolyRefiner::fvMeshPolyRefiner(fvMesh& mesh)
 :
     fvMeshRefiner(mesh),
 
-    refiner_(nullptr)
+    refiner_(nullptr),
+
+    baseCellLevel_
+    (
+        IOobject
+        (
+            "baseCellLevel",
+            mesh_.facesInstance(),
+            polyMesh::meshSubDir,
+            mesh_,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        labelList(mesh_.nCells(), 0)
+    ),
+    basePointLevel_
+    (
+        IOobject
+        (
+            "basePointLevel",
+            mesh_.facesInstance(),
+            polyMesh::meshSubDir,
+            mesh_,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        labelList(mesh_.nPoints(), 0)
+    )
 {
     // Added refinement history decomposition constraint to keep all
     // cells with the same parent together
@@ -164,6 +191,22 @@ Foam::fvMeshPolyRefiner::fvMeshPolyRefiner(fvMesh& mesh)
                 << abort(FatalError);
 
     }
+
+    // If baseCellLevel was not read from disk (all zeros),
+    // initialize from current refiner levels
+    if (gMax(baseCellLevel_) == 0 && gMax(refiner_->cellLevel()) > 0)
+    {
+        baseCellLevel_ = refiner_->cellLevel();
+    }
+    if (gMax(basePointLevel_) == 0 && gMax(refiner_->pointLevel()) > 0)
+    {
+        basePointLevel_ = refiner_->pointLevel();
+    }
+
+    Info<< "Base cell levels for unrefinement floor."
+        << " Min: " << gMin(baseCellLevel_)
+        << " Max: " << gMax(baseCellLevel_)
+        << endl;
 }
 
 
@@ -177,7 +220,34 @@ Foam::fvMeshPolyRefiner::fvMeshPolyRefiner
 :
     fvMeshRefiner(mesh, dict, force, read),
 
-    refiner_(nullptr)
+    refiner_(nullptr),
+
+    baseCellLevel_
+    (
+        IOobject
+        (
+            "baseCellLevel",
+            mesh_.facesInstance(),
+            polyMesh::meshSubDir,
+            mesh_,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        labelList(mesh_.nCells(), 0)
+    ),
+    basePointLevel_
+    (
+        IOobject
+        (
+            "basePointLevel",
+            mesh_.facesInstance(),
+            polyMesh::meshSubDir,
+            mesh_,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        labelList(mesh_.nPoints(), 0)
+    )
 {
     // Added refinement history decomposition constraint to keep all
     // cells with the same parent together
@@ -255,6 +325,22 @@ Foam::fvMeshPolyRefiner::fvMeshPolyRefiner
                 << abort(FatalError);
 
     }
+
+    // If baseCellLevel was not read from disk (all zeros),
+    // initialize from current refiner levels
+    if (gMax(baseCellLevel_) == 0 && gMax(refiner_->cellLevel()) > 0)
+    {
+        baseCellLevel_ = refiner_->cellLevel();
+    }
+    if (gMax(basePointLevel_) == 0 && gMax(refiner_->pointLevel()) > 0)
+    {
+        basePointLevel_ = refiner_->pointLevel();
+    }
+
+    Info<< "Base cell levels for unrefinement floor."
+        << " Min: " << gMin(baseCellLevel_)
+        << " Max: " << gMax(baseCellLevel_)
+        << endl;
 }
 
 
@@ -470,6 +556,44 @@ bool Foam::fvMeshPolyRefiner::refine
                     refineCell.transfer(newRefineCell);
                 }
 
+                // Remap baseCellLevel_
+                if (baseCellLevel_.size())
+                {
+                    const labelList& cellMap = map().cellMap();
+                    labelList newBaseCellLevel(mesh_.nCells(), 0);
+                    forAll(newBaseCellLevel, celli)
+                    {
+                        label oldCelli = cellMap[celli];
+                        if (oldCelli >= 0)
+                        {
+                            newBaseCellLevel[celli] =
+                                baseCellLevel_[oldCelli];
+                        }
+                    }
+                    baseCellLevel_.transfer(newBaseCellLevel);
+                }
+
+                // Remap basePointLevel_
+                if (basePointLevel_.size())
+                {
+                    const labelList& pointMap = map().pointMap();
+                    labelList newBasePointLevel(mesh_.nPoints(), 0);
+                    forAll(newBasePointLevel, pointi)
+                    {
+                        label oldPointi = pointMap[pointi];
+                        if
+                        (
+                            oldPointi >= 0
+                         && oldPointi < basePointLevel_.size()
+                        )
+                        {
+                            newBasePointLevel[pointi] =
+                                basePointLevel_[oldPointi];
+                        }
+                    }
+                    basePointLevel_.transfer(newBasePointLevel);
+                }
+
                 hasChanged = true;
                 isRefining_ = false;
             }
@@ -506,6 +630,18 @@ bool Foam::fvMeshPolyRefiner::refine
                     forAll(zone, i)
                     {
                         refineCell.set(zone[i], true);
+                    }
+                }
+            }
+
+            // Prevent unrefinement below initial mesh (e.g. SHM) level
+            {
+                const labelList& curLevel = refiner_->cellLevel();
+                forAll(curLevel, celli)
+                {
+                    if (curLevel[celli] <= baseCellLevel_[celli])
+                    {
+                        refineCell.set(celli, true);
                     }
                 }
             }
@@ -558,12 +694,44 @@ bool Foam::fvMeshPolyRefiner::refine
     return hasChanged;
 }
 
-void Foam::fvMeshPolyRefiner::updateMesh(const mapPolyMesh& map)
+void Foam::fvMeshPolyRefiner::updateMesh(const mapPolyMesh& mpm)
 {
-    fvMeshRefiner::updateMesh(map);
+    fvMeshRefiner::updateMesh(mpm);
     if (!isBalancing_)
     {
-        refiner_->updateMesh(map);
+        refiner_->updateMesh(mpm);
+    }
+
+    // Remap baseCellLevel_ on topology change
+    if (baseCellLevel_.size() && mpm.cellMap().size())
+    {
+        const labelList& cellMap = mpm.cellMap();
+        labelList newBaseCellLevel(mesh_.nCells(), 0);
+        forAll(newBaseCellLevel, celli)
+        {
+            label oldCelli = cellMap[celli];
+            if (oldCelli >= 0 && oldCelli < baseCellLevel_.size())
+            {
+                newBaseCellLevel[celli] = baseCellLevel_[oldCelli];
+            }
+        }
+        baseCellLevel_.transfer(newBaseCellLevel);
+    }
+
+    // Remap basePointLevel_ on topology change
+    if (basePointLevel_.size() && mpm.pointMap().size())
+    {
+        const labelList& pointMap = mpm.pointMap();
+        labelList newBasePointLevel(mesh_.nPoints(), 0);
+        forAll(newBasePointLevel, pointi)
+        {
+            label oldPointi = pointMap[pointi];
+            if (oldPointi >= 0 && oldPointi < basePointLevel_.size())
+            {
+                newBasePointLevel[pointi] = basePointLevel_[oldPointi];
+            }
+        }
+        basePointLevel_.transfer(newBasePointLevel);
     }
 }
 
@@ -572,6 +740,16 @@ void Foam::fvMeshPolyRefiner::distribute(const mapDistributePolyMesh& map)
 {
     fvMeshRefiner::distribute(map);
     refiner_->distribute(map);
+
+    // Distribute base levels across processors
+    if (baseCellLevel_.size())
+    {
+        map.distributeCellData(baseCellLevel_);
+    }
+    if (basePointLevel_.size())
+    {
+        map.distributePointData(basePointLevel_);
+    }
 }
 
 

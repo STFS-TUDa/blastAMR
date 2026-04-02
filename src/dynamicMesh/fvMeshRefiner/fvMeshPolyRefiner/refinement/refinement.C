@@ -970,13 +970,12 @@ void Foam::refinement::updateMesh(const mapPolyMesh& map)
         }
         else
         {
-            // Map data
+            // Map cellLevel data only. parentCells is handled in the
+            // always-executed block below to avoid mismatched MPI
+            // collectives (gMax) when not all processors enter this branch.
             const labelList& cellMap = map.cellMap();
 
-            label newParentIndex = gMax(parentCells_)+1;
-
             labelList newCellLevel(cellMap.size());
-            labelList newParentCells(cellMap.size(), -1);
             forAll(cellMap, newCelli)
             {
                 label oldCelli = cellMap[newCelli];
@@ -984,16 +983,13 @@ void Foam::refinement::updateMesh(const mapPolyMesh& map)
                 if (oldCelli == -1)
                 {
                     newCellLevel[newCelli] = -1;
-                    newParentCells[newCelli] = newParentIndex++;
                 }
                 else
                 {
                     newCellLevel[newCelli] = cellLevel_[oldCelli];
-                    newParentCells[newCelli] = parentCells_[oldCelli];
                 }
             }
             cellLevel_.transfer(newCellLevel);
-            parentCells_.transfer(newParentCells);
         }
 
         // Update the parent cells

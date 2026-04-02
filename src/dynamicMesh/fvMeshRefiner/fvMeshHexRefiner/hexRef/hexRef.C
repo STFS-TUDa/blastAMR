@@ -1150,6 +1150,182 @@ Foam::hexRef::hexRef(const polyMesh& mesh, const bool readHistory)
             << abort(FatalError);
     }
 
+    // Reconstruct refinement history from cellLevel/pointLevel when the
+    // history file is missing but the mesh is already refined.
+    // Without this, cells refined by updateMesh can never be unrefined.
+    // When no history file exists, the constructor creates a default
+    // state: one splitCell8 per cell, all with parent_ == -1.
+    // Detect this by checking if any visible cell has a real parent.
+    bool hasRealHistory = false;
+    if (history_.active() && gMax(cellLevel_) > 0)
+    {
+        const labelList& visCells = history_.visibleCells();
+        const DynamicList<hexRefRefinementHistory::splitCell8>& sc =
+            history_.splitCells();
+        forAll(visCells, celli)
+        {
+            if (visCells[celli] >= 0 && sc[visCells[celli]].parent_ >= 0)
+            {
+                hasRealHistory = true;
+                break;
+            }
+        }
+        reduce(hasRealHistory, orOp<bool>());
+    }
+
+    if
+    (
+        history_.active()
+     && !hasRealHistory
+     && gMax(cellLevel_) > 0
+    )
+    {
+        Info<< "hexRef::hexRef : Reconstructing refinement history from"
+            << " cellLevel/pointLevel" << endl;
+
+        const label maxLevel = gMax(cellLevel_);
+        const label nCells = mesh_.nCells();
+        const label nFaces = mesh_.nInternalFaces();
+        const labelList& owner = mesh_.faceOwner();
+        const labelList& neighbour = mesh_.faceNeighbour();
+        const faceList& faces = mesh_.faces();
+
+        // Process each level from 1 to maxLevel.
+        // At each level, find sibling groups: cells at the same level
+        // connected through "sibling faces" (all face points have
+        // pointLevel >= cellLevel).  This distinguishes siblings from
+        // neighbours that belong to different parent cells.
+
+        for (label level = 1; level <= maxLevel; level++)
+        {
+            // Union-Find structure
+            labelList ufParent(nCells, -1);
+
+            // Initialize cells at this level
+            forAll(cellLevel_, celli)
+            {
+                if (cellLevel_[celli] == level)
+                {
+                    ufParent[celli] = celli;
+                }
+            }
+
+            // Union cells connected by sibling faces
+            for (label facei = 0; facei < nFaces; facei++)
+            {
+                const label own = owner[facei];
+                const label nei = neighbour[facei];
+
+                if
+                (
+                    cellLevel_[own] == level
+                 && cellLevel_[nei] == level
+                )
+                {
+                    // Check if ALL face points have pointLevel >= level
+                    const face& f = faces[facei];
+                    bool allHighLevel = true;
+                    forAll(f, fp)
+                    {
+                        if (pointLevel_[f[fp]] < level)
+                        {
+                            allHighLevel = false;
+                            break;
+                        }
+                    }
+
+                    if (allHighLevel)
+                    {
+                        // Sibling face — union the two cells.
+                        // Find root of own (with path compression)
+                        label rootOwn = own;
+                        while (ufParent[rootOwn] != rootOwn)
+                        {
+                            ufParent[rootOwn] =
+                                ufParent[ufParent[rootOwn]];
+                            rootOwn = ufParent[rootOwn];
+                        }
+                        // Find root of nei
+                        label rootNei = nei;
+                        while (ufParent[rootNei] != rootNei)
+                        {
+                            ufParent[rootNei] =
+                                ufParent[ufParent[rootNei]];
+                            rootNei = ufParent[rootNei];
+                        }
+
+                        if (rootOwn != rootNei)
+                        {
+                            // Attach higher root under lower so
+                            // lowest index becomes master
+                            if (rootOwn < rootNei)
+                            {
+                                ufParent[rootNei] = rootOwn;
+                            }
+                            else
+                            {
+                                ufParent[rootOwn] = rootNei;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Collect sibling groups (keyed by root = master cell)
+            Map<DynamicList<label>> groups;
+            forAll(ufParent, celli)
+            {
+                if (ufParent[celli] >= 0)
+                {
+                    // Find root with path compression
+                    label root = celli;
+                    while (ufParent[root] != root)
+                    {
+                        ufParent[root] = ufParent[ufParent[root]];
+                        root = ufParent[root];
+                    }
+
+                    if (!groups.found(root))
+                    {
+                        groups.insert(root, DynamicList<label>());
+                    }
+                    groups[root].append(celli);
+                }
+            }
+
+            // Register each sibling group in the history
+            label nGroups = 0;
+            forAllIter(Map<DynamicList<label>>, groups, iter)
+            {
+                DynamicList<label>& siblings = iter();
+
+                if (siblings.size() < 2)
+                {
+                    continue;
+                }
+
+                // Sort so master (lowest index) is first
+                Foam::sort(siblings);
+
+                // storeSplit expects: first cell = original cell,
+                // rest = added cells.  All become children of a
+                // common parent.
+                history_.storeSplit
+                (
+                    siblings[0],
+                    siblings
+                );
+                nGroups++;
+            }
+
+            if (nGroups > 0)
+            {
+                Info<< "    Level " << level << ": reconstructed "
+                    << nGroups << " sibling groups" << endl;
+            }
+        }
+    }
+
     if
     (
         cellLevel_.size() != mesh_.nCells()
