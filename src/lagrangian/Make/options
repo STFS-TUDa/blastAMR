@@ -1,4 +1,4 @@
-EXE_INC = $(DEBUG_FLAGS) \
+EXE_INC = $(DEBUG_FLAGS) --std=c++17 \
     -IcloudSupport \
     -IcloudSupport/cloudHandler \
     -IcloudSupport/handlers \
