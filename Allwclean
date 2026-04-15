@@ -3,10 +3,7 @@ cd "${0%/*}" || exit                                # Run from this directory
 
 #------------------------------------------------------------------------------
 
-wclean src/errorEstimators
-wclean src/dynamicMesh
-wclean src/dynamicFvMesh
+wclean -all src
+wclean -all applications
 
-wclean applications/utilities/updateMesh
-wclean applications/solvers/combustion/reactingDyMFoam
 # -----------------------------------------------------------------------------
