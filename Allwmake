@@ -14,7 +14,7 @@ if [[ $foamv =~ ^v([0-9]{4})$ ]]; then
         echo "OpenFOAM-v${ver} detected, this version is not supported."
         exit 1
     else if [ "${ver}" -gt "2106" ]; then
-        echo "OpenFOAM-v${ver} detected, checking out the master branch (Take care that this is successful)"
+        echo "OpenFOAM-v${ver} detected, checking out the v2212 branch (Take care that this is successful)"
         git checkout v2212
     else
         echo "OpenFOAM-v${ver} detected, checking out the master branch (Take care that this is successful)"
