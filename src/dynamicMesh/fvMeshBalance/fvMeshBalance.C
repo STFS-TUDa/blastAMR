@@ -33,6 +33,7 @@ License
 #include "preservePatchesConstraint.H"
 #include "preserveBafflesConstraint.H"
 #include "sampledSurfaceWorkaround.H"
+#include "clearCodedRedirects.H"
 #include "dynamicMotionSolverFvMesh.H"
 #include "pointIOField.H"
 
@@ -638,6 +639,10 @@ Foam::fvMeshBalance::distribute()
     //}
 
     blastMeshObject::distribute<fvMesh>(mesh_, map());
+
+    // Reset stale codedFixedValue/codedMixed redirects after autoMap.
+    // See clearCodedRedirects.H for rationale.
+    clearCodedRedirectsAllVol(mesh_);
 
     // Expire sampled surfaces in surfaceFieldValue function objects.
     // OpenFOAM's surfaceFieldValue::updateMesh() doesn't properly expire

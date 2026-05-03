@@ -30,6 +30,7 @@ License
 
 #include "fvMeshHexRefiner.H"
 #include "addToRunTimeSelectionTable.H"
+#include "clearCodedRedirects.H"
 #include "surfaceInterpolate.H"
 #include "volFields.H"
 #include "polyTopoChange.H"
@@ -229,6 +230,10 @@ Foam::fvMeshHexRefiner::refine
     // would result in double cloud remapping.
     mesh_.updateMesh(map);
 
+    // Reset stale codedFixedValue/codedMixed redirects after autoMap.
+    // See clearCodedRedirects.H for rationale.
+    clearCodedRedirectsAllVol(mesh_);
+
     // Update numbering of protectedCell_
     if (protectedCell_.size())
     {
@@ -321,6 +326,10 @@ Foam::fvMeshHexRefiner::unrefine
     // cloud remapping. We do NOT call fvMeshRefiner::updateMesh here as that
     // would result in double cloud remapping.
     mesh_.updateMesh(map);
+
+    // Reset stale codedFixedValue/codedMixed redirects after autoMap.
+    // See clearCodedRedirects.H for rationale.
+    clearCodedRedirectsAllVol(mesh_);
 
     // Update numbering of protectedCell_
     if (protectedCell_.size())

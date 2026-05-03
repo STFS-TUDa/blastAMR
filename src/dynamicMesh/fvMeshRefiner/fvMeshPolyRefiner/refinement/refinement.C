@@ -25,6 +25,8 @@ License
 
 #include "refinement.H"
 #include "polyTopoChanger.H"
+#include "clearCodedRedirects.H"
+#include "fvMesh.H"
 #include "polyAddFace.H"
 #include "polyAddPoint.H"
 #include "polyModifyFace.H"
@@ -908,6 +910,11 @@ Foam::autoPtr<Foam::mapPolyMesh> Foam::refinement::refine
     autoPtr<mapPolyMesh> map = meshMod.changeMesh(mesh, false);
     mesh.updateMesh(map());
 
+    if (auto* fvm = dynamic_cast<fvMesh*>(&mesh))
+    {
+        clearCodedRedirectsAllVol(*fvm);
+    }
+
     Info<< "Refined from "
         << returnReduce(map().nOldCells(), sumOp<label>())
         << " to " << mesh_.globalData().nTotalCells() << " cells." << endl;
@@ -925,6 +932,11 @@ bool Foam::refinement::unrefine
     this->setUnrefinement(meshMod, splitPointsToUnrefine);
     autoPtr<mapPolyMesh> map = meshMod.changeMesh(mesh, false);
     mesh.updateMesh(map());
+
+    if (auto* fvm = dynamic_cast<fvMesh*>(&mesh))
+    {
+        clearCodedRedirectsAllVol(*fvm);
+    }
 
     Info<< "Unrefined from "
         << returnReduce(map().nOldCells(), sumOp<label>())
