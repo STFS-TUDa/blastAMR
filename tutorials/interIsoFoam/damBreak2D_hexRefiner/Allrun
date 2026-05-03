@@ -17,11 +17,11 @@ fi
 export FOAM_CODE_TEMPLATES=$AMRLB_PROJECT/etc/codeTemplates/dynamicCode
 maxRef=$(foamDictionary -entry maxRefinement -value constant/dynamicMeshDict)
 runApplication setFields
-#for i in $(seq 1 $maxRef); do
-#    runApplication -a updateMesh -overwrite
-#    runApplication -a setFields
-#done
-#cp -rT 0/polyMesh constant/polyMesh
+for i in $(seq 1 $maxRef); do
+    runApplication -a updateMesh -overwrite
+    runApplication -a setFields
+done
+cp -rT 0/polyMesh constant/polyMesh
 runApplication decomposePar -constant -cellDist
 runParallel $(getApplication)
 
