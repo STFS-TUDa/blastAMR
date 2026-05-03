@@ -676,7 +676,7 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner(fvMesh& mesh)
             IOobject::READ_IF_PRESENT,
             IOobject::AUTO_WRITE
         ),
-        meshCutter_->cellLevel()
+        labelList(mesh_.nCells(), 0)
     ),
     basePointLevel_
     (
@@ -689,7 +689,7 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner(fvMesh& mesh)
             IOobject::READ_IF_PRESENT,
             IOobject::AUTO_WRITE
         ),
-        meshCutter_->pointLevel()
+        labelList(mesh_.nPoints(), 0)
     )
 {
     // Added refinement history decomposition constraint to keep all
@@ -1159,7 +1159,7 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner
             IOobject::READ_IF_PRESENT,
             IOobject::AUTO_WRITE
         ),
-        meshCutter_->cellLevel()
+        labelList(mesh_.nCells(), 0)
     ),
     basePointLevel_
     (
@@ -1172,7 +1172,7 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner
             IOobject::READ_IF_PRESENT,
             IOobject::AUTO_WRITE
         ),
-        meshCutter_->pointLevel()
+        labelList(mesh_.nPoints(), 0)
     )
 {
     // Added refinement history decomposition constraint to keep all

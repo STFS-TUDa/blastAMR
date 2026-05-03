@@ -192,17 +192,6 @@ Foam::fvMeshPolyRefiner::fvMeshPolyRefiner(fvMesh& mesh)
 
     }
 
-    // If baseCellLevel was not read from disk (all zeros),
-    // initialize from current refiner levels
-    if (gMax(baseCellLevel_) == 0 && gMax(refiner_->cellLevel()) > 0)
-    {
-        baseCellLevel_ = refiner_->cellLevel();
-    }
-    if (gMax(basePointLevel_) == 0 && gMax(refiner_->pointLevel()) > 0)
-    {
-        basePointLevel_ = refiner_->pointLevel();
-    }
-
     Info<< "Base cell levels for unrefinement floor."
         << " Min: " << gMin(baseCellLevel_)
         << " Max: " << gMax(baseCellLevel_)
@@ -324,17 +313,6 @@ Foam::fvMeshPolyRefiner::fvMeshPolyRefiner
                 << nl << "It appears that this mesh is neither 1D, 2D or 3D."
                 << abort(FatalError);
 
-    }
-
-    // If baseCellLevel was not read from disk (all zeros),
-    // initialize from current refiner levels
-    if (gMax(baseCellLevel_) == 0 && gMax(refiner_->cellLevel()) > 0)
-    {
-        baseCellLevel_ = refiner_->cellLevel();
-    }
-    if (gMax(basePointLevel_) == 0 && gMax(refiner_->pointLevel()) > 0)
-    {
-        basePointLevel_ = refiner_->pointLevel();
     }
 
     Info<< "Base cell levels for unrefinement floor."
