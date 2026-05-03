@@ -240,7 +240,7 @@ void Foam::errorEstimator::normalize(volScalarField& error)
         if (isA<probes>(funcs[i]))
         {
             const probes& p(refCast<const probes>(funcs[i]));
-            #if OPENFOAM >= 2506
+            #if OPENFOAM >= 2512
             pts = p.probeModel().probeLocations();
             #else
             pts = p;
