@@ -701,7 +701,7 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner(fvMesh& mesh)
             "type",
             hexRefRefinementHistoryConstraint::typeName
         );
-        //balancer_.addConstraint("refinementHistory", refinementHistoryDict);
+        balancer_.addConstraint("refinementHistory", refinementHistoryDict);
     }
 
     nProtected_ = 0;
@@ -1184,7 +1184,7 @@ Foam::fvMeshHexRefiner::fvMeshHexRefiner
             "type",
             hexRefRefinementHistoryConstraint::typeName
         );
-        //balancer_.addConstraint("refinementHistory", refinementHistoryDict);
+        balancer_.addConstraint("refinementHistory", refinementHistoryDict);
     }
 
     // Read static part of dictionary
