@@ -62,6 +62,12 @@ public:
 
     // Constructors
 
+        //- Construct from dictionary (required by runtime selection table)
+        explicit hexRefRefinementHistoryConstraint
+        (
+            const dictionary& constraintsDict
+        );
+
         //- Construct with generic dictionary with optional entry for type
         hexRefRefinementHistoryConstraint
         (

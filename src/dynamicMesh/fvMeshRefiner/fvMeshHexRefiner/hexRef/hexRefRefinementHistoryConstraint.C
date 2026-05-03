@@ -34,16 +34,31 @@ namespace Foam
 {
     defineTypeName(hexRefRefinementHistoryConstraint);
 
-    //addToRunTimeSelectionTable
-    //(
-    //    decompositionConstraint,
-    //    hexRefRefinementHistoryConstraint,
-    //    dictionary
-    //);
+    addToRunTimeSelectionTable
+    (
+        decompositionConstraint,
+        hexRefRefinementHistoryConstraint,
+        dictionary
+    );
 }
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::hexRefRefinementHistoryConstraint::hexRefRefinementHistoryConstraint
+(
+    const dictionary& constraintsDict
+)
+:
+    decompositionConstraint(constraintsDict, typeName)
+{
+    if (decompositionConstraint::debug)
+    {
+        Info<< type() << " : setting constraints to preserve refinement history"
+            << endl;
+    }
+}
+
 
 Foam::hexRefRefinementHistoryConstraint::hexRefRefinementHistoryConstraint
 (
