@@ -31,6 +31,27 @@ License
 #include "cpuLoadPolicy.H"
 #include "addToRunTimeSelectionTable.H"
 #include "mpi.h"
+#include "UPstream.H"
+
+// UPstream::barrier not available before OpenFOAM-v2306
+#if OPENFOAM < 2306
+namespace Foam
+{
+    inline void barrierSync(const label comm)
+    {
+        bool sync = false;
+        reduce(sync, andOp<bool>(), Pstream::msgType(), comm);
+    }
+}
+#else
+namespace Foam
+{
+    inline void barrierSync(const label comm)
+    {
+        UPstream::barrier(comm);
+    }
+}
+#endif
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -304,7 +325,7 @@ Foam::cpuLoadPolicy::cpuLoadPolicy
     // Synchronize all processors before resetting cycleStart
     // This ensures all processors start measurement from approximately
     // the same wall-clock time, even if construction happens at different times
-    UPstream::barrier(UPstream::worldComm);
+    barrierSync(UPstream::worldComm);
     mpiCommsStats.reset();
 }
 
@@ -367,7 +388,7 @@ bool Foam::cpuLoadPolicy::canBalance()
         // Synchronize all processors before resetting cycleStart
         // This ensures all processors start their new measurement interval
         // at approximately the same wall-clock time
-        UPstream::barrier(UPstream::worldComm);
+        barrierSync(UPstream::worldComm);
 
         // Reset stats and start new measurement interval
         mpiCommsStats.reset();
