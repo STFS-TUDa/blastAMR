@@ -34,6 +34,30 @@ namespace Foam
 }
 
 
+// * * * * * * * * * * * * * * Static Member Functions  * * * * * * * * * * //
+
+bool Foam::cloudHandler::anyPendingData()
+{
+    const auto* tablePtr = cloudConstructorTablePtr_;
+
+    if (!tablePtr || tablePtr->empty())
+    {
+        return false;
+    }
+
+    forAllConstIters(*tablePtr, iter)
+    {
+        autoPtr<cloudHandler> handler(iter.val()());
+        if (handler && handler->hasPendingData())
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
 // * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * * //
 
 Foam::autoPtr<Foam::cloudHandler> Foam::cloudHandler::New(const word& handlerName)

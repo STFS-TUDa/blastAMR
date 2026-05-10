@@ -31,8 +31,6 @@ License
 
 // Handler system
 #include "cloudHandler.H"
-#include "kinematicCloudHandler.H"
-#include "passiveCloudHandler.H"
 
 // Debug switch for detailed particle tracking output
 int cloudSupportDebug = Foam::debug::debugSwitch("cloudSupport", 0);
@@ -268,12 +266,8 @@ void Foam::cloudSupport::relocateClouds(const fvMesh& mesh)
     // After mesh redistribution, this method uses handlers to create parcels
     // from the data that was stored during distributeClouds().
 
-    // Check if any handler has pending data
-    bool hasPendingData =
-        !kinematicCloudHandler::pendingData().empty()
-     || !passiveCloudHandler::pendingData().empty();
-
-    if (!hasPendingData)
+    // Check if any registered handler has pending data
+    if (!cloudHandler::anyPendingData())
     {
         if (cloudSupportDebug)
         {

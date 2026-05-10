@@ -107,6 +107,14 @@ public:
 
     // Member Functions
 
+        //- Whether this handler has pending parcel data from distributeClouds
+        //  that needs to be relocated. Used by relocateClouds to determine
+        //  if any work needs to be done after mesh redistribution.
+        virtual bool hasPendingData() const = 0;
+
+        //- Query all registered handlers for pending data
+        static bool anyPendingData();
+
         //- Check if this handler can process the given cloud type
         //  Derived classes should use dynamic_cast to test the cloud type
         virtual bool canHandle(cloud& c) const = 0;

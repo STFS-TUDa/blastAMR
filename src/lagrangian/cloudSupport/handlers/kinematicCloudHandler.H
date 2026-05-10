@@ -113,6 +113,12 @@ public:
 
     // Member Functions
 
+        //- Whether this handler has pending parcel data
+        virtual bool hasPendingData() const override
+        {
+            return !pendingParcelData_.empty();
+        }
+
         //- Check if this handler can process the given cloud type
         virtual bool canHandle(cloud& c) const override;
 
