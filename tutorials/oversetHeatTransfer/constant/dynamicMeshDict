@@ -1,0 +1,54 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      dynamicMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dynamicFvMesh    adaptiveOversetFvMesh;
+
+// Static overset zones: no motion solver, only AMR and load balancing
+solvers
+{}
+
+
+adaptiveOversetFvMeshCoeffs
+{
+    refiner          hexRefiner;
+
+    // Refine where the temperature varies, which brackets the overset fringe
+    errorEstimator   delta;
+    deltaField       T;
+
+    lowerRefineLevel 0.1;
+    unrefineLevel    0.005;
+
+    maxRefinement    1;
+    nBufferLayers    1;
+
+    refineInterval   1;
+    unrefineInterval 1;
+
+    balance          yes;
+    balanceInterval  1;
+    allowableImbalance 0.001;
+    loadPolicy       cellCount;
+
+    dumpLevel        yes;
+
+    // Overset zone book-keeping. The default handler is picked up
+    // automatically for meshes with an overset patch; set to "none" to
+    // switch it off, or name your own type to plug in custom stencil logic
+    // oversetHandler   oversetHandler;
+}
+
+// ************************************************************************* //

@@ -3,6 +3,7 @@ EXE_INC = $(DEBUG_FLAGS) --std=c++17 \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/dynamicMesh/lnInclude \
     -I$(LIB_SRC)/dynamicFvMesh/lnInclude \
+    -I$(LIB_SRC)/overset/lnInclude \
     -I$(LIB_SRC)/parallel/decompose/decompositionMethods/lnInclude \
     -I$(LIB_SRC)/lagrangian/basic/lnInclude \
     -I../dynamicMesh/lnInclude \
@@ -15,6 +16,7 @@ LIB_LIBS = \
     -lfiniteVolume \
     -ldynamicMesh \
     -ldynamicFvMesh \
+    -loverset \
     -ldecompositionMethods \
     -llagrangian \
     -L$(FOAM_USER_LIBBIN) \

@@ -38,3 +38,37 @@ To get started, you can visit the one and only [wiki page](https://github.com/ST
 
 - Everything compiles to your `$FOAM_USER_LIBBIN` with a recent ESI ([openfoam.com](https://openfoam.com)) version.
 - Our favorite refinement cell selector is the [`coded`](https://github.com/STFS-TUDa/blastAMR/blob/0e70469d718ee53a5ce892e0e24a4f940bfba369/tutorials/poly_freelyPropFlame2D_H2/constant/dynamicMeshDict#L25). Although a wide range of selectors is provided, they are not well tested. So, use the coded refinement whenever possible.
+
+## Overset meshes
+
+`adaptiveOversetFvMesh` is `dynamicOversetFvMesh` with AMR and load balancing on
+top, so mesh motion, refinement and balancing are all driven from a single
+`constant/dynamicMeshDict`:
+
+```
+dynamicFvMesh   adaptiveOversetFvMesh;
+
+solvers
+{}                              // or a motionSolver list, as for dynamicOversetFvMesh
+
+adaptiveOversetFvMeshCoeffs
+{
+    // the usual blastAMR settings
+}
+```
+
+Zone book-keeping across topology changes and redistribution is handled by a
+run-time selectable `oversetHandler`, picked up automatically for any mesh with
+an `overset` patch. Set `oversetHandler none;` to switch it off, or register
+your own type if you use custom `cellCellStencil` code:
+
+```
+class myHandler : public oversetHandler { ... };
+addToRunTimeSelectionTable(oversetHandler, myHandler, mesh);
+```
+
+See `tutorials/oversetHeatTransfer`. Known limitations: refinement driven by the
+`loadBalancedAMR` function object needs `adaptiveOversetFvMesh` (the function
+object on a stock `dynamicOversetFvMesh` covers load balancing only), and
+unrefinement leaves the flux on coarsened faces inconsistent, which sensitive
+overset cases will not tolerate.

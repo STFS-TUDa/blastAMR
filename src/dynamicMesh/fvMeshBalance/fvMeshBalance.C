@@ -27,6 +27,7 @@ License
 #include "decompositionMethod.H"
 #include "addToRunTimeSelectionTable.H"
 #include "RefineBalanceMeshObject.H"
+#include "oversetHandler.H"
 #include "cloudSupport.H"
 #include "preserveFaceZonesConstraint.H"
 #include "singleProcessorFaceSetsConstraint.H"
@@ -35,6 +36,7 @@ License
 #include "sampledSurfaceWorkaround.H"
 #include "clearCodedRedirects.H"
 #include "dynamicMotionSolverFvMesh.H"
+#include "dynamicMotionSolverListFvMesh.H"
 #include "pointIOField.H"
 
 using namespace Foam::decompositionConstraints;
@@ -541,8 +543,18 @@ Foam::fvMeshBalance::distribute()
 
     blastMeshObject::preDistribute<fvMesh>(mesh_);
 
-    // Check if mesh uses a motion solver - special handling is required
-    auto* motionMeshPtr = dynamic_cast<dynamicMotionSolverFvMesh*>(&mesh_);
+    // Check if mesh uses a motion solver - special handling is required.
+    // Both the single-solver and the list variant (which every overset mesh
+    // uses) keep a points0 field that does not survive redistribution
+    dynamicFvMesh* motionMeshPtr = nullptr;
+    if
+    (
+        isA<dynamicMotionSolverFvMesh>(mesh_)
+     || isA<dynamicMotionSolverListFvMesh>(mesh_)
+    )
+    {
+        motionMeshPtr = dynamic_cast<dynamicFvMesh*>(&mesh_);
+    }
     bool oldMoving = false;
 
     if (motionMeshPtr)
@@ -639,6 +651,13 @@ Foam::fvMeshBalance::distribute()
     //}
 
     blastMeshObject::distribute<fvMesh>(mesh_, map());
+
+    // zoneID is a plain registered list and does not survive redistribution;
+    // rebuild it from the field the handler keeps in step with the mesh
+    if (oversetHandler* handler = oversetHandler::lookup(mesh_))
+    {
+        handler->sync();
+    }
 
     // Reset stale codedFixedValue/codedMixed redirects after autoMap.
     // See clearCodedRedirects.H for rationale.

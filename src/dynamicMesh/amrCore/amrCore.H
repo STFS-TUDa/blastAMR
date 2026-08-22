@@ -50,6 +50,7 @@ SourceFiles
 #include "errorEstimator.H"
 #include "HashTable.H"
 #include "mapPolyMesh.H"
+#include "oversetHandler.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -177,6 +178,14 @@ public:
             bool lbInitialized() const
             {
                 return refiner_.valid();
+            }
+
+            //- Return the overset handler registered on the mesh, or
+            //  nullptr. Looked up rather than cached: the mesh objects do
+            //  not survive a redistribution
+            oversetHandler* oversetHandlerPtr() const
+            {
+                return oversetHandler::lookup(mesh_);
             }
 
             //- Return if sampledSurface cache expiration is enabled

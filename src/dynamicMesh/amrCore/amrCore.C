@@ -76,6 +76,9 @@ void Foam::amrCore::initializeAMR(const dictionary& dict)
     // Create refiner
     refiner_ = fvMeshRefiner::New(mesh_, dict, false, true);
 
+    // Overset meshes need their zone book-keeping mapped along with the mesh
+    oversetHandler::New(mesh_, dict);
+
     // Read flux correction settings
     readCorrectFluxes(dict);
 
@@ -121,6 +124,8 @@ void Foam::amrCore::initializeLB(const dictionary& dict)
 
         refiner_ = fvMeshRefiner::New(mesh_, minimalDict, false, true);
     }
+
+    oversetHandler::New(mesh_, dict);
 
     // Configure balancer within refiner
     refiner_->balancer().read(dict);
@@ -203,6 +208,14 @@ bool Foam::amrCore::refine()
     label nProtected = error_->protectPatches();
     Info<< "Protecting " << returnReduce(nProtected, sumOp<label>())
         << " cells next to requested boundary patches." << endl;
+
+    // Protect overset hole cells
+    if (oversetHandler* handler = oversetHandlerPtr())
+    {
+        const label nHoles = handler->protectCells(error_->error());
+        Info<< "Protecting " << returnReduce(nHoles, sumOp<label>())
+            << " overset hole cells." << endl;
+    }
 
     // Perform refinement
     bool changed = refiner_->refine(error_->error(), error_->maxRefinement());
@@ -413,6 +426,12 @@ void Foam::amrCore::updateMesh(const mapPolyMesh& map)
     if (refiner_.valid())
     {
         refiner_->updateMesh(map);
+    }
+
+    // Rebuild the overset stencil book-keeping for the new topology
+    if (oversetHandler* handler = oversetHandlerPtr())
+    {
+        handler->sync();
     }
 
     // Note: Cloud remapping is NOT done here because this is called
