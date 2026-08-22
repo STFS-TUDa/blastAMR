@@ -34,9 +34,12 @@ Description
     it is neither mapped on refinement nor distributed on balancing, and on
     restart it is re-read from the original, undecomposed mesh.
 
-    The handler mirrors zoneID into a registered volScalarField, which
-    OpenFOAM maps on refinement and distributes on redistribution like any
-    other field, and rebuilds the labelIOList from it afterwards.
+    The handler remaps zoneID itself: by cellMap on a topology change, and
+    by the redistribution map on balancing. Mirroring it into a registered
+    volScalarField is not an option — the overset machinery interpolates
+    every registered field into the acceptor cells except the ones the
+    stencil names in nonInterpolatedFields_, so a mirror would be smeared
+    across the fringe.
 
     Selection is automatic for meshes carrying an overset patch. Users with
     custom stencil code derive from this class, add themselves to the
@@ -58,6 +61,7 @@ SourceFiles
 
 #include "fvMesh.H"
 #include "labelIOList.H"
+#include "wordRes.H"
 #include "regIOobject.H"
 #include "runTimeSelectionTables.H"
 #include "volFieldsFwd.H"
@@ -66,6 +70,9 @@ SourceFiles
 
 namespace Foam
 {
+
+class mapPolyMesh;
+class mapDistributePolyMesh;
 
 /*---------------------------------------------------------------------------*\
                        Class oversetHandler Declaration
@@ -85,19 +92,23 @@ protected:
 
     // Protected Member Functions
 
-        //- The zone identifiers as a registered field. Mapped and
-        //  distributed along with the mesh by OpenFOAM
-        volScalarField& zoneIDField();
+        //- The zone identifiers, sized nCells. Created on first call
+        labelIOList& zoneID();
 
         //- Drop the cached stencil so the next lookup rebuilds it
         void expireStencil();
 
 
-public:
+    // Protected Data
 
-    //- Name of the field mirroring zoneID. Not called "zoneID": that name
-    //  is taken on the registry by the stencil's labelIOList
-    static const word zoneIDFieldName;
+        //- zoneID as it was before redistribution
+        labelList oldZoneID_;
+
+        //- Cell zones excluded from adaptation, see protectCells()
+        wordRes protectZones_;
+
+
+public:
 
     //- Runtime type information
     TypeName("oversetHandler");
@@ -144,13 +155,24 @@ public:
 
     // Member Functions
 
-        //- Exclude cells from adaptation by zeroing their error estimate.
+        //- Read settings
+        virtual void read(const dictionary& dict);
+
+        //- Exclude cells from adaptation by zeroing their error estimate:
+        //  hole cells, and any cell in a zone named by protectZones.
         //  Returns the number of cells protected on this processor
         virtual label protectCells(volScalarField& error) const;
 
-        //- Rebuild the stencil book-keeping for the current mesh. Call
-        //  after refinement and after redistribution
-        virtual void sync();
+        //- Remap zoneID onto the new cells. Must run *before*
+        //  fvMesh::updateMesh: correcting the overset boundary conditions
+        //  in there rebuilds the stencil, which reads zoneID
+        virtual void updateMesh(const mapPolyMesh& mpm);
+
+        //- Take a copy of zoneID on the pre-distribution mesh
+        virtual void preDistribute();
+
+        //- Redistribute zoneID onto the new decomposition
+        virtual void distribute(const mapDistributePolyMesh& map);
 
         //- Write zoneID for the current mesh so that a restart reads a
         //  zoneID matching the adapted mesh rather than the original one

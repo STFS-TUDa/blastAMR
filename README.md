@@ -67,8 +67,26 @@ class myHandler : public oversetHandler { ... };
 addToRunTimeSelectionTable(oversetHandler, myHandler, mesh);
 ```
 
-See `tutorials/oversetHeatTransfer`. Known limitations: refinement driven by the
-`loadBalancedAMR` function object needs `adaptiveOversetFvMesh` (the function
-object on a stock `dynamicOversetFvMesh` covers load balancing only), and
-unrefinement leaves the flux on coarsened faces inconsistent, which sensitive
-overset cases will not tolerate.
+Cells carried by a motion solver must be kept out of adaptation:
+
+```
+    protectZones    ( movingZone );     // cell zones excluded from AMR
+```
+
+OpenFOAM places points introduced by refinement in the reference configuration
+by assuming the motion is a pure scaling (`points0MotionSolver::updateMesh`).
+That is wrong under rotation, and the mesh tangles as the body turns. Refine the
+background around the body instead, which is the useful case anyway.
+
+See `tutorials/oversetHeatTransfer` (static zones, AMR + load balancing) and
+`tutorials/oversetRotatingSquare` (moving body, AMR).
+
+Known limitations:
+
+- Load balancing a mesh carried by a motion solver is not supported. blastAMR
+  re-initialises the motion solver after redistribution from a `points0` written
+  as the *current* points, which redefines the reference configuration to the
+  displaced state. Harmless while the mesh has not moved far, wrong once it has.
+- Refinement driven by the `loadBalancedAMR` function object needs
+  `adaptiveOversetFvMesh`; the function object on a stock `dynamicOversetFvMesh`
+  covers load balancing only.

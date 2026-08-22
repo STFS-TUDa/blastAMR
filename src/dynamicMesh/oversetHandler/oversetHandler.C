@@ -25,6 +25,9 @@ License
 
 #include "oversetHandler.H"
 #include "cellCellStencilObject.H"
+#include "cellZoneMesh.H"
+#include "mapDistributePolyMesh.H"
+#include "mapPolyMesh.H"
 #include "oversetPolyPatch.H"
 #include "volFields.H"
 #include "zeroGradientFvPatchFields.H"
@@ -36,9 +39,6 @@ namespace Foam
     defineTypeNameAndDebug(oversetHandler, 0);
     defineRunTimeSelectionTable(oversetHandler, mesh);
 }
-
-const Foam::word Foam::oversetHandler::zoneIDFieldName("oversetZoneID");
-
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -56,10 +56,13 @@ Foam::oversetHandler::oversetHandler(fvMesh& mesh)
             true
         )
     ),
-    oversetMesh_(mesh)
+    oversetMesh_(mesh),
+    oldZoneID_(),
+    protectZones_()
 {
-    // Mirror zoneID while the mesh still matches the zoneID field on disk
-    zoneIDField();
+    // Pull zoneID onto the registry while the mesh still matches the zoneID
+    // field on disk. From here on it is only ever remapped
+    zoneID();
 }
 
 
@@ -128,6 +131,8 @@ Foam::oversetHandler* Foam::oversetHandler::New
         handlerPtr.reset(tablePtr->cfind(handlerType).val()(mesh).ptr());
     }
 
+    handlerPtr->read(dict);
+
     Info<< "oversetHandler: registering " << handlerPtr->type()
         << " for overset mesh " << mesh.name() << endl;
 
@@ -140,41 +145,12 @@ Foam::oversetHandler* Foam::oversetHandler::New
 
 // * * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * //
 
-Foam::volScalarField& Foam::oversetHandler::zoneIDField()
+Foam::labelIOList& Foam::oversetHandler::zoneID()
 {
-    auto* fieldPtr =
-        oversetMesh_.getObjectPtr<volScalarField>(zoneIDFieldName);
+    // Creates and registers the list on first call
+    cellCellStencil::zoneID(oversetMesh_);
 
-    if (!fieldPtr)
-    {
-        fieldPtr = new volScalarField
-        (
-            IOobject
-            (
-                zoneIDFieldName,
-                oversetMesh_.time().timeName(),
-                oversetMesh_,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-            oversetMesh_,
-            dimensionedScalar(dimless, Zero),
-            zeroGradientFvPatchScalarField::typeName
-        );
-        fieldPtr->store();
-
-        // Seed from the stencil's own zoneID, read off the mesh as it is
-        // now. Everything after this point rides on the field
-        const labelIOList& zones = cellCellStencil::zoneID(oversetMesh_);
-
-        forAll(zones, celli)
-        {
-            (*fieldPtr)[celli] = scalar(zones[celli]);
-        }
-        fieldPtr->correctBoundaryConditions();
-    }
-
-    return *fieldPtr;
+    return *oversetMesh_.getObjectPtr<labelIOList>("zoneID");
 }
 
 
@@ -195,8 +171,32 @@ void Foam::oversetHandler::expireStencil()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+void Foam::oversetHandler::read(const dictionary& dict)
+{
+    protectZones_ = dict.getOrDefault<wordRes>("protectZones", wordRes());
+}
+
+
 Foam::label Foam::oversetHandler::protectCells(volScalarField& error) const
 {
+    label nProtected = 0;
+
+    // Cells carried by a motion solver cannot be refined: OpenFOAM places
+    // the points introduced by refinement in the reference configuration by
+    // assuming the motion is a pure scaling (points0MotionSolver::updateMesh),
+    // which is wrong under rotation and tangles the mesh as the body turns
+    for (const cellZone& cz : oversetMesh_.cellZones())
+    {
+        if (protectZones_.match(cz.name()))
+        {
+            for (const label celli : cz)
+            {
+                error[celli] = 0.0;
+                nProtected++;
+            }
+        }
+    }
+
     const auto* stencilPtr =
         oversetMesh_.findObject<cellCellStencilObject>
         (
@@ -205,12 +205,11 @@ Foam::label Foam::oversetHandler::protectCells(volScalarField& error) const
 
     if (!stencilPtr)
     {
-        return 0;
+        return nProtected;
     }
 
     const labelUList& cellTypes = stencilPtr->cellTypes();
 
-    label nProtected = 0;
     forAll(cellTypes, celli)
     {
         if (cellTypes[celli] == cellCellStencil::HOLE)
@@ -224,22 +223,48 @@ Foam::label Foam::oversetHandler::protectCells(volScalarField& error) const
 }
 
 
-void Foam::oversetHandler::sync()
+void Foam::oversetHandler::updateMesh(const mapPolyMesh& mpm)
 {
-    const volScalarField& zoneIDf = zoneIDField();
-
     auto* zonesPtr = oversetMesh_.getObjectPtr<labelIOList>("zoneID");
 
-    if (zonesPtr)
+    if (!zonesPtr)
     {
-        labelIOList& zones = *zonesPtr;
-        zones.setSize(zoneIDf.size());
+        return;
+    }
 
-        forAll(zones, celli)
+    labelIOList& zones = *zonesPtr;
+    const labelList& cellMap = mpm.cellMap();
+
+    labelList newZones(cellMap.size(), 0);
+    forAll(cellMap, celli)
+    {
+        const label oldCelli = cellMap[celli];
+
+        // Refined cells inherit the zone of the cell they came from
+        if (oldCelli >= 0 && oldCelli < zones.size())
         {
-            zones[celli] = label(zoneIDf[celli] + 0.5);
+            newZones[celli] = zones[oldCelli];
         }
     }
+
+    zones.transfer(newZones);
+
+    // The stencil itself is discarded by meshObject::updateMesh; the
+    // mirrored field is mapped by fvMesh::updateMesh
+}
+
+
+void Foam::oversetHandler::preDistribute()
+{
+    oldZoneID_ = zoneID();
+}
+
+
+void Foam::oversetHandler::distribute(const mapDistributePolyMesh& map)
+{
+    map.distributeCellData(oldZoneID_);
+
+    zoneID().transfer(oldZoneID_);
 
     expireStencil();
 }
@@ -247,10 +272,9 @@ void Foam::oversetHandler::sync()
 
 void Foam::oversetHandler::writeZoneID() const
 {
-    const auto* fieldPtr =
-        oversetMesh_.findObject<volScalarField>(zoneIDFieldName);
+    const auto* zonesPtr = oversetMesh_.findObject<labelIOList>("zoneID");
 
-    if (!fieldPtr)
+    if (!zonesPtr)
     {
         return;
     }
@@ -268,8 +292,15 @@ void Foam::oversetHandler::writeZoneID() const
             IOobject::NO_WRITE,
             false
         ),
-        *fieldPtr
+        oversetMesh_,
+        dimensionedScalar(dimless, Zero),
+        zeroGradientFvPatchScalarField::typeName
     );
+
+    forAll(*zonesPtr, celli)
+    {
+        volZoneID[celli] = scalar((*zonesPtr)[celli]);
+    }
 
     volZoneID.write();
 }

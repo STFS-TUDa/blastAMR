@@ -543,6 +543,13 @@ Foam::fvMeshBalance::distribute()
 
     blastMeshObject::preDistribute<fvMesh>(mesh_);
 
+    // zoneID is a plain registered list: nothing maps it across a
+    // redistribution, so keep a copy of it on the old decomposition
+    if (oversetHandler* handler = oversetHandler::lookup(mesh_))
+    {
+        handler->preDistribute();
+    }
+
     // Check if mesh uses a motion solver - special handling is required.
     // Both the single-solver and the list variant (which every overset mesh
     // uses) keep a points0 field that does not survive redistribution
@@ -652,11 +659,9 @@ Foam::fvMeshBalance::distribute()
 
     blastMeshObject::distribute<fvMesh>(mesh_, map());
 
-    // zoneID is a plain registered list and does not survive redistribution;
-    // rebuild it from the field the handler keeps in step with the mesh
     if (oversetHandler* handler = oversetHandler::lookup(mesh_))
     {
-        handler->sync();
+        handler->distribute(map());
     }
 
     // Reset stale codedFixedValue/codedMixed redirects after autoMap.

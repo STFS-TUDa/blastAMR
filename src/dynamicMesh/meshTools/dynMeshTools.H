@@ -43,6 +43,7 @@ SourceFiles
 #include "Map.H"
 #include "EdgeMap.H"
 #include "boolList.H"
+#include "surfaceFieldsFwd.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -241,6 +242,23 @@ namespace meshTools
             polyMesh& mesh,
             const HashSet<word>& addedPatchNames
         );
+
+        //- Give internal faces created by refinement a value interpolated
+        //  from the already-mapped faces of the two cells they separate,
+        //  instead of the value copied from the face they were split off.
+        //  Oriented fields (fluxes) are left alone: they are extensive and
+        //  are handled by amrCore::correctFluxes
+        template<class T>
+        void mapNewInternalFaces
+        (
+            fvMesh& mesh,
+            const labelList& faceMap,
+            GeometricField<T, fvsPatchField, surfaceMesh>& sFld
+        );
+
+        //- As above, for every registered surface field of this type
+        template<class T>
+        void mapNewInternalFaces(fvMesh& mesh, const labelList& faceMap);
 } // End namespace foamSyncTools
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -27,6 +27,7 @@ License
 #include "addToRunTimeSelectionTable.H"
 #include "cloudSupport.H"
 #include "sampledSurfaceWorkaround.H"
+#include "dynMeshTools.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -76,6 +77,14 @@ void Foam::adaptiveOversetFvMesh::readDict()
 
 void Foam::adaptiveOversetFvMesh::updateMesh(const mapPolyMesh& mpm)
 {
+    // zoneID has to be right before anything rebuilds the stencil, and
+    // correcting the overset boundary conditions inside fvMesh::updateMesh
+    // does exactly that
+    if (oversetHandler* handler = amrCore_.oversetHandlerPtr())
+    {
+        handler->updateMesh(mpm);
+    }
+
     // Motion solvers, mesh objects (including the overset stencil) and all
     // registered fields. Runs before amrCore so that flux correction sees
     // fields already resized to the new topology
@@ -116,6 +125,20 @@ Foam::adaptiveOversetFvMesh::adaptiveOversetFvMesh(const IOobject& io)
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+void Foam::adaptiveOversetFvMesh::mapFields(const mapPolyMesh& mpm)
+{
+    dynamicOversetFvMesh::mapFields(mpm);
+
+    // Correct surface fields on introduced internal faces. These get
+    // created out-of-nothing so get an interpolated value.
+    meshTools::mapNewInternalFaces<scalar>(*this, mpm.faceMap());
+    meshTools::mapNewInternalFaces<vector>(*this, mpm.faceMap());
+    meshTools::mapNewInternalFaces<sphericalTensor>(*this, mpm.faceMap());
+    meshTools::mapNewInternalFaces<symmTensor>(*this, mpm.faceMap());
+    meshTools::mapNewInternalFaces<tensor>(*this, mpm.faceMap());
+}
+
+
 bool Foam::adaptiveOversetFvMesh::refine()
 {
     readDict();
@@ -126,37 +149,40 @@ bool Foam::adaptiveOversetFvMesh::refine()
 
 bool Foam::adaptiveOversetFvMesh::update()
 {
-    // Mesh motion and, if it moved, the overset addressing
-    bool changed = dynamicOversetFvMesh::update();
+    bool adapted = false;
 
-    if (currentTimeIndex_ >= time().timeIndex())
+    if (currentTimeIndex_ < time().timeIndex())
     {
-        return changed;
+        currentTimeIndex_ = time().timeIndex();
+
+        adapted =
+            (
+                amrCore_.refiner().canRefine(true)
+             || amrCore_.refiner().canUnrefine(true)
+            )
+         && refine();
+
+        if (amrCore_.lbInitialized() && Pstream::parRun() && amrCore_.balance())
+        {
+            adapted = true;
+        }
+
+        reduce(adapted, orOp<bool>());
     }
-    currentTimeIndex_ = time().timeIndex();
 
-    bool adapted =
-        (
-            amrCore_.refiner().canRefine(true)
-         || amrCore_.refiner().canUnrefine(true)
-        )
-     && refine();
+    // Mesh motion runs after adaptation, not before: balancing resets the
+    // motion state, and only a subsequent movePoints re-establishes the mesh
+    // flux the solver asks for. This also refreshes the overset addressing
+    const bool moved = dynamicOversetFvMesh::update();
 
-    if (amrCore_.lbInitialized() && Pstream::parRun() && amrCore_.balance())
+    if (adapted && !moved)
     {
-        adapted = true;
-    }
-
-    reduce(adapted, orOp<bool>());
-
-    if (adapted)
-    {
-        // The stencil was discarded with the old topology; rebuild the
-        // extended addressing and re-interpolate before the solver runs
+        // Topology changed but nothing moved, so rebuild the extended
+        // addressing and re-interpolate before the solver runs
         oversetFvMeshBase::update();
     }
 
-    return changed || adapted;
+    return moved || adapted;
 }
 
 

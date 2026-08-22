@@ -121,12 +121,6 @@ protected:
             //- Distribute additional information
             virtual void distribute(const mapDistributePolyMesh& map);
 
-            //- Map non-flux surface<Type>Fields for new internal faces
-            //  (from cell splitting)
-            template <class T>
-            void mapNewInternalFaces(const labelList& faceMap)
-            {}
-
             bool firstUpdate();
 
 public:

@@ -32,6 +32,7 @@ License
 #include "addToRunTimeSelectionTable.H"
 #include "cloudSupport.H"
 #include "sampledSurfaceWorkaround.H"
+#include "dynMeshTools.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -169,11 +170,11 @@ void Foam::adaptiveFvMesh::mapFields(const mapPolyMesh& mpm)
 
     // Correct surface fields on introduced internal faces. These get
     // created out-of-nothing so get an interpolated value.
-    mapNewInternalFaces<scalar>(mpm.faceMap());
-    mapNewInternalFaces<vector>(mpm.faceMap());
-    mapNewInternalFaces<sphericalTensor>(mpm.faceMap());
-    mapNewInternalFaces<symmTensor>(mpm.faceMap());
-    mapNewInternalFaces<tensor>(mpm.faceMap());
+    meshTools::mapNewInternalFaces<scalar>(*this, mpm.faceMap());
+    meshTools::mapNewInternalFaces<vector>(*this, mpm.faceMap());
+    meshTools::mapNewInternalFaces<sphericalTensor>(*this, mpm.faceMap());
+    meshTools::mapNewInternalFaces<symmTensor>(*this, mpm.faceMap());
+    meshTools::mapNewInternalFaces<tensor>(*this, mpm.faceMap());
 }
 
 bool Foam::adaptiveFvMesh::firstUpdate()

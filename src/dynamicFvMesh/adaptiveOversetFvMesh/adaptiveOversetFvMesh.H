@@ -131,6 +131,9 @@ public:
             return amrCore_.refiner();
         }
 
+        //- Map all fields in time using given map
+        virtual void mapFields(const mapPolyMesh& mpm);
+
         //- Update the mesh for motion, topology change and balancing
         virtual bool update();
 

@@ -1,0 +1,87 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     |                                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      dynamicMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dynamicFvMesh   adaptiveOversetFvMesh;
+
+solver          multiSolidBodyMotionSolver;
+
+multiSolidBodyMotionSolverCoeffs
+{
+    background
+    {
+        solidBodyMotionFunction linearMotion;
+        linearMotionCoeffs
+        {
+            velocity    (0 0 0);
+        }
+    }
+
+    movingZone
+    {
+        solidBodyMotionFunction rotatingMotion;
+        origin  (0.005 0 0.005);
+        axis    (0 0 1);
+        omega   20;
+    }
+}
+
+adaptiveOversetFvMeshCoeffs
+{
+    refiner         hexRefiner;
+
+    // Refine the fringe around the moving body: cellMask jumps from 0 in
+    // hole cells to 1 in live cells
+    errorEstimator  delta;
+    deltaField      cellMask;
+
+    lowerRefineLevel 0.25;
+    unrefineLevel    0.1;
+
+    maxRefinement   1;
+    nBufferLayers   1;
+
+    refineInterval   2;
+
+    // Unrefinement is switched off here: merging faces back together leaves
+    // the flux on the coarsened face inconsistent (blastAMR maps it from a
+    // single child face rather than summing the children), which this case
+    // is sensitive enough to diverge on. Not overset specific.
+    unrefineInterval 4;
+
+    // Load balancing is off: redistributing a mesh that is carried by a
+    // motion solver redefines its reference configuration, see README
+    balance          no;
+    balanceInterval  4;
+    allowableImbalance 0.01;
+    loadPolicy       cellCount;
+
+    // Recompute the flux on faces created by refinement
+    correctFluxes   ( ( phi U ) ( phi_0 U ) );
+
+    // The rotating zone is carried by the motion solver: its points0 cannot
+    // be reconstructed for cells introduced by refinement, so keep AMR out
+    // of it and refine the background around the body instead
+    protectZones     ( movingZone );
+
+    dumpLevel        yes;
+
+    // Overset zone book-keeping. The default handler is selected
+    // automatically for meshes with an overset patch; set to "none" to
+    // switch it off, or to your own type to plug in custom stencil logic
+    // oversetHandler  oversetHandler;
+}
+
+// ************************************************************************* //
