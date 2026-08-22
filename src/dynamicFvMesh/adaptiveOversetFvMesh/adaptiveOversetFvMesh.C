@@ -76,10 +76,9 @@ void Foam::adaptiveOversetFvMesh::readDict()
 
 void Foam::adaptiveOversetFvMesh::updateMesh(const mapPolyMesh& mpm)
 {
-    // Motion solvers, mesh objects (including the overset stencil) and
-    // all registered fields. Unlike adaptiveFvMesh this runs before
-    // amrCore, so that flux correction sees fields already resized to the
-    // new topology
+    // Motion solvers, mesh objects (including the overset stencil) and all
+    // registered fields. Runs before amrCore so that flux correction sees
+    // fields already resized to the new topology
     dynamicOversetFvMesh::updateMesh(mpm);
 
     // Flux correction and refiner update

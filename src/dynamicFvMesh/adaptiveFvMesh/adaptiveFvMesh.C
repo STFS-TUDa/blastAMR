@@ -99,11 +99,13 @@ void Foam::adaptiveFvMesh::readDict()
 
 void Foam::adaptiveFvMesh::updateMesh(const mapPolyMesh& map)
 {
+    // Call parent updateMesh first: flux correction indexes the fluxes
+    // against the new face count and reads the new mesh geometry, so the
+    // fields have to be mapped to the new topology before amrCore runs
+    fvMesh::updateMesh(map);
+
     // Delegate flux correction and refiner update to amrCore
     amrCore_.updateMesh(map);
-
-    // Call parent updateMesh
-    fvMesh::updateMesh(map);
 
     // Remap clouds AFTER fvMesh::updateMesh completes.
     // This must happen after fvMesh::updateMesh because cloud.autoMap
