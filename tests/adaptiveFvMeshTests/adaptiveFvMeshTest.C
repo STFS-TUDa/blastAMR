@@ -6,6 +6,8 @@
 #include "fvMesh.H"
 #include "messageStream.H"
 #include "volFields.H"
+#include "surfaceFields.H"
+#include "surfaceInterpolate.H"
 #include "adaptiveFvMesh.H"
 #include "volFieldsFwd.H"
 #include "boxToCell.H"
@@ -55,6 +57,7 @@ TEST_CASE
         "unrefineLevel 0.01;"
         "nBufferLayers   "+Foam::name(nBufferLayers)+";"
         "maxRefinement   "+Foam::name(maxRefL)+";"
+        "correctFluxes   ((phi U));"
         "dumpLevel       false;"
         "protectedPatches ();"
         "nPatchesBuffers 1;"
@@ -130,6 +133,37 @@ TEST_CASE
         }
     }
 
+    // Uniform velocity and its exactly consistent flux, to check that
+    // correctFluxes re-evaluates phi on faces merged by unrefinement
+    volVectorField U
+    (
+        IOobject
+        (
+            "U",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            true
+        ),
+        mesh,
+        dimensionedVector("U", dimVelocity, vector(1, 2, 3))
+    );
+
+    surfaceScalarField phi
+    (
+        IOobject
+        (
+            "phi",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            true
+        ),
+        fvc::interpolate(U) & mesh.Sf()
+    );
+
     // Cell set for the refined box
     IStringStream refBoxIs(boxString);
     boxToCell refBox(mesh, refBoxIs);
@@ -188,6 +222,31 @@ TEST_CASE
 
     // Require that the old box gets unrefined
     REQUIRE(newBoxNCells < newRefBoxNCells);
+
+    // With a uniform U, |phi| must stay |interpolate(U) & Sf| on every face.
+    // A face merged by unrefinement keeps the flux of a single child, ie.
+    // ~1/4 (3D) or ~1/2 (2D) of the merged area, unless correctFluxes
+    // re-evaluates it.
+    // Note: magnitudes only. Repeated refinement leaves a handful of faces
+    // with a flipped flux sign (meshTools::modifyFace reverses a face
+    // without setting flipFaceFlux, same as upstream hexRef8) which is a
+    // separate defect.
+    {
+        const surfaceScalarField phiU(fvc::interpolate(U) & mesh.Sf());
+        scalar maxErr = 0;
+        for (label facei = 0; facei < mesh.nInternalFaces(); facei++)
+        {
+            maxErr = max
+            (
+                maxErr,
+                mag(mag(phi[facei]) - mag(phiU[facei]))
+               /(mag(phiU[facei]) + SMALL)
+            );
+        }
+        reduce(maxErr, maxOp<scalar>());
+        CAPTURE(maxErr);
+        REQUIRE(maxErr < 1e-8);
+    }
 
     // Reset time for good mesure
     runTime.setTime(0.0, 0);

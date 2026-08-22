@@ -303,14 +303,8 @@ Foam::fvMeshHexRefiner::unrefine
     meshCutter_->setUnrefinement(splitElems, meshMod);
 
 
-    // Save information on faces that will be combined
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    // Find the faceMidPoints on cells to be combined.
-    // for each face resulting of split of face into four store the
-    // midpoint
-    Map<label> faceToSplitPoint(0);
-    meshCutter_->calcFaceToSplitPoint(splitElems, faceToSplitPoint);
+    // Note: no need for the upstream faceToSplitPoint bookkeeping here;
+    // amrCore::correctFluxes detects merged faces from the mapPolyMesh.
 
     // Clear moving flag. This is required since geometry calculation
     // might get triggered when doing processor patches.

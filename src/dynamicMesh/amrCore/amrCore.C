@@ -251,10 +251,14 @@ void Foam::amrCore::correctFluxes(const mapPolyMesh& map)
     const labelList& faceMap = map.faceMap();
     const labelList& reverseFaceMap = map.reverseFaceMap();
 
-    // Storage for any master faces. These will be the original faces
-    // on the coarse cell that get split into four (or rather the
-    // master face gets modified and three faces get added from the master)
-    labelHashSet masterFaces;
+    // Storage for faces whose area changed on this topology change:
+    //  - refinement: the original face on the coarse cell that gets split
+    //    into four (the master face gets modified and three faces get added
+    //    from the master)
+    //  - unrefinement: the surviving coarse face the child faces were merged
+    //    into. Its flux was mapped from a single child, so it is off by the
+    //    area ratio unless re-evaluated here.
+    labelHashSet changedFaces;
 
     forAll(faceMap, facei)
     {
@@ -267,20 +271,33 @@ void Foam::amrCore::correctFluxes(const mapPolyMesh& map)
             if (masterFacei < 0)
             {
                 FatalErrorInFunction
-                    << "Problem: should not have removed faces"
-                    << " when refining."
+                    << "Problem: a surviving face maps from a face that was"
+                    << " removed."
                     << nl << "face:" << facei << abort(FatalError);
             }
             else if (masterFacei != facei)
             {
-                masterFaces.insert(masterFacei);
+                changedFaces.insert(masterFacei);
             }
+        }
+    }
+
+    label nSplitFaces = changedFaces.size();
+
+    // Faces merged into during unrefinement: removed faces carry the new
+    // label of the face they were merged into as -newFacei-2
+    forAll(reverseFaceMap, oldFacei)
+    {
+        if (reverseFaceMap[oldFacei] < -1)
+        {
+            changedFaces.insert(-reverseFaceMap[oldFacei] - 2);
         }
     }
 
     if (debug)
     {
-        Pout<< "Found " << masterFaces.size() << " split faces " << endl;
+        Pout<< "Found " << nSplitFaces << " split faces and "
+            << changedFaces.size() - nSplitFaces << " merged faces" << endl;
     }
 
     // Check if it's a flux field through dims
@@ -387,8 +404,8 @@ void Foam::amrCore::correctFluxes(const mapPolyMesh& map)
             }
         }
 
-        // Update master faces
-        forAllConstIter(labelHashSet, masterFaces, iter)
+        // Update faces whose area changed (split or merged)
+        forAllConstIter(labelHashSet, changedFaces, iter)
         {
             label facei = iter.key();
 
@@ -426,12 +443,6 @@ void Foam::amrCore::updateMesh(const mapPolyMesh& map)
     if (refiner_.valid())
     {
         refiner_->updateMesh(map);
-    }
-
-    // Rebuild the overset stencil book-keeping for the new topology
-    if (oversetHandler* handler = oversetHandlerPtr())
-    {
-        handler->sync();
     }
 
     // Note: Cloud remapping is NOT done here. The mesh classes call this

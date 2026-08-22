@@ -205,7 +205,9 @@ public:
             //  Returns true if mesh was redistributed
             bool balance();
 
-            //- Correct fluxes on new/modified faces after topology change
+            //- Correct fluxes on new/modified faces after topology change.
+            //  Covers faces added by refinement and faces merged back
+            //  together by unrefinement.
             void correctFluxes(const mapPolyMesh& map);
 
             //- Update after mesh topology change
