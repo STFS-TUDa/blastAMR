@@ -35,11 +35,77 @@ License
 #include "surfaceFields.H"
 #include "pointFields.H"
 #include "fvMeshTools.H"
+#include "dynamicMotionSolverFvMesh.H"
+#include "dynamicMotionSolverListFvMesh.H"
+#include "mapPolyMesh.H"
+#include "pointIOField.H"
 
 #include "polyModifyFace.H"
 #include "polyAddFace.H"
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+void Foam::meshTools::reinitMotionSolvers
+(
+    fvMesh& mesh,
+    const mapPolyMesh& mpm
+)
+{
+    if
+    (
+        !isA<dynamicMotionSolverFvMesh>(mesh)
+     && !isA<dynamicMotionSolverListFvMesh>(mesh)
+    )
+    {
+        return;
+    }
+
+    // Pure additions keep every old label in place; only removals (or
+    // reordering) shift labels under the solver's cached lists
+    bool renumbered = false;
+    const labelList& rpm = mpm.reversePointMap();
+    forAll(rpm, oldPointi)
+    {
+        if (rpm[oldPointi] != oldPointi)
+        {
+            renumbered = true;
+            break;
+        }
+    }
+
+    if (!returnReduce(renumbered, orOp<bool>()))
+    {
+        return;
+    }
+
+    // The reference configuration mapped to the new point numbering,
+    // registered by points0MotionSolver::updateMesh during this topology
+    // change. Without it there is nothing to rebuild from - and no solver
+    // without points0 is known to cache point labels
+    const auto* p0Ptr = mesh.findObject<pointIOField>("points0");
+
+    if (!p0Ptr)
+    {
+        return;
+    }
+
+    Info<< "meshTools::reinitMotionSolvers: points were renumbered,"
+        << " reconstructing motion solvers" << endl;
+
+    // Write the mapped points0 where the solver constructor will find it
+    // (its instance was set to the current time by the updateMesh above).
+    // Binary, so the reference configuration survives the file round-trip
+    // bit-for-bit regardless of writePrecision
+    p0Ptr->writeObject(IOstreamOption(IOstreamOption::BINARY), true);
+    const fileName p0Path(p0Ptr->objectPath());
+
+    // Reconstruct the motion solvers; destroys *p0Ptr
+    dynamic_cast<dynamicFvMesh&>(mesh).init(false);
+
+    Foam::rm(p0Path);
+}
+
+
 
 void Foam::meshTools::getFaceInfo
 (

@@ -31,6 +31,7 @@ License
 #include "fvMeshHexRefiner.H"
 #include "addToRunTimeSelectionTable.H"
 #include "clearCodedRedirects.H"
+#include "dynMeshTools.H"
 #include "surfaceInterpolate.H"
 #include "volFields.H"
 #include "polyTopoChange.H"
@@ -234,6 +235,10 @@ Foam::fvMeshHexRefiner::refine
     // See clearCodedRedirects.H for rationale.
     clearCodedRedirectsAllVol(mesh_);
 
+    // Motion solvers cache zone point labels; rebuild them if the change
+    // renumbered points (unrefinement does, refinement only appends)
+    meshTools::reinitMotionSolvers(mesh_, map());
+
     // Update numbering of protectedCell_
     if (protectedCell_.size())
     {
@@ -330,6 +335,10 @@ Foam::fvMeshHexRefiner::unrefine
     // Reset stale codedFixedValue/codedMixed redirects after autoMap.
     // See clearCodedRedirects.H for rationale.
     clearCodedRedirectsAllVol(mesh_);
+
+    // Motion solvers cache zone point labels; rebuild them if the change
+    // renumbered points (unrefinement does, refinement only appends)
+    meshTools::reinitMotionSolvers(mesh_, map());
 
     // Update numbering of protectedCell_
     if (protectedCell_.size())

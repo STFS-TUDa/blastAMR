@@ -83,10 +83,11 @@ See `tutorials/oversetHeatTransfer` (static zones, AMR + load balancing) and
 
 Known limitations:
 
-- Load balancing a mesh carried by a motion solver is not supported yet. The
-  reference configuration is now redistributed correctly, but the motion solver
-  rebuilt on the new decomposition does not transform the same point set on
-  both sides of a new processor boundary, which tears the mesh there.
+- Load balancing a mesh carried by a motion solver no longer tears the mesh
+  (motion solvers are reconstructed after point renumbering), but on the
+  rotating-square case the balance/adaptation clusters still inject a local
+  velocity spike that collapses the time step. The moving tutorial therefore
+  ships with `balance no` until that is resolved.
 - Refinement driven by the `loadBalancedAMR` function object needs
   `adaptiveOversetFvMesh`; the function object on a stock `dynamicOversetFvMesh`
   covers load balancing only.

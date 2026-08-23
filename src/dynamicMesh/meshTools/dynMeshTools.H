@@ -243,6 +243,15 @@ namespace meshTools
             const HashSet<word>& addedPatchNames
         );
 
+        //- Reconstruct the motion solvers of a dynamicMotionSolver(List)-
+        //  FvMesh after a topology change that renumbered existing points.
+        //  Solid-body motion solvers cache their zone point labels at
+        //  construction and never rebuild them, so a renumbering leaves them
+        //  transforming the wrong points. Uses the mapped points0 registered
+        //  by points0MotionSolver::updateMesh; a mesh without one is left
+        //  alone (no known solver without points0 caches point labels)
+        void reinitMotionSolvers(fvMesh& mesh, const mapPolyMesh& mpm);
+
         //- Give internal faces created by refinement a value interpolated
         //  from the already-mapped faces of the two cells they separate,
         //  instead of the value copied from the face they were split off.
