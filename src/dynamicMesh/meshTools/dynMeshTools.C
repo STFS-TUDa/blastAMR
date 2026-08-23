@@ -364,7 +364,11 @@ void Foam::meshTools::modifyFace
         }
         else
         {
-            // Ordering is flipped, reverse face and flip owner/neighbour
+            // Ordering is flipped, reverse face and flip owner/neighbour.
+            // Callers derive own from faceOwner()[faceI], so newFace is
+            // oriented own -> nei, ie. as the old face. Storing its reverse
+            // inverts the face orientation, so any oriented (flux) field on
+            // it has to change sign when mapped: flipFaceFlux = true.
             meshMod.setAction
             (
                 polyModifyFace
@@ -373,7 +377,7 @@ void Foam::meshTools::modifyFace
                     faceI,                  // label of face being modified
                     nei,                    // owner
                     own,                    // neighbour
-                    false,                  // face flip
+                    true,                   // face flip
                     patchID,                // patch for face
                     false,                  // remove from zone
                     zoneID,                 // zone for face

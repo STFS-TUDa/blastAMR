@@ -255,9 +255,7 @@ void Foam::amrCore::correctFluxes(const mapPolyMesh& map)
     //  - refinement: the original face on the coarse cell that gets split
     //    into four (the master face gets modified and three faces get added
     //    from the master)
-    //  - unrefinement: the surviving coarse face the child faces were merged
-    //    into. Its flux was mapped from a single child, so it is off by the
-    //    area ratio unless re-evaluated here.
+    //  - unrefinement: the faces of the coarsened cell, see below.
     labelHashSet changedFaces;
 
     forAll(faceMap, facei)
@@ -284,8 +282,11 @@ void Foam::amrCore::correctFluxes(const mapPolyMesh& map)
 
     label nSplitFaces = changedFaces.size();
 
-    // Faces merged into during unrefinement: removed faces carry the new
-    // label of the face they were merged into as -newFacei-2
+    // Faces the child faces were merged into during unrefinement: removed
+    // faces carry the new label of the face they were merged into as
+    // -newFacei-2. These grew by the area ratio but kept a single child's
+    // flux. Detected per face because the cell they were merged in may live
+    // on the other side of a processor boundary
     forAll(reverseFaceMap, oldFacei)
     {
         if (reverseFaceMap[oldFacei] < -1)
@@ -294,10 +295,28 @@ void Foam::amrCore::correctFluxes(const mapPolyMesh& map)
         }
     }
 
+    // The remaining faces of a coarsened cell (encoded as -newCelli-2 in the
+    // reverse cell map) keep their area, but removeFaces reverses those that
+    // would end up with owner > neighbour without recording a flipFaceFlux,
+    // so their mapped flux has the wrong sign
+    const labelList& reverseCellMap = map.reverseCellMap();
+    const cellList& cells = mesh_.cells();
+
+    forAll(reverseCellMap, oldCelli)
+    {
+        if (reverseCellMap[oldCelli] < -1)
+        {
+            for (const label facei : cells[-reverseCellMap[oldCelli] - 2])
+            {
+                changedFaces.insert(facei);
+            }
+        }
+    }
+
     if (debug)
     {
         Pout<< "Found " << nSplitFaces << " split faces and "
-            << changedFaces.size() - nSplitFaces << " merged faces" << endl;
+            << changedFaces.size() - nSplitFaces << " coarsened faces" << endl;
     }
 
     // Check if it's a flux field through dims
