@@ -27,6 +27,7 @@ License
 #include "decompositionMethod.H"
 #include "addToRunTimeSelectionTable.H"
 #include "RefineBalanceMeshObject.H"
+#include "dynMeshTools.H"
 #include "oversetHandler.H"
 #include "cloudSupport.H"
 #include "preserveFaceZonesConstraint.H"
@@ -594,6 +595,13 @@ Foam::fvMeshBalance::distribute()
         {
             points0Ptr.reset(new pointField(*p0Ptr));
         }
+        else if (const auto* mirrorPtr = meshTools::points0Mirror(mesh_))
+        {
+            // The solvers were reconstructed since the last topology change
+            // (their own registration died with them); the mirror carries
+            // the reference configuration across that gap
+            points0Ptr.reset(new pointField(*mirrorPtr));
+        }
         else if (auto* msMeshPtr = dynamic_cast<dynamicMotionSolverFvMesh*>(&mesh_))
         {
             const auto* p0msPtr =
@@ -679,9 +687,9 @@ Foam::fvMeshBalance::distribute()
                 IOobject::NO_WRITE,
                 IOobject::NO_REGISTER
             ),
-            std::move(points0Ptr())
+            points0Ptr()
         );
-        points0.write();
+        points0.writeObject(IOstreamOption(IOstreamOption::BINARY), true);
 
         // Now reinitialize the motion solver - it will read the correct points
         motionMeshPtr->init(false);
@@ -689,6 +697,11 @@ Foam::fvMeshBalance::distribute()
         // Clean up the temporary points0 file to prevent interference
         // with subsequent mesh operations (e.g., refinement)
         Foam::rm(points0.objectPath());
+
+        // Keep the mirror in step with the new decomposition, so that a
+        // later balance (after the reconstructed solvers' registration has
+        // died again) still finds the true reference configuration
+        meshTools::storePoints0Mirror(mesh_, points0Ptr());
     }
 
     Info << "Successfully distributed mesh" << endl;

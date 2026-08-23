@@ -45,6 +45,56 @@ License
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+const Foam::word Foam::meshTools::points0MirrorName("points0.blastAMR");
+
+
+void Foam::meshTools::storePoints0Mirror
+(
+    fvMesh& mesh,
+    const pointField& points0
+)
+{
+    auto* mirrorPtr = mesh.getObjectPtr<pointIOField>(points0MirrorName);
+
+    if (mirrorPtr)
+    {
+        static_cast<pointField&>(*mirrorPtr) = points0;
+    }
+    else
+    {
+        mirrorPtr = new pointIOField
+        (
+            IOobject
+            (
+                points0MirrorName,
+                mesh.time().timeName(),
+                polyMesh::meshSubDir,
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                IOobject::REGISTER
+            ),
+            points0
+        );
+        mirrorPtr->store();
+    }
+}
+
+
+const Foam::pointIOField* Foam::meshTools::points0Mirror(const fvMesh& mesh)
+{
+    const auto* mirrorPtr =
+        mesh.findObject<pointIOField>(points0MirrorName);
+
+    if (mirrorPtr && mirrorPtr->size() == mesh.nPoints())
+    {
+        return mirrorPtr;
+    }
+
+    return nullptr;
+}
+
+
 void Foam::meshTools::reinitMotionSolvers
 (
     fvMesh& mesh,
@@ -98,11 +148,17 @@ void Foam::meshTools::reinitMotionSolvers
     // bit-for-bit regardless of writePrecision
     p0Ptr->writeObject(IOstreamOption(IOstreamOption::BINARY), true);
     const fileName p0Path(p0Ptr->objectPath());
+    const pointField points0(*p0Ptr);
 
     // Reconstruct the motion solvers; destroys *p0Ptr
     dynamic_cast<dynamicFvMesh&>(mesh).init(false);
 
     Foam::rm(p0Path);
+
+    // The reconstructed solver's own points0 is unregistered until the next
+    // topology change; keep the mirror fresh so a balance in between still
+    // finds the true reference configuration
+    storePoints0Mirror(mesh, points0);
 }
 
 

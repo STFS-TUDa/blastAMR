@@ -44,6 +44,7 @@ SourceFiles
 #include "EdgeMap.H"
 #include "boolList.H"
 #include "surfaceFieldsFwd.H"
+#include "pointIOField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -242,6 +243,20 @@ namespace meshTools
             polyMesh& mesh,
             const HashSet<word>& addedPatchNames
         );
+
+        //- Name of the registered mirror of the motion solvers' reference
+        //  configuration. Kept because reconstructing the solvers destroys
+        //  their own registered "points0"; refreshed by every code path
+        //  that reconstructs them
+        extern const word points0MirrorName;
+
+        //- Store/refresh the mirror on the mesh
+        void storePoints0Mirror(fvMesh& mesh, const pointField& points0);
+
+        //- The mirror, or nullptr if absent or not sized for the mesh
+        //  (stale after an append-only refinement, which is harmless: the
+        //  solver's own registration takes priority there)
+        const pointIOField* points0Mirror(const fvMesh& mesh);
 
         //- Reconstruct the motion solvers of a dynamicMotionSolver(List)-
         //  FvMesh after a topology change that renumbered existing points.

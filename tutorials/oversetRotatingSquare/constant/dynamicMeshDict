@@ -61,10 +61,7 @@ adaptiveOversetFvMeshCoeffs
     // is sensitive enough to diverge on. Not overset specific.
     unrefineInterval 4;
 
-    // Load balancing survives unrefinement now (motion solvers are rebuilt
-    // after point renumbering) but balance/adaptation clusters still spike
-    // the local velocity and collapse deltaT on this case; keep it off
-    balance          no;
+    balance          yes;
     balanceInterval  4;
     allowableImbalance 0.01;
     loadPolicy       cellCount;
