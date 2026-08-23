@@ -37,6 +37,7 @@ License
 #include "clearCodedRedirects.H"
 #include "dynamicMotionSolverFvMesh.H"
 #include "dynamicMotionSolverListFvMesh.H"
+#include "points0MotionSolver.H"
 #include "pointIOField.H"
 
 using namespace Foam::decompositionConstraints;
@@ -554,6 +555,7 @@ Foam::fvMeshBalance::distribute()
     // Both the single-solver and the list variant (which every overset mesh
     // uses) keep a points0 field that does not survive redistribution
     dynamicFvMesh* motionMeshPtr = nullptr;
+    autoPtr<pointField> points0Ptr;
     if
     (
         isA<dynamicMotionSolverFvMesh>(mesh_)
@@ -580,6 +582,36 @@ Foam::fvMeshBalance::distribute()
         // resetMotion() clears these pointers, preventing the mapping crash.
         // The moving(false) above prevents oldPoints() from recreating oldPointsPtr_.
         mesh_.resetMotion();
+
+        // Take the reference configuration off the old decomposition, to be
+        // redistributed below. points0 is a plain pointIOField: nothing maps
+        // it across a redistribution. It is registered once the motion solver
+        // has seen a topology change; before that it is only reachable on the
+        // single-solver mesh, and a mesh with no motion solver has none at all
+        const auto* p0Ptr = mesh_.findObject<pointIOField>("points0");
+
+        if (p0Ptr)
+        {
+            points0Ptr.reset(new pointField(*p0Ptr));
+        }
+        else if (auto* msMeshPtr = dynamic_cast<dynamicMotionSolverFvMesh*>(&mesh_))
+        {
+            const auto* p0msPtr =
+                dynamic_cast<const points0MotionSolver*>(&msMeshPtr->motion());
+
+            if (p0msPtr)
+            {
+                points0Ptr.reset(new pointField(p0msPtr->points0()));
+            }
+        }
+
+        if (points0Ptr && points0Ptr->size() != mesh_.nPoints())
+        {
+            FatalErrorInFunction
+                << "points0 has " << points0Ptr->size() << " points but the"
+                << " mesh has " << mesh_.nPoints()
+                << exit(FatalError);
+        }
     }
 
     // Store global positions for all clouds before distribution
@@ -611,9 +643,30 @@ Foam::fvMeshBalance::distribute()
         // have the pre-redistribution point count.
         DebugInfo << "Reinitializing motion solver after redistribution" << endl;
 
-        // Write current mesh points as "points0" so the motion solver
-        // constructor can read the correct redistributed points.
-        // Use the current time instance so findInstance() finds it.
+        // Write the reference configuration as "points0" so that the motion
+        // solver constructor reads it back. Where one is available this is
+        // the *mapped* points0, not the current points: writing the current
+        // points would redefine the reference configuration to be the
+        // displaced one, and the next motion would then be applied on top of
+        // the displacement already present
+        if (points0Ptr)
+        {
+            map().distributePointData(points0Ptr());
+        }
+        else
+        {
+            if (oldMoving)
+            {
+                WarningInFunction
+                    << "No points0 to redistribute for a moving mesh: the"
+                    << " reference configuration is being reset to the current"
+                    << " points, which is only correct while the mesh has not"
+                    << " moved away from it" << endl;
+            }
+
+            points0Ptr.reset(new pointField(mesh_.points()));
+        }
+
         pointIOField points0
         (
             IOobject
@@ -626,7 +679,7 @@ Foam::fvMeshBalance::distribute()
                 IOobject::NO_WRITE,
                 IOobject::NO_REGISTER
             ),
-            mesh_.points()
+            std::move(points0Ptr())
         );
         points0.write();
 

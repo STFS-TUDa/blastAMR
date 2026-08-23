@@ -83,10 +83,10 @@ See `tutorials/oversetHeatTransfer` (static zones, AMR + load balancing) and
 
 Known limitations:
 
-- Load balancing a mesh carried by a motion solver is not supported. blastAMR
-  re-initialises the motion solver after redistribution from a `points0` written
-  as the *current* points, which redefines the reference configuration to the
-  displaced state. Harmless while the mesh has not moved far, wrong once it has.
+- Load balancing a mesh carried by a motion solver is not supported yet. The
+  reference configuration is now redistributed correctly, but the motion solver
+  rebuilt on the new decomposition does not transform the same point set on
+  both sides of a new processor boundary, which tears the mesh there.
 - Refinement driven by the `loadBalancedAMR` function object needs
   `adaptiveOversetFvMesh`; the function object on a stock `dynamicOversetFvMesh`
   covers load balancing only.
