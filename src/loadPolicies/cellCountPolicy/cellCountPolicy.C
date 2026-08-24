@@ -66,13 +66,17 @@ Foam::cellCountPolicy::~cellCountPolicy()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+Foam::scalar Foam::cellCountPolicy::localLoad()
+{
+    return mesh_.nCells() + particleCoeff_*cloudSupport::countParticles(mesh_);
+}
+
+
 bool Foam::cellCountPolicy::canBalance()
 {
-    label nParticles = cloudSupport::countParticles(mesh_);
-    myLoad_ = mesh_.nCells() + particleCoeff_ * nParticles;
+    myLoad_ = localLoad();
 
     DebugPout<< "    cells: " << mesh_.nCells()
-        << ", particles: " << nParticles
         << ", load: " << myLoad_ << endl;
 
     myLoadHistory_.set(mesh_.time().timeIndex(), myLoad_);

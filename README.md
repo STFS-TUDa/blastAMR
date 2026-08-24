@@ -81,6 +81,35 @@ background around the body instead, which is the useful case anyway.
 See `tutorials/oversetHeatTransfer` (static zones, AMR + load balancing) and
 `tutorials/oversetRotatingSquare` (moving body, AMR).
 
+### Load balancing an overset mesh
+
+The default `cellCount` load policy weights every cell the same, which
+misprices an overset mesh: a hole cell is masked out of the solution and
+carries no physics, yet counts as a full cell, so a rank owning much of the
+hole region reports as loaded while doing almost no work. `cellCountWithOverset`
+prices cells by overset type instead, with user-configurable factors:
+
+```
+    loadPolicy          cellCountWithOverset;
+
+    holeWeight          0.01;   // masked out, no physics solved
+    interpolatedWeight  1.5;    // extra matrix faces + donor comms
+    porousWeight        1.0;    // no donors found
+    specialWeight       1.0;    // hole acting as a donor
+```
+
+Only the hole discount is on by default; the rest default to 1, i.e. to plain
+`cellCount`. Calculated cells always keep their weight, particle contributions
+are never discounted, and a mesh with no overset patch falls back to
+`cellCount` untouched.
+
+Expect it to report *larger* imbalances than `cellCount`, because it can see
+imbalance that cell counting cannot. On `tutorials/oversetRotatingSquare`,
+where holes run 18-47% of the mesh, `cellCount` peaks at 2.8% imbalance while
+`cellCountWithOverset` peaks at 20.9%. A threshold tuned for `cellCount` is
+therefore far too aggressive here: at `allowableImbalance 0.01` that case
+rebalances 176 times instead of 12. Raise `allowableImbalance` when switching.
+
 Known limitations:
 
 - Refinement driven by the `loadBalancedAMR` function object needs
