@@ -25,12 +25,16 @@ adaptiveOversetFvMeshCoeffs
 {
     refiner          hexRefiner;
 
-    // Refine where the temperature varies, which brackets the overset fringe
-    errorEstimator   delta;
-    deltaField       T;
+    // Refine the hot strip only. T is a 300 K -> 273 K gradient in x, so
+    // this selects a band that starts at the left wall and marches right as
+    // the front diffuses: refinement is localised in x while the mesh is
+    // decomposed into x-slabs, which is what makes the load genuinely
+    // uneven and gives the balancer something to do
+    errorEstimator   fieldValue;
+    fieldName        T;
 
-    lowerRefineLevel 0.1;
-    unrefineLevel    0.005;
+    lowerRefineLevel 290;
+    unrefineLevel    280;
 
     maxRefinement    1;
     nBufferLayers    1;
@@ -40,7 +44,7 @@ adaptiveOversetFvMeshCoeffs
 
     balance          yes;
     balanceInterval  1;
-    allowableImbalance 0.001;
+    allowableImbalance 0.1;
     loadPolicy       cellCount;
 
     dumpLevel        yes;
