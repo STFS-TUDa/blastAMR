@@ -557,6 +557,7 @@ Foam::fvMeshBalance::distribute()
     // uses) keep a points0 field that does not survive redistribution
     dynamicFvMesh* motionMeshPtr = nullptr;
     autoPtr<pointField> points0Ptr;
+    bool haveRealPoints0 = false;
     if
     (
         isA<dynamicMotionSolverFvMesh>(mesh_)
@@ -615,10 +616,22 @@ Foam::fvMeshBalance::distribute()
 
         if (points0Ptr && points0Ptr->size() != mesh_.nPoints())
         {
-            FatalErrorInFunction
-                << "points0 has " << points0Ptr->size() << " points but the"
-                << " mesh has " << mesh_.nPoints()
-                << exit(FatalError);
+            // Sized for an older topology, so of no use here
+            points0Ptr.clear();
+        }
+
+        // Whether a reference configuration is available has to be a
+        // collective decision: the redistribution below is collective, so
+        // every rank has to take the same branch. Ranks can legitimately
+        // disagree - a mirror stale on the one rank that just refined is
+        // still valid on the others - and letting them diverge mismatches
+        // the exchange (MPI_ERR_TRUNCATE)
+        haveRealPoints0 = points0Ptr.valid();
+        reduce(haveRealPoints0, andOp<bool>());
+
+        if (!haveRealPoints0)
+        {
+            points0Ptr.clear();
         }
     }
 
@@ -700,8 +713,14 @@ Foam::fvMeshBalance::distribute()
 
         // Keep the mirror in step with the new decomposition, so that a
         // later balance (after the reconstructed solvers' registration has
-        // died again) still finds the true reference configuration
-        meshTools::storePoints0Mirror(mesh_, points0Ptr());
+        // died again) still finds the true reference configuration. Only
+        // when there was a real reference configuration to carry: mirroring
+        // the fallback would hand the next balance the displaced state
+        // dressed up as the reference
+        if (haveRealPoints0)
+        {
+            meshTools::storePoints0Mirror(mesh_, points0Ptr());
+        }
     }
 
     Info << "Successfully distributed mesh" << endl;
