@@ -55,16 +55,19 @@ adaptiveOversetFvMeshCoeffs
 
     refineInterval   2;
 
-    // Unrefinement is switched off here: merging faces back together leaves
-    // the flux on the coarsened face inconsistent (blastAMR maps it from a
-    // single child face rather than summing the children), which this case
-    // is sensitive enough to diverge on. Not overset specific.
     unrefineInterval 4;
 
     balance          yes;
     balanceInterval  4;
-    allowableImbalance 0.01;
-    loadPolicy       cellCount;
+    allowableImbalance 0.05;
+    loadPolicy       cellCountWithOverset;
+
+    // Hole cells are masked out of the solution, so they must not count as
+    // full load; acceptor cells carry extra matrix faces and donor comms, so
+    // they count for a little more. interpolatedWeight is a tunable estimate,
+    // not a derived number
+    holeWeight       0.01;
+    interpolatedWeight 1.5;
 
     // Recompute the flux on faces created by refinement
     correctFluxes   ( ( phi U ) ( phi_0 U ) );

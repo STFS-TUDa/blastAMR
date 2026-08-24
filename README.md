@@ -101,14 +101,17 @@ prices cells by overset type instead, with user-configurable factors:
 Only the hole discount is on by default; the rest default to 1, i.e. to plain
 `cellCount`. Calculated cells always keep their weight, particle contributions
 are never discounted, and a mesh with no overset patch falls back to
-`cellCount` untouched.
+`cellCount` untouched. Both overset tutorials use this policy.
 
 Expect it to report *larger* imbalances than `cellCount`, because it can see
 imbalance that cell counting cannot. On `tutorials/oversetRotatingSquare`,
 where holes run 18-47% of the mesh, `cellCount` peaks at 2.8% imbalance while
-`cellCountWithOverset` peaks at 20.9%. A threshold tuned for `cellCount` is
-therefore far too aggressive here: at `allowableImbalance 0.01` that case
-rebalances 176 times instead of 12. Raise `allowableImbalance` when switching.
+`cellCountWithOverset` peaks at 20.9%. **A threshold tuned for `cellCount` is
+therefore far too aggressive**: at `allowableImbalance 0.01` that case
+rebalances 176 times instead of 12. Pick a threshold clear of the noise
+floor: on that case the overset-aware metric sits at a 1-2.6% mean, so the
+tutorial uses 0.05, which gives 24 balances. Raise `allowableImbalance`
+whenever you switch policy.
 
 Known limitations:
 

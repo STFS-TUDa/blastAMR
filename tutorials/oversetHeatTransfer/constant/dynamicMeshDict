@@ -45,7 +45,14 @@ adaptiveOversetFvMeshCoeffs
     balance          yes;
     balanceInterval  1;
     allowableImbalance 0.1;
-    loadPolicy       cellCount;
+    loadPolicy       cellCountWithOverset;
+
+    // Hole cells are masked out of the solution, so they must not count as
+    // full load; acceptor cells carry extra matrix faces and donor comms, so
+    // they count for a little more. interpolatedWeight is a tunable estimate,
+    // not a derived number
+    holeWeight       0.01;
+    interpolatedWeight 1.5;
 
     dumpLevel        yes;
 
