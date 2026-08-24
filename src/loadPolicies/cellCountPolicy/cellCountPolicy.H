@@ -56,7 +56,9 @@ namespace Foam
 class cellCountPolicy
 :   public loadPolicy
 {
-    // Private data
+protected:
+
+    // Protected data
 
         //- Coefficient for particle contribution to load
         //  load = cellCount + particleCoeff * particleCount
@@ -66,6 +68,15 @@ class cellCountPolicy
         //  If a proposed distribution would leave any processor with fewer
         //  cells than this, the distribution is rejected
         label minCellsPerProc_;
+
+
+    // Protected Member Functions
+
+        //- This processor's load. Kept separate from canBalance() so that a
+        //  derived policy can weight cells without reimplementing the
+        //  imbalance bookkeeping. Must stay consistent with cellWeights():
+        //  the load is the local sum of the weights
+        virtual scalar localLoad();
 
 public:
 

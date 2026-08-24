@@ -27,6 +27,8 @@ License
 #include "decompositionMethod.H"
 #include "addToRunTimeSelectionTable.H"
 #include "RefineBalanceMeshObject.H"
+#include "dynMeshTools.H"
+#include "oversetHandler.H"
 #include "cloudSupport.H"
 #include "preserveFaceZonesConstraint.H"
 #include "singleProcessorFaceSetsConstraint.H"
@@ -35,6 +37,8 @@ License
 #include "sampledSurfaceWorkaround.H"
 #include "clearCodedRedirects.H"
 #include "dynamicMotionSolverFvMesh.H"
+#include "dynamicMotionSolverListFvMesh.H"
+#include "points0MotionSolver.H"
 #include "pointIOField.H"
 
 using namespace Foam::decompositionConstraints;
@@ -541,8 +545,27 @@ Foam::fvMeshBalance::distribute()
 
     blastMeshObject::preDistribute<fvMesh>(mesh_);
 
-    // Check if mesh uses a motion solver - special handling is required
-    auto* motionMeshPtr = dynamic_cast<dynamicMotionSolverFvMesh*>(&mesh_);
+    // zoneID is a plain registered list: nothing maps it across a
+    // redistribution, so keep a copy of it on the old decomposition
+    if (oversetHandler* handler = oversetHandler::lookup(mesh_))
+    {
+        handler->preDistribute();
+    }
+
+    // Check if mesh uses a motion solver - special handling is required.
+    // Both the single-solver and the list variant (which every overset mesh
+    // uses) keep a points0 field that does not survive redistribution
+    dynamicFvMesh* motionMeshPtr = nullptr;
+    autoPtr<pointField> points0Ptr;
+    bool haveRealPoints0 = false;
+    if
+    (
+        isA<dynamicMotionSolverFvMesh>(mesh_)
+     || isA<dynamicMotionSolverListFvMesh>(mesh_)
+    )
+    {
+        motionMeshPtr = dynamic_cast<dynamicFvMesh*>(&mesh_);
+    }
     bool oldMoving = false;
 
     if (motionMeshPtr)
@@ -561,6 +584,55 @@ Foam::fvMeshBalance::distribute()
         // resetMotion() clears these pointers, preventing the mapping crash.
         // The moving(false) above prevents oldPoints() from recreating oldPointsPtr_.
         mesh_.resetMotion();
+
+        // Take the reference configuration off the old decomposition, to be
+        // redistributed below. points0 is a plain pointIOField: nothing maps
+        // it across a redistribution. It is registered once the motion solver
+        // has seen a topology change; before that it is only reachable on the
+        // single-solver mesh, and a mesh with no motion solver has none at all
+        const auto* p0Ptr = mesh_.findObject<pointIOField>("points0");
+
+        if (p0Ptr)
+        {
+            points0Ptr.reset(new pointField(*p0Ptr));
+        }
+        else if (const auto* mirrorPtr = meshTools::points0Mirror(mesh_))
+        {
+            // The solvers were reconstructed since the last topology change
+            // (their own registration died with them); the mirror carries
+            // the reference configuration across that gap
+            points0Ptr.reset(new pointField(*mirrorPtr));
+        }
+        else if (auto* msMeshPtr = dynamic_cast<dynamicMotionSolverFvMesh*>(&mesh_))
+        {
+            const auto* p0msPtr =
+                dynamic_cast<const points0MotionSolver*>(&msMeshPtr->motion());
+
+            if (p0msPtr)
+            {
+                points0Ptr.reset(new pointField(p0msPtr->points0()));
+            }
+        }
+
+        if (points0Ptr && points0Ptr->size() != mesh_.nPoints())
+        {
+            // Sized for an older topology, so of no use here
+            points0Ptr.clear();
+        }
+
+        // Whether a reference configuration is available has to be a
+        // collective decision: the redistribution below is collective, so
+        // every rank has to take the same branch. Ranks can legitimately
+        // disagree - a mirror stale on the one rank that just refined is
+        // still valid on the others - and letting them diverge mismatches
+        // the exchange (MPI_ERR_TRUNCATE)
+        haveRealPoints0 = points0Ptr.valid();
+        reduce(haveRealPoints0, andOp<bool>());
+
+        if (!haveRealPoints0)
+        {
+            points0Ptr.clear();
+        }
     }
 
     // Store global positions for all clouds before distribution
@@ -592,9 +664,30 @@ Foam::fvMeshBalance::distribute()
         // have the pre-redistribution point count.
         DebugInfo << "Reinitializing motion solver after redistribution" << endl;
 
-        // Write current mesh points as "points0" so the motion solver
-        // constructor can read the correct redistributed points.
-        // Use the current time instance so findInstance() finds it.
+        // Write the reference configuration as "points0" so that the motion
+        // solver constructor reads it back. Where one is available this is
+        // the *mapped* points0, not the current points: writing the current
+        // points would redefine the reference configuration to be the
+        // displaced one, and the next motion would then be applied on top of
+        // the displacement already present
+        if (points0Ptr)
+        {
+            map().distributePointData(points0Ptr());
+        }
+        else
+        {
+            if (oldMoving)
+            {
+                WarningInFunction
+                    << "No points0 to redistribute for a moving mesh: the"
+                    << " reference configuration is being reset to the current"
+                    << " points, which is only correct while the mesh has not"
+                    << " moved away from it" << endl;
+            }
+
+            points0Ptr.reset(new pointField(mesh_.points()));
+        }
+
         pointIOField points0
         (
             IOobject
@@ -607,9 +700,9 @@ Foam::fvMeshBalance::distribute()
                 IOobject::NO_WRITE,
                 IOobject::NO_REGISTER
             ),
-            mesh_.points()
+            points0Ptr()
         );
-        points0.write();
+        points0.writeObject(IOstreamOption(IOstreamOption::BINARY), true);
 
         // Now reinitialize the motion solver - it will read the correct points
         motionMeshPtr->init(false);
@@ -617,6 +710,17 @@ Foam::fvMeshBalance::distribute()
         // Clean up the temporary points0 file to prevent interference
         // with subsequent mesh operations (e.g., refinement)
         Foam::rm(points0.objectPath());
+
+        // Keep the mirror in step with the new decomposition, so that a
+        // later balance (after the reconstructed solvers' registration has
+        // died again) still finds the true reference configuration. Only
+        // when there was a real reference configuration to carry: mirroring
+        // the fallback would hand the next balance the displaced state
+        // dressed up as the reference
+        if (haveRealPoints0)
+        {
+            meshTools::storePoints0Mirror(mesh_, points0Ptr());
+        }
     }
 
     Info << "Successfully distributed mesh" << endl;
@@ -639,6 +743,11 @@ Foam::fvMeshBalance::distribute()
     //}
 
     blastMeshObject::distribute<fvMesh>(mesh_, map());
+
+    if (oversetHandler* handler = oversetHandler::lookup(mesh_))
+    {
+        handler->distribute(map());
+    }
 
     // Reset stale codedFixedValue/codedMixed redirects after autoMap.
     // See clearCodedRedirects.H for rationale.

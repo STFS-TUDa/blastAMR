@@ -1,0 +1,21 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+restore0Dir
+
+runApplication blockMesh
+
+# Select cellSets
+runApplication topoSet
+
+runApplication subsetMesh box -patch hole -overwrite
+
+# Select cellSets
+runApplication -s zoneID topoSet
+
+# Use cellSets to write zoneID
+runApplication setFields
+
+#------------------------------------------------------------------------------

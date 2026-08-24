@@ -1,4 +1,5 @@
 loadPolicy/loadPolicy.C
 cellCountPolicy/cellCountPolicy.C
+cellCountWithOversetPolicy/cellCountWithOversetPolicy.C
 
 LIB = $(FOAM_USER_LIBBIN)/libamrLoadPolicies

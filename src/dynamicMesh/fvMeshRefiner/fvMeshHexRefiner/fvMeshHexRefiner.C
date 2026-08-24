@@ -31,6 +31,7 @@ License
 #include "fvMeshHexRefiner.H"
 #include "addToRunTimeSelectionTable.H"
 #include "clearCodedRedirects.H"
+#include "dynMeshTools.H"
 #include "surfaceInterpolate.H"
 #include "volFields.H"
 #include "polyTopoChange.H"
@@ -234,6 +235,10 @@ Foam::fvMeshHexRefiner::refine
     // See clearCodedRedirects.H for rationale.
     clearCodedRedirectsAllVol(mesh_);
 
+    // Motion solvers cache zone point labels; rebuild them if the change
+    // renumbered points (unrefinement does, refinement only appends)
+    meshTools::reinitMotionSolvers(mesh_, map());
+
     // Update numbering of protectedCell_
     if (protectedCell_.size())
     {
@@ -298,14 +303,8 @@ Foam::fvMeshHexRefiner::unrefine
     meshCutter_->setUnrefinement(splitElems, meshMod);
 
 
-    // Save information on faces that will be combined
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    // Find the faceMidPoints on cells to be combined.
-    // for each face resulting of split of face into four store the
-    // midpoint
-    Map<label> faceToSplitPoint(0);
-    meshCutter_->calcFaceToSplitPoint(splitElems, faceToSplitPoint);
+    // Note: no need for the upstream faceToSplitPoint bookkeeping here;
+    // amrCore::correctFluxes detects merged faces from the mapPolyMesh.
 
     // Clear moving flag. This is required since geometry calculation
     // might get triggered when doing processor patches.
@@ -330,6 +329,10 @@ Foam::fvMeshHexRefiner::unrefine
     // Reset stale codedFixedValue/codedMixed redirects after autoMap.
     // See clearCodedRedirects.H for rationale.
     clearCodedRedirectsAllVol(mesh_);
+
+    // Motion solvers cache zone point labels; rebuild them if the change
+    // renumbered points (unrefinement does, refinement only appends)
+    meshTools::reinitMotionSolvers(mesh_, map());
 
     // Update numbering of protectedCell_
     if (protectedCell_.size())

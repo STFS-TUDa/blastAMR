@@ -76,6 +76,9 @@ void Foam::amrCore::initializeAMR(const dictionary& dict)
     // Create refiner
     refiner_ = fvMeshRefiner::New(mesh_, dict, false, true);
 
+    // Overset meshes need their zone book-keeping mapped along with the mesh
+    oversetHandler::New(mesh_, dict);
+
     // Read flux correction settings
     readCorrectFluxes(dict);
 
@@ -121,6 +124,8 @@ void Foam::amrCore::initializeLB(const dictionary& dict)
 
         refiner_ = fvMeshRefiner::New(mesh_, minimalDict, false, true);
     }
+
+    oversetHandler::New(mesh_, dict);
 
     // Configure balancer within refiner
     refiner_->balancer().read(dict);
@@ -204,6 +209,14 @@ bool Foam::amrCore::refine()
     Info<< "Protecting " << returnReduce(nProtected, sumOp<label>())
         << " cells next to requested boundary patches." << endl;
 
+    // Protect overset hole cells
+    if (oversetHandler* handler = oversetHandlerPtr())
+    {
+        const label nHoles = handler->protectCells(error_->error());
+        Info<< "Protecting " << returnReduce(nHoles, sumOp<label>())
+            << " overset hole cells." << endl;
+    }
+
     // Perform refinement
     bool changed = refiner_->refine(error_->error(), error_->maxRefinement());
     reduce(changed, orOp<bool>());
@@ -238,10 +251,12 @@ void Foam::amrCore::correctFluxes(const mapPolyMesh& map)
     const labelList& faceMap = map.faceMap();
     const labelList& reverseFaceMap = map.reverseFaceMap();
 
-    // Storage for any master faces. These will be the original faces
-    // on the coarse cell that get split into four (or rather the
-    // master face gets modified and three faces get added from the master)
-    labelHashSet masterFaces;
+    // Storage for faces whose area changed on this topology change:
+    //  - refinement: the original face on the coarse cell that gets split
+    //    into four (the master face gets modified and three faces get added
+    //    from the master)
+    //  - unrefinement: the faces of the coarsened cell, see below.
+    labelHashSet changedFaces;
 
     forAll(faceMap, facei)
     {
@@ -254,20 +269,54 @@ void Foam::amrCore::correctFluxes(const mapPolyMesh& map)
             if (masterFacei < 0)
             {
                 FatalErrorInFunction
-                    << "Problem: should not have removed faces"
-                    << " when refining."
+                    << "Problem: a surviving face maps from a face that was"
+                    << " removed."
                     << nl << "face:" << facei << abort(FatalError);
             }
             else if (masterFacei != facei)
             {
-                masterFaces.insert(masterFacei);
+                changedFaces.insert(masterFacei);
+            }
+        }
+    }
+
+    label nSplitFaces = changedFaces.size();
+
+    // Faces the child faces were merged into during unrefinement: removed
+    // faces carry the new label of the face they were merged into as
+    // -newFacei-2. These grew by the area ratio but kept a single child's
+    // flux. Detected per face because the cell they were merged in may live
+    // on the other side of a processor boundary
+    forAll(reverseFaceMap, oldFacei)
+    {
+        if (reverseFaceMap[oldFacei] < -1)
+        {
+            changedFaces.insert(-reverseFaceMap[oldFacei] - 2);
+        }
+    }
+
+    // The remaining faces of a coarsened cell (encoded as -newCelli-2 in the
+    // reverse cell map) keep their area, but removeFaces reverses those that
+    // would end up with owner > neighbour without recording a flipFaceFlux,
+    // so their mapped flux has the wrong sign
+    const labelList& reverseCellMap = map.reverseCellMap();
+    const cellList& cells = mesh_.cells();
+
+    forAll(reverseCellMap, oldCelli)
+    {
+        if (reverseCellMap[oldCelli] < -1)
+        {
+            for (const label facei : cells[-reverseCellMap[oldCelli] - 2])
+            {
+                changedFaces.insert(facei);
             }
         }
     }
 
     if (debug)
     {
-        Pout<< "Found " << masterFaces.size() << " split faces " << endl;
+        Pout<< "Found " << nSplitFaces << " split faces and "
+            << changedFaces.size() - nSplitFaces << " coarsened faces" << endl;
     }
 
     // Check if it's a flux field through dims
@@ -374,8 +423,8 @@ void Foam::amrCore::correctFluxes(const mapPolyMesh& map)
             }
         }
 
-        // Update master faces
-        forAllConstIter(labelHashSet, masterFaces, iter)
+        // Update faces whose area changed (split or merged)
+        forAllConstIter(labelHashSet, changedFaces, iter)
         {
             label facei = iter.key();
 
@@ -415,14 +464,9 @@ void Foam::amrCore::updateMesh(const mapPolyMesh& map)
         refiner_->updateMesh(map);
     }
 
-    // Note: Cloud remapping is NOT done here because this is called
-    // from adaptiveFvMesh::updateMesh BEFORE fvMesh::updateMesh.
-    // Calling cloud.autoMap would trigger mesh_.V() which reconstructs
-    // volumes with the NEW mesh size, causing the check in
-    // fvMesh::updateMesh to fail.
-    //
-    // Cloud remapping is done in adaptiveFvMesh::updateMesh AFTER
-    // fvMesh::updateMesh completes.
+    // Note: Cloud remapping is NOT done here. The mesh classes call this
+    // after fvMesh::updateMesh and remap the clouds themselves once the
+    // fields are mapped, see adaptiveFvMesh::updateMesh.
 }
 
 

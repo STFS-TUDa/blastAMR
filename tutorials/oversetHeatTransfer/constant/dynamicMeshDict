@@ -1,0 +1,65 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      dynamicMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dynamicFvMesh    adaptiveOversetFvMesh;
+
+// Static overset zones: no motion solver, only AMR and load balancing
+solvers
+{}
+
+
+adaptiveOversetFvMeshCoeffs
+{
+    refiner          hexRefiner;
+
+    // Refine the hot strip only. T is a 300 K -> 273 K gradient in x, so
+    // this selects a band that starts at the left wall and marches right as
+    // the front diffuses: refinement is localised in x while the mesh is
+    // decomposed into x-slabs, which is what makes the load genuinely
+    // uneven and gives the balancer something to do
+    errorEstimator   fieldValue;
+    fieldName        T;
+
+    lowerRefineLevel 290;
+    unrefineLevel    280;
+
+    maxRefinement    1;
+    nBufferLayers    1;
+
+    refineInterval   1;
+    unrefineInterval 1;
+
+    balance          yes;
+    balanceInterval  1;
+    allowableImbalance 0.1;
+    loadPolicy       cellCountWithOverset;
+
+    // Hole cells are masked out of the solution, so they must not count as
+    // full load; acceptor cells carry extra matrix faces and donor comms, so
+    // they count for a little more. interpolatedWeight is a tunable estimate,
+    // not a derived number
+    holeWeight       0.01;
+    interpolatedWeight 1.5;
+
+    dumpLevel        yes;
+
+    // Overset zone book-keeping. The default handler is picked up
+    // automatically for meshes with an overset patch; set to "none" to
+    // switch it off, or name your own type to plug in custom stencil logic
+    // oversetHandler   oversetHandler;
+}
+
+// ************************************************************************* //

@@ -43,6 +43,8 @@ SourceFiles
 #include "Map.H"
 #include "EdgeMap.H"
 #include "boolList.H"
+#include "surfaceFieldsFwd.H"
+#include "pointIOField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -241,6 +243,46 @@ namespace meshTools
             polyMesh& mesh,
             const HashSet<word>& addedPatchNames
         );
+
+        //- Name of the registered mirror of the motion solvers' reference
+        //  configuration. Kept because reconstructing the solvers destroys
+        //  their own registered "points0"; refreshed by every code path
+        //  that reconstructs them
+        extern const word points0MirrorName;
+
+        //- Store/refresh the mirror on the mesh
+        void storePoints0Mirror(fvMesh& mesh, const pointField& points0);
+
+        //- The mirror, or nullptr if absent or not sized for the mesh
+        //  (stale after an append-only refinement, which is harmless: the
+        //  solver's own registration takes priority there)
+        const pointIOField* points0Mirror(const fvMesh& mesh);
+
+        //- Reconstruct the motion solvers of a dynamicMotionSolver(List)-
+        //  FvMesh after a topology change that renumbered existing points.
+        //  Solid-body motion solvers cache their zone point labels at
+        //  construction and never rebuild them, so a renumbering leaves them
+        //  transforming the wrong points. Uses the mapped points0 registered
+        //  by points0MotionSolver::updateMesh; a mesh without one is left
+        //  alone (no known solver without points0 caches point labels)
+        void reinitMotionSolvers(fvMesh& mesh, const mapPolyMesh& mpm);
+
+        //- Give internal faces created by refinement a value interpolated
+        //  from the already-mapped faces of the two cells they separate,
+        //  instead of the value copied from the face they were split off.
+        //  Oriented fields (fluxes) are left alone: they are extensive and
+        //  are handled by amrCore::correctFluxes
+        template<class T>
+        void mapNewInternalFaces
+        (
+            fvMesh& mesh,
+            const labelList& faceMap,
+            GeometricField<T, fvsPatchField, surfaceMesh>& sFld
+        );
+
+        //- As above, for every registered surface field of this type
+        template<class T>
+        void mapNewInternalFaces(fvMesh& mesh, const labelList& faceMap);
 } // End namespace foamSyncTools
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

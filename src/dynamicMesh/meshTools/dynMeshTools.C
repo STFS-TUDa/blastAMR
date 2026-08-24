@@ -35,11 +35,133 @@ License
 #include "surfaceFields.H"
 #include "pointFields.H"
 #include "fvMeshTools.H"
+#include "dynamicMotionSolverFvMesh.H"
+#include "dynamicMotionSolverListFvMesh.H"
+#include "mapPolyMesh.H"
+#include "pointIOField.H"
 
 #include "polyModifyFace.H"
 #include "polyAddFace.H"
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+const Foam::word Foam::meshTools::points0MirrorName("points0.blastAMR");
+
+
+void Foam::meshTools::storePoints0Mirror
+(
+    fvMesh& mesh,
+    const pointField& points0
+)
+{
+    auto* mirrorPtr = mesh.getObjectPtr<pointIOField>(points0MirrorName);
+
+    if (mirrorPtr)
+    {
+        static_cast<pointField&>(*mirrorPtr) = points0;
+    }
+    else
+    {
+        mirrorPtr = new pointIOField
+        (
+            IOobject
+            (
+                points0MirrorName,
+                mesh.time().timeName(),
+                polyMesh::meshSubDir,
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                IOobject::REGISTER
+            ),
+            points0
+        );
+        mirrorPtr->store();
+    }
+}
+
+
+const Foam::pointIOField* Foam::meshTools::points0Mirror(const fvMesh& mesh)
+{
+    const auto* mirrorPtr =
+        mesh.findObject<pointIOField>(points0MirrorName);
+
+    if (mirrorPtr && mirrorPtr->size() == mesh.nPoints())
+    {
+        return mirrorPtr;
+    }
+
+    return nullptr;
+}
+
+
+void Foam::meshTools::reinitMotionSolvers
+(
+    fvMesh& mesh,
+    const mapPolyMesh& mpm
+)
+{
+    if
+    (
+        !isA<dynamicMotionSolverFvMesh>(mesh)
+     && !isA<dynamicMotionSolverListFvMesh>(mesh)
+    )
+    {
+        return;
+    }
+
+    // Pure additions keep every old label in place; only removals (or
+    // reordering) shift labels under the solver's cached lists
+    bool renumbered = false;
+    const labelList& rpm = mpm.reversePointMap();
+    forAll(rpm, oldPointi)
+    {
+        if (rpm[oldPointi] != oldPointi)
+        {
+            renumbered = true;
+            break;
+        }
+    }
+
+    if (!returnReduce(renumbered, orOp<bool>()))
+    {
+        return;
+    }
+
+    // The reference configuration mapped to the new point numbering,
+    // registered by points0MotionSolver::updateMesh during this topology
+    // change. Without it there is nothing to rebuild from - and no solver
+    // without points0 is known to cache point labels
+    const auto* p0Ptr = mesh.findObject<pointIOField>("points0");
+
+    if (!p0Ptr)
+    {
+        return;
+    }
+
+    Info<< "meshTools::reinitMotionSolvers: points were renumbered,"
+        << " reconstructing motion solvers" << endl;
+
+    // Write the mapped points0 where the solver constructor will find it
+    // (its instance was set to the current time by the updateMesh above).
+    // Binary, so the reference configuration survives the file round-trip
+    // bit-for-bit regardless of writePrecision
+    p0Ptr->writeObject(IOstreamOption(IOstreamOption::BINARY), true);
+    const fileName p0Path(p0Ptr->objectPath());
+    const pointField points0(*p0Ptr);
+
+    // Reconstruct the motion solvers; destroys *p0Ptr
+    dynamic_cast<dynamicFvMesh&>(mesh).init(false);
+
+    Foam::rm(p0Path);
+
+    // The reconstructed solver's own points0 is unregistered until the next
+    // topology change; keep the mirror fresh so a balance in between still
+    // finds the true reference configuration
+    storePoints0Mirror(mesh, points0);
+}
+
+
 
 void Foam::meshTools::getFaceInfo
 (
@@ -242,7 +364,11 @@ void Foam::meshTools::modifyFace
         }
         else
         {
-            // Ordering is flipped, reverse face and flip owner/neighbour
+            // Ordering is flipped, reverse face and flip owner/neighbour.
+            // Callers derive own from faceOwner()[faceI], so newFace is
+            // oriented own -> nei, ie. as the old face. Storing its reverse
+            // inverts the face orientation, so any oriented (flux) field on
+            // it has to change sign when mapped: flipFaceFlux = true.
             meshMod.setAction
             (
                 polyModifyFace
@@ -251,7 +377,7 @@ void Foam::meshTools::modifyFace
                     faceI,                  // label of face being modified
                     nei,                    // owner
                     own,                    // neighbour
-                    false,                  // face flip
+                    true,                   // face flip
                     patchID,                // patch for face
                     false,                  // remove from zone
                     zoneID,                 // zone for face

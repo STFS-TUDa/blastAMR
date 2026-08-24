@@ -32,6 +32,7 @@ License
 #include "polyModifyFace.H"
 #include "polyMesh.H"
 #include "polyTopoChange.H"
+#include "dynMeshTools.H"
 #include "syncTools.H"
 #include "meshTools.H"
 #include "hexRef.H"
@@ -913,6 +914,10 @@ Foam::autoPtr<Foam::mapPolyMesh> Foam::refinement::refine
     if (auto* fvm = dynamic_cast<fvMesh*>(&mesh))
     {
         clearCodedRedirectsAllVol(*fvm);
+
+        // Motion solvers cache zone point labels; rebuild them if the
+        // change renumbered points
+        meshTools::reinitMotionSolvers(*fvm, map());
     }
 
     Info<< "Refined from "
@@ -936,6 +941,10 @@ bool Foam::refinement::unrefine
     if (auto* fvm = dynamic_cast<fvMesh*>(&mesh))
     {
         clearCodedRedirectsAllVol(*fvm);
+
+        // Motion solvers cache zone point labels; rebuild them if the
+        // change renumbered points
+        meshTools::reinitMotionSolvers(*fvm, map());
     }
 
     Info<< "Unrefined from "

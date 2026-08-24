@@ -32,6 +32,7 @@ License
 #include "addToRunTimeSelectionTable.H"
 #include "cloudSupport.H"
 #include "sampledSurfaceWorkaround.H"
+#include "dynMeshTools.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -99,11 +100,13 @@ void Foam::adaptiveFvMesh::readDict()
 
 void Foam::adaptiveFvMesh::updateMesh(const mapPolyMesh& map)
 {
+    // Call parent updateMesh first: flux correction indexes the fluxes
+    // against the new face count and reads the new mesh geometry, so the
+    // fields have to be mapped to the new topology before amrCore runs
+    fvMesh::updateMesh(map);
+
     // Delegate flux correction and refiner update to amrCore
     amrCore_.updateMesh(map);
-
-    // Call parent updateMesh
-    fvMesh::updateMesh(map);
 
     // Remap clouds AFTER fvMesh::updateMesh completes.
     // This must happen after fvMesh::updateMesh because cloud.autoMap
@@ -167,11 +170,11 @@ void Foam::adaptiveFvMesh::mapFields(const mapPolyMesh& mpm)
 
     // Correct surface fields on introduced internal faces. These get
     // created out-of-nothing so get an interpolated value.
-    mapNewInternalFaces<scalar>(mpm.faceMap());
-    mapNewInternalFaces<vector>(mpm.faceMap());
-    mapNewInternalFaces<sphericalTensor>(mpm.faceMap());
-    mapNewInternalFaces<symmTensor>(mpm.faceMap());
-    mapNewInternalFaces<tensor>(mpm.faceMap());
+    meshTools::mapNewInternalFaces<scalar>(*this, mpm.faceMap());
+    meshTools::mapNewInternalFaces<vector>(*this, mpm.faceMap());
+    meshTools::mapNewInternalFaces<sphericalTensor>(*this, mpm.faceMap());
+    meshTools::mapNewInternalFaces<symmTensor>(*this, mpm.faceMap());
+    meshTools::mapNewInternalFaces<tensor>(*this, mpm.faceMap());
 }
 
 bool Foam::adaptiveFvMesh::firstUpdate()

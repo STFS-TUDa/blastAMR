@@ -3,6 +3,7 @@ EXE_INC = -std=c++17 \
     -I$(LIB_SRC)/meshTools/lnInclude \
     -I$(LIB_SRC)/dynamicMesh/lnInclude \
     -I$(LIB_SRC)/dynamicFvMesh/lnInclude \
+    -I$(LIB_SRC)/overset/lnInclude \
     -I$(LIB_SRC)/lagrangian/basic/lnInclude \
     -I$(LIB_SRC)/lagrangian/intermediate/lnInclude \
     -I$(LIB_SRC)/lagrangian/solidParticle/lnInclude \
@@ -41,5 +42,5 @@ EXE_LIBS = \
     -lsurfaceFilmModels \
     -L$(FOAM_USER_LIBBIN) -L$(FOAM_LIBBIN)/$(FOAM_MPI) \
     -L$(FOAM_USER_LIBBIN)/catch2/lib -l:libCatch2.a \
-    -ldynamicFvMesh -lPstream -lamrDynamicMesh \
+    -ldynamicFvMesh -loverset -lPstream -lamrDynamicMesh \
     -lamrDynamicFvMesh -lamrIndicators -lamrLagrangian

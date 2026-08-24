@@ -33,6 +33,7 @@ License
 #include "IOobjectList.H"
 #include "fvMesh.H"
 #include "pointMesh.H"
+#include "surfaceFields.H"
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
@@ -113,5 +114,96 @@ void Foam::meshTools::readPointFields
         }
     }
 }
+
+template<class T>
+void Foam::meshTools::mapNewInternalFaces
+(
+    fvMesh& mesh,
+    const labelList& faceMap,
+    GeometricField<T, fvsPatchField, surfaceMesh>& sFld
+)
+{
+    typedef GeometricField<T, fvsPatchField, surfaceMesh> GeoField;
+
+    // Flat field over internal + boundary faces, for ease of looping
+    Field<T> tsFld(mesh.nFaces(), Zero);
+    SubField<T>(tsFld, mesh.nInternalFaces()) = sFld.primitiveField();
+
+    const typename GeoField::Boundary& bFld = sFld.boundaryField();
+    forAll(bFld, patchi)
+    {
+        label facei = mesh.boundaryMesh()[patchi].start();
+        for (const T& val : bFld[patchi])
+        {
+            tsFld[facei++] = val;
+        }
+    }
+
+    const labelUList& owner = mesh.faceOwner();
+    const labelUList& neighbour = mesh.faceNeighbour();
+    const cellList& cells = mesh.cells();
+
+    for (label facei = 0; facei < mesh.nInternalFaces(); facei++)
+    {
+        if (faceMap[facei] != -1)
+        {
+            continue;
+        }
+
+        // Created out of nothing: average the faces of the owner and
+        // neighbour cells that did come from somewhere
+        T sum(pTraits<T>::zero);
+        label counter = 0;
+
+        for (const label ownFacei : cells[owner[facei]])
+        {
+            if (faceMap[ownFacei] != -1)
+            {
+                sum += tsFld[ownFacei];
+                counter++;
+            }
+        }
+
+        for (const label neiFacei : cells[neighbour[facei]])
+        {
+            if (faceMap[neiFacei] != -1)
+            {
+                sum += tsFld[neiFacei];
+                counter++;
+            }
+        }
+
+        if (counter > 0)
+        {
+            sFld[facei] = sum/counter;
+        }
+    }
+}
+
+
+template<class T>
+void Foam::meshTools::mapNewInternalFaces
+(
+    fvMesh& mesh,
+    const labelList& faceMap
+)
+{
+    typedef GeometricField<T, fvsPatchField, surfaceMesh> GeoField;
+
+    HashTable<GeoField*> flds(mesh.objectRegistry::lookupClass<GeoField>());
+
+    forAllIters(flds, iter)
+    {
+        GeoField& sFld = *iter.val();
+
+        if (sFld.is_oriented())
+        {
+            continue;
+        }
+
+        mapNewInternalFaces<T>(mesh, faceMap, sFld);
+    }
+}
+
 
 // ************************************************************************* //
