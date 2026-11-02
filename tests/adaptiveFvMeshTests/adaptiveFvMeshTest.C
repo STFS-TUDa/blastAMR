@@ -257,3 +257,95 @@ TEST_CASE("Check boundary protection for adaptiveFvMesh",
   // Reset time for good mesure
   runTime.setTime(0.0, 0);
 }
+
+TEST_CASE("Check that topoChanging is reset in steps without a mesh change",
+          "[hex2D][hex3D][poly2D][poly3D][serial][parallel][!throws]") {
+  FatalError.throwExceptions();
+  Time &runTime = *timePtr;
+
+  // Refinement box
+  const std::vector<scalar> boxBounds = {0.02, 0.04, 0.025, 0.035};
+
+  // Tested variables' matrix
+  word refiner = GENERATE("polyRefiner", "hexRefiner");
+  if (refiner == "hexRefiner" &&
+      runTime.caseName().find("poly") != string::npos) {
+    REQUIRE(true);
+    return;
+  }
+  word balance = Pstream::parRun() ? GENERATE("no", "yes") : GENERATE("no");
+
+  // Adapt only every third step, so that steps without adaptation follow a
+  // mesh change
+  IStringStream is("dynamicFvMesh   adaptiveFvMesh;"
+                   "errorEstimator  fieldValue;"
+                   "fieldName       test;"
+                   "balance         " +
+                   balance +
+                   ";"
+                   "refiner         " +
+                   refiner +
+                   ";"
+                   "refineInterval  3;"
+                   "unrefineInterval  3;"
+                   "balanceInterval  3;"
+                   "lowerRefineLevel 0.01;"
+                   "unrefineLevel 0.01;"
+                   "nBufferLayers   1;"
+                   "maxRefinement   1;"
+                   "dumpLevel       false;"
+                   "protectedPatches ();"
+                   "nPatchesBuffers 1;");
+
+  // Reset time
+  runTime.setTime(0.0, 0);
+
+  // Create mesh object
+  IOdictionary dynamicMeshDict(IOobject("dynamicMeshDict", runTime.constant(),
+                                        runTime, IOobject::NO_READ,
+                                        IOobject::NO_WRITE),
+                               is);
+  dynamicMeshDict.regIOobject::write();
+  adaptiveFvMesh mesh(IOobject("", runTime.constant(), runTime,
+                               IOobject::MUST_READ, IOobject::NO_WRITE));
+
+  CAPTURE(Pstream::myProcNo(), Pstream::nProcs(), runTime.caseName(),
+          mesh.nCells(), balance, refiner);
+
+  // Create AMR criterion field, 1 inside the refined box
+  volScalarField test(IOobject("test", runTime.timeName(), mesh,
+                               IOobject::NO_READ, IOobject::NO_WRITE, true),
+                      mesh, dimensionedScalar("zero", dimless, 0.0));
+  forAll(mesh.C(), ci) {
+    const auto &center = mesh.C()[ci];
+    if (center.x() >= boxBounds[0] && center.x() <= boxBounds[1] &&
+        center.y() >= boxBounds[2] && center.y() <= boxBounds[3]) {
+      test[ci] = 1;
+    }
+  }
+
+  // topoChanging() must report a change exactly in the steps in which the
+  // mesh changed; solvers use it (through changing()) to decide whether to
+  // redo their mesh-change work, e.g. correctPhi
+  bool changedBefore = false;
+  label nUnchangedAfterChange = 0;
+  for (label i = 0; i < 7; i++) {
+    runTime++;
+    bool changed = false;
+    tryAndCatchAbortingCode([&]() { changed = mesh.update(); });
+    CAPTURE(runTime.timeIndex(), changed);
+    REQUIRE(mesh.topoChanging() == changed);
+    if (changedBefore && !changed) {
+      nUnchangedAfterChange++;
+    }
+    changedBefore = changedBefore || changed;
+  }
+
+  // The first step always refines; the check above is only meaningful if
+  // steps without a change follow it
+  REQUIRE(changedBefore);
+  REQUIRE(nUnchangedAfterChange > 0);
+
+  // Reset time for good mesure
+  runTime.setTime(0.0, 0);
+}

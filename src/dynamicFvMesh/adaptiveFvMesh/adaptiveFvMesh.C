@@ -191,6 +191,12 @@ bool Foam::adaptiveFvMesh::update()
 {
     if (!firstUpdate()) return false;
 
+    // The refiner sets topoChanging only in the steps in which it runs, so
+    // reset it here; otherwise it stays true after a mesh change until the
+    // next refinement step, and solvers redo their mesh-change work (e.g.
+    // correctPhi) in every step in between
+    topoChanging(false);
+
     bool changed =
         (amrCore_.refiner().canRefine(true) || amrCore_.refiner().canUnrefine(true))
      && refine();
@@ -206,6 +212,12 @@ bool Foam::adaptiveFvMesh::update()
     }
 
     reduce(changed, orOp<bool>());
+
+    // A redistribution changes the topology as well
+    if (changed)
+    {
+        topoChanging(true);
+    }
 
     return changed;
 }
