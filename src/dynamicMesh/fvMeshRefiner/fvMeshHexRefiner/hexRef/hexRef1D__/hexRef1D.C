@@ -1571,7 +1571,7 @@ Foam::labelList Foam::hexRef1D::consistentUnrefinement
     // maxSet = true: select edges to refine
 
     // Maintain boolList for edgesToUnrefine and cellsToUnrefine
-    boolList unrefineEdge(mesh_.nEdges());
+    boolList unrefineEdge(mesh_.nEdges(), false);
 
     forAll(edgesToUnrefine, i)
     {
@@ -1587,7 +1587,7 @@ Foam::labelList Foam::hexRef1D::consistentUnrefinement
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~
         const labelListList& edgeCells = mesh_.edgeCells();
 
-        boolList unrefineCell(mesh_.nCells());
+        boolList unrefineCell(mesh_.nCells(), false);
 
         forAll(unrefineEdge, edgei)
         {
